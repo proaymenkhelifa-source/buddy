@@ -519,9 +519,10 @@ $("delete-form").addEventListener("submit", async (event) => {
   toast("Ton compte et toutes tes données ont été supprimés. Merci d'avoir essayé Buddy 🙏");
 });
 
-$("save-emails").addEventListener("click", async () => {
+// Enregistre les réglages des e-mails tels qu'ils sont affichés à l'écran
+function saveEmailSettings() {
   const address = $("notify-email").value.trim();
-  const result = await api("PATCH", "/api/profile", {
+  return api("PATCH", "/api/profile", {
     // Si c'est l'adresse du compte, on n'enregistre rien de spécial (elle suivra le compte)
     notifyEmail: address === session.user.email ? "" : address,
     emailMorning: $("email-morning").checked,
@@ -531,6 +532,10 @@ $("save-emails").addEventListener("click", async () => {
     emailTasks: $("email-tasks").checked,
     emailWeekly: $("email-weekly").checked,
   });
+}
+
+$("save-emails").addEventListener("click", async () => {
+  const result = await saveEmailSettings();
   if (result.error) return toast(result.error, "error");
   document.activeElement.blur();
   await refresh();
@@ -541,6 +546,13 @@ $("test-email").addEventListener("click", async () => {
   const button = $("test-email");
   button.disabled = true;
   button.lastChild.textContent = " Buddy écrit l'e-mail…";
+  // D'abord on enregistre ce qui est affiché (sinon le test partirait vers l'ancienne adresse)
+  const saved = await saveEmailSettings();
+  if (saved.error) {
+    button.disabled = false;
+    button.lastChild.textContent = " M'envoyer un e-mail de test";
+    return toast(saved.error, "error");
+  }
   const result = await api("POST", "/api/email/test", {});
   button.disabled = false;
   button.lastChild.textContent = " M'envoyer un e-mail de test";
