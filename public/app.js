@@ -174,6 +174,8 @@ function openAuth(mode, fresh = true) {
     ? `${t("auth.haveAccount")} <button type="button" data-mode-switch="login">${t("auth.tabLogin")}</button>`
     : `${t("auth.noAccount")} <button type="button" data-mode-switch="signup">${t("auth.tabSignup")}</button>`;
   if (!fresh) return;
+  $("auth-card").classList.remove("hidden"); // le formulaire (et pas l'écran "Bienvenue dans l'équipe")
+  $("auth-done").classList.add("hidden");
   window.scrollTo(0, 0);
   $("auth-info").textContent = "";
   const wanted = signup ? "#inscription" : "#connexion";
@@ -249,10 +251,22 @@ $("auth-submit").addEventListener("click", async () => {
 
   if (error) return ($("auth-info").textContent = authErrorText(error));
   if (!data.session) {
-    // Si Supabase demande de confirmer l'e-mail, il n'y a pas encore de session.
-    return ($("auth-info").textContent = t("auth.created"));
+    // Si Supabase demande de confirmer l'e-mail, il n'y a pas encore de session :
+    // on affiche l'écran "Bienvenue dans l'équipe ! Va voir tes e-mails".
+    $("auth-info").textContent = "";
+    $("auth-done-email").textContent = email;
+    $("auth-card").classList.add("hidden");
+    $("auth-done").classList.remove("hidden");
+    window.scrollTo(0, 0);
+    return;
   }
   loadMyBuddy(data.session);
+});
+
+// "C'est fait, je me connecte" : on passe à la connexion (l'e-mail est déjà rempli)
+$("auth-done-login").addEventListener("click", () => {
+  $("password").value = "";
+  openAuth("login");
 });
 
 // Le menu du compte (en haut à droite)

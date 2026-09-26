@@ -97,6 +97,19 @@
       <p id="auth-info" class="auth-info"></p>
       <p class="muted small auth-switch" id="auth-switch"></p>
     </div>
+
+    <!-- Juste après l'inscription : "Bravo, va voir tes e-mails !" (remplace le formulaire) -->
+    <div class="card auth-card auth-done hidden" id="auth-done">
+      <div class="auth-avatar auth-avatar-big"><img src="buddy/bravo.png" alt=""></div>
+      <h1 data-i18n="auth.doneTitle">Bienvenue dans l'équipe ! 🎉</h1>
+      <p class="muted" data-i18n="auth.doneText">Ton compte est prêt. Plus qu'une petite étape et Buddy est à toi :</p>
+      <div class="mail-step">
+        <span class="mail-icon">📬</span>
+        <p><span data-i18n="auth.doneMail">Ouvre l'e-mail qu'on vient d'envoyer à</span><br><strong id="auth-done-email"></strong></p>
+      </div>
+      <p class="muted small" data-i18n="auth.doneHint">Clique sur le bouton dans l'e-mail pour activer ton compte. Rien reçu ? Jette un œil dans les spams ou l'onglet « Promotions ».</p>
+      <button class="btn btn-primary btn-full" id="auth-done-login" data-i18n="auth.doneLogin">C'est fait, je me connecte 🚀</button>
+    </div>
   </div>
 
   <!-- =========================================================
