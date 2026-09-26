@@ -50,18 +50,6 @@
           progresser et atteindre tes objectifs.
         </p>
         <button class="btn btn-primary btn-big" id="hero-cta">C'est parti <i data-lucide="arrow-right"></i></button>
-
-        <!-- Le formulaire de compte apparaît quand on clique sur "C'est parti" -->
-        <div id="auth-card" class="card auth-card hidden">
-          <div class="tabs">
-            <button class="tab active" data-mode="signup">Créer un compte</button>
-            <button class="tab" data-mode="login">Se connecter</button>
-          </div>
-          <input id="email" type="email" placeholder="Ton e-mail" autocomplete="email">
-          <input id="password" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
-          <button class="btn btn-primary btn-full" id="auth-submit">Créer mon compte</button>
-          <p id="auth-info" class="auth-info"></p>
-        </div>
       </div>
 
       <!-- La scène : Buddy devant une grande fenêtre, le soir -->
@@ -78,6 +66,28 @@
         <div class="scene-desk"><div class="laptop"></div></div>
       </div>
     </main>
+  </div>
+
+  <!-- =========================================================
+       ÉCRAN 1 bis : CONNEXION / INSCRIPTION (une page à part entière)
+       ========================================================= -->
+  <div id="auth-screen" class="auth-screen hidden">
+    <button class="btn btn-ghost auth-back" id="auth-back"><i data-lucide="arrow-left"></i> Retour</button>
+    <div class="card auth-card" id="auth-card">
+      <a class="logo auth-logo" href="#"></a>
+      <div class="auth-avatar"><img src="buddy/motivation.png" alt=""></div>
+      <h1 id="auth-title">Crée ton compte</h1>
+      <p class="muted" id="auth-subtitle">Buddy t'attend pour t'aider à atteindre tes objectifs.</p>
+      <div class="tabs">
+        <button class="tab active" data-mode="signup">Créer un compte</button>
+        <button class="tab" data-mode="login">Se connecter</button>
+      </div>
+      <input id="email" type="email" placeholder="Ton e-mail" autocomplete="email">
+      <input id="password" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+      <button class="btn btn-primary btn-full" id="auth-submit">Créer mon compte</button>
+      <p id="auth-info" class="auth-info"></p>
+      <p class="muted small auth-switch" id="auth-switch"></p>
+    </div>
   </div>
 
   <!-- =========================================================

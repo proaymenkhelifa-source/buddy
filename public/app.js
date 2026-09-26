@@ -76,11 +76,15 @@ window.addEventListener("hashchange", showPage);
 
 function showLanding() {
   $("landing").classList.remove("hidden");
+  $("auth-screen").classList.add("hidden");
   $("app").classList.add("hidden");
   $("buddy-fab").classList.add("hidden");
 }
 function showApp() {
   $("landing").classList.add("hidden");
+  $("auth-screen").classList.add("hidden");
+  // Si on vient de la page de connexion, on arrive sur l'accueil de l'appli
+  if (["#inscription", "#connexion"].includes(location.hash)) history.replaceState(null, "", "#accueil");
   $("app").classList.remove("hidden");
   $("buddy-fab").classList.remove("hidden");
   showPage();
@@ -91,15 +95,33 @@ function showApp() {
 // =============================================================
 let authMode = "signup"; // "signup" = créer un compte, "login" = se connecter
 
+// La page de connexion / inscription est une page à part entière (#inscription ou #connexion dans l'adresse) :
+// le bouton "retour" du téléphone ramène à l'accueil.
 function openAuth(mode) {
   authMode = mode;
-  $("auth-card").classList.remove("hidden");
+  $("landing").classList.add("hidden");
+  $("auth-screen").classList.remove("hidden");
+  window.scrollTo(0, 0);
   for (const tab of document.querySelectorAll(".tab")) {
     tab.classList.toggle("active", tab.dataset.mode === mode);
   }
-  $("auth-submit").textContent = mode === "signup" ? "Créer mon compte" : "Me connecter";
+  const signup = mode === "signup";
+  $("auth-title").textContent = signup ? "Crée ton compte" : "Content de te revoir 👋";
+  $("auth-subtitle").textContent = signup ? "Buddy t'attend pour t'aider à atteindre tes objectifs." : "Connecte-toi pour retrouver Buddy et tes objectifs.";
+  $("auth-submit").textContent = signup ? "Créer mon compte" : "Me connecter";
+  $("password").autocomplete = signup ? "new-password" : "current-password";
+  $("auth-switch").innerHTML = signup
+    ? `Déjà un compte ? <button type="button" data-mode-switch="login">Se connecter</button>`
+    : `Pas encore de compte ? <button type="button" data-mode-switch="signup">Créer un compte</button>`;
   $("auth-info").textContent = "";
-  $("email").focus();
+  const wanted = signup ? "#inscription" : "#connexion";
+  if (location.hash !== wanted) history.pushState(null, "", wanted);
+  setTimeout(() => $("email").focus(), 50);
+}
+
+function closeAuth() {
+  $("auth-screen").classList.add("hidden");
+  if (!session) $("landing").classList.remove("hidden");
 }
 
 $("hero-cta").addEventListener("click", () => openAuth("signup"));
@@ -107,6 +129,27 @@ $("nav-login").addEventListener("click", () => openAuth("login"));
 for (const tab of document.querySelectorAll(".tab")) {
   tab.addEventListener("click", () => openAuth(tab.dataset.mode));
 }
+$("auth-switch").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-mode-switch]");
+  if (b) openAuth(b.dataset.modeSwitch);
+});
+$("auth-back").addEventListener("click", () => {
+  history.pushState(null, "", location.pathname); // on retire #inscription / #connexion de l'adresse
+  closeAuth();
+});
+// Le bouton "retour" du navigateur ou du téléphone
+window.addEventListener("hashchange", () => {
+  if (session) return;
+  if (location.hash === "#inscription") openAuth("signup");
+  else if (location.hash === "#connexion") openAuth("login");
+  else closeAuth();
+});
+window.addEventListener("popstate", () => {
+  if (session) return;
+  if (location.hash === "#inscription") openAuth("signup");
+  else if (location.hash === "#connexion") openAuth("login");
+  else closeAuth();
+});
 // Appuyer sur Entrée dans le mot de passe = cliquer sur le bouton
 $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("auth-submit").click(); });
 
@@ -145,8 +188,8 @@ async function logout() {
   closeChat();
   $("chat").innerHTML = "";
   $("auth-info").textContent = "";
-  $("auth-card").classList.add("hidden");
-  location.hash = "";
+  $("auth-screen").classList.add("hidden");
+  history.replaceState(null, "", location.pathname);
   showLanding();
 }
 $("logout-button").addEventListener("click", logout);
@@ -1121,4 +1164,7 @@ if (data.session) {
   loadMyBuddy(data.session);
 } else {
   showLanding();
+  // Un lien direct vers la page d'inscription ou de connexion (ex : buddycoach.app/#inscription)
+  if (location.hash === "#inscription") openAuth("signup");
+  if (location.hash === "#connexion") openAuth("login");
 }

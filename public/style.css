@@ -187,7 +187,29 @@ textarea { resize: vertical; }
 .hero h1 { font-size: clamp(2.6rem, 5.4vw, 4.6rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.02; }
 .hero-sub { color: var(--muted); font-size: 1.1rem; margin: 22px 0 32px; max-width: 460px; }
 .scene-hero { height: min(620px, 72vh); animation: fade-up 0.8s ease-out; }
-.auth-card { margin-top: 26px; max-width: 420px; display: grid; gap: 12px; animation: fade-up 0.35s ease-out; }
+/* La page de connexion / inscription : plein écran, carte centrée */
+.auth-screen {
+  position: relative; min-height: 100vh; min-height: 100dvh;
+  display: grid; place-items: center; padding: 72px 16px 32px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(201, 90, 78, 0.28), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(84, 41, 106, 0.35), transparent 60%),
+    var(--bg);
+}
+.auth-back { position: absolute; top: 18px; left: 16px; }
+.auth-card { width: 100%; max-width: 420px; display: grid; gap: 12px; padding: 28px 24px; animation: fade-up 0.35s ease-out; text-align: center; }
+.auth-card input, .auth-card .tabs, .auth-card .btn { text-align: left; }
+.auth-card .btn { justify-content: center; }
+.auth-logo { justify-content: center; margin-bottom: 4px; }
+.auth-avatar {
+  width: 88px; height: 88px; margin: 0 auto; border-radius: 50%; overflow: hidden;
+  border: 2px solid var(--accent); background: linear-gradient(#54296a, #f0a14c);
+  box-shadow: 0 0 30px rgba(246, 183, 60, 0.25);
+}
+.auth-avatar img { width: 100%; height: 200%; object-fit: cover; object-position: top; }
+.auth-card h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+.auth-card > p.muted { margin-bottom: 6px; }
+.auth-switch button { background: none; border: none; padding: 0; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; }
 .tabs { display: flex; background: var(--card-strong); border: 1px solid var(--border); border-radius: 14px; padding: 4px; }
 .tab { flex: 1; background: transparent; border: none; color: var(--muted); font: inherit; font-weight: 600; padding: 9px; border-radius: 10px; cursor: pointer; }
 .tab.active { background: var(--card); color: var(--text); }
