@@ -22,6 +22,14 @@
   </script>
 </head>
 <body>
+  <!--
+    LES TRADUCTIONS : chaque texte porte le nom de sa phrase dans le dictionnaire (public/i18n.js).
+      data-i18n="nom"        → remplace le texte
+      data-i18n-html="nom"   → remplace le texte (avec des retours à la ligne <br>)
+      data-i18n-ph="nom"     → remplace le texte grisé d'un champ (placeholder)
+      data-i18n-title="nom"  → remplace la bulle d'aide (au survol)
+    Le français écrit ici ne sert que pendant le chargement.
+  -->
 
   <!-- Le logo (une petite montagne + "Buddy"), réutilisé à plusieurs endroits -->
   <template id="logo-template">
@@ -35,21 +43,22 @@
     <nav class="nav">
       <a class="logo" href="#"></a>
       <div class="nav-right">
-        <button class="icon-btn theme-toggle" title="Changer de thème"><i data-lucide="sun"></i></button>
-        <button class="btn btn-ghost" id="nav-login">Se connecter</button>
+        <button class="icon-btn lang-toggle" data-i18n-title="lang.switch"></button>
+        <button class="icon-btn theme-toggle" data-i18n-title="theme.toggle"><i data-lucide="sun"></i></button>
+        <button class="btn btn-ghost" id="nav-login" data-i18n="nav.login">Se connecter</button>
       </div>
     </nav>
 
     <main class="hero">
       <div class="hero-text">
-        <p class="eyebrow">Ton coach personnel</p>
-        <h1>Une meilleure<br>version de toi,<br><span class="accent">chaque jour.</span></h1>
-        <p class="hero-sub">
+        <p class="eyebrow" data-i18n="hero.eyebrow">Ton coach personnel</p>
+        <h1 data-i18n-html="hero.title">Une meilleure<br>version de toi,<br><span class="accent">chaque jour.</span></h1>
+        <p class="hero-sub" data-i18n-html="hero.sub">
           Reste focus sur ce qui compte.<br>
           Ton coach personnel pour t'aider à être plus discipliné,
           progresser et atteindre tes objectifs.
         </p>
-        <button class="btn btn-primary btn-big" id="hero-cta">C'est parti <i data-lucide="arrow-right"></i></button>
+        <button class="btn btn-primary btn-big" id="hero-cta"><span data-i18n="hero.cta">C'est parti</span> <i data-lucide="arrow-right"></i></button>
       </div>
 
       <!-- La scène : Buddy devant une grande fenêtre, le soir -->
@@ -62,7 +71,7 @@
         </svg>
         <div class="scene-photo" style="--photo: url(images/hero.jpg)"></div>
         <div class="scene-window"></div>
-        <img class="buddy-img" src="buddy/repos.png" alt="Buddy, ton coach">
+        <img class="buddy-img" src="buddy/repos.png" alt="Buddy">
         <div class="scene-desk"><div class="laptop"></div></div>
       </div>
     </main>
@@ -72,18 +81,18 @@
        ÉCRAN 1 bis : CONNEXION / INSCRIPTION (une page à part entière)
        ========================================================= -->
   <div id="auth-screen" class="auth-screen hidden">
-    <button class="btn btn-ghost auth-back" id="auth-back"><i data-lucide="arrow-left"></i> Retour</button>
+    <button class="btn btn-ghost auth-back" id="auth-back"><i data-lucide="arrow-left"></i> <span data-i18n="auth.back">Retour</span></button>
     <div class="card auth-card" id="auth-card">
       <a class="logo auth-logo" href="#"></a>
       <div class="auth-avatar"><img src="buddy/motivation.png" alt=""></div>
       <h1 id="auth-title">Crée ton compte</h1>
       <p class="muted" id="auth-subtitle">Buddy t'attend pour t'aider à atteindre tes objectifs.</p>
       <div class="tabs">
-        <button class="tab active" data-mode="signup">Créer un compte</button>
-        <button class="tab" data-mode="login">Se connecter</button>
+        <button class="tab active" data-mode="signup" data-i18n="auth.tabSignup">Créer un compte</button>
+        <button class="tab" data-mode="login" data-i18n="auth.tabLogin">Se connecter</button>
       </div>
-      <input id="email" type="email" placeholder="Ton e-mail" autocomplete="email">
-      <input id="password" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+      <input id="email" type="email" placeholder="Ton e-mail" data-i18n-ph="auth.emailPh" autocomplete="email">
+      <input id="password" type="password" placeholder="Mot de passe (6 caractères minimum)" data-i18n-ph="auth.passwordPh" autocomplete="current-password">
       <button class="btn btn-primary btn-full" id="auth-submit">Créer mon compte</button>
       <p id="auth-info" class="auth-info"></p>
       <p class="muted small auth-switch" id="auth-switch"></p>
@@ -99,25 +108,26 @@
     <aside class="sidebar">
       <a class="logo" href="#accueil"></a>
       <nav class="side-nav">
-        <a class="side-link" href="#accueil" data-page="accueil"><i data-lucide="house"></i><span>Accueil</span></a>
-        <a class="side-link" href="#objectifs" data-page="objectifs"><i data-lucide="circle-check-big"></i><span>Mes objectifs</span></a>
-        <a class="side-link" href="#suivi" data-page="suivi"><i data-lucide="chart-column"></i><span>Suivi</span></a>
-        <a class="side-link" href="#outils" data-page="outils"><i data-lucide="timer"></i><span>Outils</span></a>
-        <a class="side-link" href="#parametres" data-page="parametres"><i data-lucide="settings"></i><span>Paramètres</span></a>
+        <a class="side-link" href="#accueil" data-page="accueil"><i data-lucide="house"></i><span data-i18n="nav.home">Accueil</span></a>
+        <a class="side-link" href="#objectifs" data-page="objectifs"><i data-lucide="circle-check-big"></i><span data-i18n="nav.goals">Mes objectifs</span></a>
+        <a class="side-link" href="#suivi" data-page="suivi"><i data-lucide="chart-column"></i><span data-i18n="nav.tracking">Suivi</span></a>
+        <a class="side-link" href="#outils" data-page="outils"><i data-lucide="timer"></i><span data-i18n="nav.tools">Outils</span></a>
+        <a class="side-link" href="#parametres" data-page="parametres"><i data-lucide="settings"></i><span data-i18n="nav.settings">Paramètres</span></a>
       </nav>
       <div class="side-quote">
         <svg class="side-mountain" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
           <path d="M0 120 L0 80 L40 55 L70 75 L110 25 L150 70 L200 45 L200 120 Z"/>
         </svg>
         <i data-lucide="timer-reset"></i>
-        <p id="quote-short">Discipline aujourd'hui, résultats demain.</p>
+        <p id="quote-short" data-i18n="quote.short">Discipline aujourd'hui, résultats demain.</p>
       </div>
     </aside>
 
     <div class="main">
-      <!-- En haut à droite : thème, compte -->
+      <!-- En haut à droite : langue, thème, compte -->
       <header class="topbar">
-        <button class="icon-btn round theme-toggle" title="Changer de thème"><i data-lucide="sun"></i></button>
+        <button class="icon-btn round lang-toggle" data-i18n-title="lang.switch"></button>
+        <button class="icon-btn round theme-toggle" data-i18n-title="theme.toggle"><i data-lucide="sun"></i></button>
         <div class="user-menu">
           <button class="user-btn" id="user-btn">
             <span class="avatar" id="user-avatar">?</span>
@@ -126,8 +136,8 @@
           </button>
           <div class="dropdown hidden" id="user-dropdown">
             <p class="dropdown-email" id="user-email"></p>
-            <a class="dropdown-item" href="#parametres"><i data-lucide="settings"></i> Paramètres</a>
-            <button class="dropdown-item" id="logout-button"><i data-lucide="log-out"></i> Se déconnecter</button>
+            <a class="dropdown-item" href="#parametres"><i data-lucide="settings"></i> <span data-i18n="nav.settings">Paramètres</span></a>
+            <button class="dropdown-item" id="logout-button"><i data-lucide="log-out"></i> <span data-i18n="menu.logout">Se déconnecter</span></button>
           </div>
         </div>
       </header>
@@ -147,10 +157,10 @@
           <div class="banner-shade"></div>
 
           <div class="banner-copy">
-            <span class="pill">Bienvenue</span>
-            <h1>Salut <span id="greeting-name"></span> <span class="wave">👋</span></h1>
-            <p id="greeting-sub">Chaque petite action compte.<br>On continue ?</p>
-            <button class="btn btn-primary btn-big" id="open-chat">Parler à Buddy <i data-lucide="arrow-right"></i></button>
+            <span class="pill" data-i18n="home.pill">Bienvenue</span>
+            <h1><span data-i18n="home.hello">Salut</span> <span id="greeting-name"></span> <span class="wave">👋</span></h1>
+            <p id="greeting-sub"></p>
+            <button class="btn btn-primary btn-big" id="open-chat"><span data-i18n="home.talk">Parler à Buddy</span> <i data-lucide="arrow-right"></i></button>
           </div>
 
           <div class="banner-buddy">
@@ -158,7 +168,7 @@
           </div>
 
           <!-- "On reprend où on s'était arrêtés ?" : un aperçu de la dernière vraie conversation avec Buddy -->
-          <aside class="resume-card" id="resume-card" aria-label="Notre dernière discussion">
+          <aside class="resume-card" id="resume-card" data-i18n-aria="resume.aria">
             <p class="resume-title" id="resume-title"></p>
             <p class="resume-quote" id="resume-quote"></p>
             <p class="resume-reply" id="resume-reply"></p>
@@ -176,9 +186,9 @@
             <div class="card-head">
               <div class="card-title">
                 <span class="title-icon" style="--c: var(--blue)"><i data-lucide="calendar"></i></span>
-                <div><h3>Aujourd'hui</h3><p class="muted small" id="today-date"></p></div>
+                <div><h3 data-i18n="today.title">Aujourd'hui</h3><p class="muted small" id="today-date"></p></div>
               </div>
-              <button class="mini-btn" id="add-task" title="Ajouter une tâche"><i data-lucide="plus"></i></button>
+              <button class="mini-btn" id="add-task" data-i18n-title="today.add"><i data-lucide="plus"></i></button>
             </div>
             <ul class="checklist" id="today-list"></ul>
             <p class="today-count" id="today-count"></p>
@@ -199,7 +209,7 @@
             </svg>
             <div class="photo" style="--photo: url(images/quote.jpg)"></div>
             <svg class="logo-mark quote-mark" viewBox="0 0 34 22" aria-hidden="true"><path d="M2 20 L12 6 L17 13 L21 8 L32 20"/></svg>
-            <blockquote id="quote-long">« La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus. »</blockquote>
+            <blockquote id="quote-long" data-i18n="quote.long">« La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus. »</blockquote>
           </section>
 
           <!-- MES OBJECTIFS (les 5 premiers) -->
@@ -207,9 +217,9 @@
             <div class="card-head">
               <a class="card-title" href="#objectifs">
                 <span class="title-icon plain" style="--c: var(--accent)"><i data-lucide="target"></i></span>
-                <h3>Mes objectifs</h3>
+                <h3 data-i18n="goals.title">Mes objectifs</h3>
               </a>
-              <button class="mini-btn" data-new-goal title="Nouvel objectif"><i data-lucide="plus"></i></button>
+              <button class="mini-btn" data-new-goal data-i18n-title="goals.new"><i data-lucide="plus"></i></button>
             </div>
             <ul class="goals" id="goals-summary"></ul>
           </section>
@@ -219,9 +229,9 @@
             <div class="card-head">
               <div class="card-title">
                 <span class="title-icon plain" style="--c: var(--accent)"><i data-lucide="chart-column"></i></span>
-                <h3>Cette semaine</h3>
+                <h3 data-i18n="week.title">Cette semaine</h3>
               </div>
-              <span class="link-hint">Suivi <i data-lucide="chevron-right"></i></span>
+              <span class="link-hint"><span data-i18n="week.link">Suivi</span> <i data-lucide="chevron-right"></i></span>
             </div>
             <div class="week-body">
               <div class="ring" id="week-ring" style="--p: 0">
@@ -233,7 +243,7 @@
                   </defs>
                   <circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg" cx="60" cy="60" r="52"/>
                 </svg>
-                <div class="ring-label"><strong id="week-rate">0%</strong><span>réussite</span></div>
+                <div class="ring-label"><strong id="week-rate">0%</strong><span data-i18n="week.success">réussite</span></div>
               </div>
               <ul class="week-stats" id="week-stats"></ul>
             </div>
@@ -244,7 +254,7 @@
             <div class="card-head">
               <div class="card-title">
                 <span class="title-icon plain" style="--c: var(--accent)"><i data-lucide="layout-grid"></i></span>
-                <h3>Mes catégories</h3>
+                <h3 data-i18n="cats.title">Mes catégories</h3>
               </div>
             </div>
             <div class="categories" id="categories"></div>
@@ -256,10 +266,10 @@
       <main id="page-objectifs" class="page page-padded hidden">
         <header class="page-head">
           <div>
-            <h1>Mes objectifs</h1>
-            <p class="muted">Chaque objectif appartient à une catégorie. Buddy les connaît tous.</p>
+            <h1 data-i18n="goals.title">Mes objectifs</h1>
+            <p class="muted" data-i18n="goalsPage.sub">Chaque objectif appartient à une catégorie. Buddy les connaît tous.</p>
           </div>
-          <button class="btn btn-primary" data-new-goal><i data-lucide="plus"></i> Nouvel objectif</button>
+          <button class="btn btn-primary" data-new-goal><i data-lucide="plus"></i> <span data-i18n="goals.new">Nouvel objectif</span></button>
         </header>
         <div class="filters" id="goal-filters"></div>
         <div class="goal-grid" id="goal-grid"></div>
@@ -269,36 +279,36 @@
       <main id="page-suivi" class="page page-padded hidden">
         <header class="page-head">
           <div>
-            <h1>Suivi</h1>
-            <p class="muted">Ta régularité, en un coup d'œil.</p>
+            <h1 data-i18n="nav.tracking">Suivi</h1>
+            <p class="muted" data-i18n="suivi.sub">Ta régularité, en un coup d'œil.</p>
           </div>
-          <button class="btn btn-primary" data-review><i data-lucide="compass"></i> Faire mon bilan de la semaine</button>
+          <button class="btn btn-primary" data-review><i data-lucide="compass"></i> <span data-i18n="suivi.review">Faire mon bilan de la semaine</span></button>
         </header>
         <div class="stat-tiles" id="stat-tiles"></div>
         <div class="suivi-grid">
           <section class="card">
-            <div class="card-head"><div class="card-title"><h3>Tes tâches cette semaine</h3></div></div>
+            <div class="card-head"><div class="card-title"><h3 data-i18n="suivi.tasksWeek">Tes tâches cette semaine</h3></div></div>
             <div id="task-history"></div>
           </section>
           <section class="card">
-            <div class="card-head"><div class="card-title"><h3>Les 4 dernières semaines</h3></div></div>
+            <div class="card-head"><div class="card-title"><h3 data-i18n="suivi.fourWeeks">Les 4 dernières semaines</h3></div></div>
             <div class="heatmap" id="heatmap"></div>
             <p class="muted small heat-legend">
-              <span class="heat-cell" data-level="0"></span> rien
-              <span class="heat-cell" data-level="1"></span> un peu
-              <span class="heat-cell" data-level="2"></span> la moitié
-              <span class="heat-cell" data-level="3"></span> tout fait
-              <span class="heat-cell joker"></span> joker
+              <span class="heat-cell" data-level="0"></span> <span data-i18n="heat.none">rien</span>
+              <span class="heat-cell" data-level="1"></span> <span data-i18n="heat.some">un peu</span>
+              <span class="heat-cell" data-level="2"></span> <span data-i18n="heat.half">la moitié</span>
+              <span class="heat-cell" data-level="3"></span> <span data-i18n="heat.all">tout fait</span>
+              <span class="heat-cell joker"></span> <span data-i18n="heat.joker">joker</span>
             </p>
             <ul class="week-list" id="week-list"></ul>
           </section>
           <section class="card suivi-goals">
-            <div class="card-head"><div class="card-title"><h3>Progression des objectifs</h3></div></div>
+            <div class="card-head"><div class="card-title"><h3 data-i18n="suivi.goalsProgress">Progression des objectifs</h3></div></div>
             <ul class="goals" id="goals-progress"></ul>
           </section>
           <section class="card suivi-goals">
             <div class="card-head">
-              <div class="card-title"><h3>🏅 Mes badges</h3></div>
+              <div class="card-title"><h3 data-i18n="suivi.badges">🏅 Mes badges</h3></div>
               <span class="badge" id="badge-count"></span>
             </div>
             <div class="badge-grid" id="badge-grid"></div>
@@ -310,24 +320,24 @@
       <main id="page-outils" class="page page-padded hidden">
         <header class="page-head">
           <div>
-            <h1>Outils</h1>
-            <p class="muted">Des outils simples pour passer à l'action. D'autres arriveront plus tard.</p>
+            <h1 data-i18n="nav.tools">Outils</h1>
+            <p class="muted" data-i18n="tools.sub">Des outils simples pour passer à l'action. D'autres arriveront plus tard.</p>
           </div>
         </header>
         <section class="card focus-card">
           <div class="card-head"><div class="card-title">
             <span class="title-icon" style="--c: var(--accent)"><i data-lucide="timer"></i></span>
-            <div><h3>Minuteur de focus</h3><p class="muted small">Choisis une durée, lance, et ne fais QUE ça.</p></div>
+            <div><h3 data-i18n="focus.title">Minuteur de focus</h3><p class="muted small" data-i18n="focus.sub">Choisis une durée, lance, et ne fais QUE ça.</p></div>
           </div></div>
           <div class="focus-time" id="focus-time">25:00</div>
           <div class="focus-presets">
             <button class="chip" data-minutes="25">25 min</button>
             <button class="chip" data-minutes="50">50 min</button>
-            <button class="chip" data-minutes="5">Pause 5 min</button>
+            <button class="chip" data-minutes="5" data-i18n="focus.break">Pause 5 min</button>
           </div>
           <div class="focus-actions">
             <button class="btn btn-primary" id="focus-start"><i data-lucide="play"></i> <span>Lancer</span></button>
-            <button class="btn btn-ghost" id="focus-reset"><i data-lucide="rotate-ccw"></i> Réinitialiser</button>
+            <button class="btn btn-ghost" id="focus-reset"><i data-lucide="rotate-ccw"></i> <span data-i18n="focus.reset">Réinitialiser</span></button>
           </div>
         </section>
       </main>
@@ -336,79 +346,87 @@
       <main id="page-parametres" class="page page-padded hidden">
         <header class="page-head">
           <div>
-            <h1>Paramètres</h1>
-            <p class="muted">Ton profil et la façon dont Buddy te parle.</p>
+            <h1 data-i18n="nav.settings">Paramètres</h1>
+            <p class="muted" data-i18n="settings.sub">Ton profil et la façon dont Buddy te parle.</p>
           </div>
         </header>
         <div class="settings">
           <section class="card">
-            <h3>Ton prénom</h3>
-            <p class="muted small">Buddy l'utilise de temps en temps pour te parler.</p>
+            <h3 data-i18n="settings.name">Ton prénom</h3>
+            <p class="muted small" data-i18n="settings.nameHint">Buddy l'utilise de temps en temps pour te parler.</p>
             <div class="inline-form">
-              <input id="settings-name" placeholder="Ton prénom" autocomplete="given-name">
-              <button class="btn btn-primary" id="save-name">Enregistrer</button>
+              <input id="settings-name" placeholder="Ton prénom" data-i18n-ph="settings.name" autocomplete="given-name">
+              <button class="btn btn-primary" id="save-name" data-i18n="common.save">Enregistrer</button>
             </div>
           </section>
           <section class="card">
-            <h3>Style de coaching</h3>
-            <p class="muted small">Tu peux aussi simplement le demander à Buddy dans la discussion.</p>
-            <div class="style-options" id="style-options">
-              <button class="style-option" data-style="military"><strong>🪖 Militaire</strong><span>Zéro excuse, très direct.</span></button>
-              <button class="style-option" data-style="balanced"><strong>⚖️ Équilibré</strong><span>Encourage et challenge.</span></button>
-              <button class="style-option" data-style="supportive"><strong>🤝 Bienveillant</strong><span>Patient et rassurant.</span></button>
-            </div>
-          </section>
-          <section class="card">
-            <h3>Thème</h3>
+            <h3 data-i18n="settings.language">Langue</h3>
+            <p class="muted small" data-i18n="settings.languageHint">L'application, Buddy et tes e-mails passent dans cette langue.</p>
             <div class="style-options">
-              <button class="style-option" data-theme-choice="dark"><strong>🌙 Sombre</strong></button>
-              <button class="style-option" data-theme-choice="light"><strong>☀️ Clair</strong></button>
+              <button class="style-option" data-lang-choice="fr"><strong>Français</strong></button>
+              <button class="style-option" data-lang-choice="en"><strong>English</strong></button>
             </div>
           </section>
           <section class="card">
-            <h3>Rappels par e-mail</h3>
-            <p class="muted small">Buddy t'écrit lui-même : jamais deux fois le même e-mail, toujours à ton heure.</p>
-            <label class="field">Adresse de réception
-              <input id="notify-email" type="email" placeholder="Par défaut : l'adresse de ton compte" autocomplete="email">
+            <h3 data-i18n="settings.style">Style de coaching</h3>
+            <p class="muted small" data-i18n="settings.styleHint">Tu peux aussi simplement le demander à Buddy dans la discussion.</p>
+            <div class="style-options" id="style-options">
+              <button class="style-option" data-style="military"><strong data-i18n="style.military">🪖 Militaire</strong><span data-i18n="style.militaryDesc">Zéro excuse, très direct.</span></button>
+              <button class="style-option" data-style="balanced"><strong data-i18n="style.balanced">⚖️ Équilibré</strong><span data-i18n="style.balancedDesc">Encourage et challenge.</span></button>
+              <button class="style-option" data-style="supportive"><strong data-i18n="style.supportive">🤝 Bienveillant</strong><span data-i18n="style.supportiveDesc">Patient et rassurant.</span></button>
+            </div>
+          </section>
+          <section class="card">
+            <h3 data-i18n="settings.theme">Thème</h3>
+            <div class="style-options">
+              <button class="style-option" data-theme-choice="dark"><strong data-i18n="theme.dark">🌙 Sombre</strong></button>
+              <button class="style-option" data-theme-choice="light"><strong data-i18n="theme.light">☀️ Clair</strong></button>
+            </div>
+          </section>
+          <section class="card">
+            <h3 data-i18n="settings.emails">Rappels par e-mail</h3>
+            <p class="muted small" data-i18n="settings.emailsHint">Buddy t'écrit lui-même : jamais deux fois le même e-mail, toujours à ton heure.</p>
+            <label class="field"><span data-i18n="settings.address">Adresse de réception</span>
+              <input id="notify-email" type="email" placeholder="Par défaut : l'adresse de ton compte" data-i18n-ph="settings.addressPh" autocomplete="email">
             </label>
             <div class="toggles">
               <label class="toggle-row">
                 <input type="checkbox" id="email-morning">
                 <span class="switch"></span>
-                <span><strong>🌅 Le mot du matin</strong><small>Bon courage + tes objectifs et tâches du jour</small></span>
+                <span><strong data-i18n="email.morning">🌅 Le mot du matin</strong><small data-i18n="email.morningDesc">Bon courage + tes objectifs et tâches du jour</small></span>
                 <input type="time" id="morning-time" value="08:00">
               </label>
               <label class="toggle-row">
                 <input type="checkbox" id="email-evening">
                 <span class="switch"></span>
-                <span><strong>🌙 Le récap du soir</strong><small>Le bilan de ta journée + « comment ça s'est passé ? »</small></span>
+                <span><strong data-i18n="email.evening">🌙 Le récap du soir</strong><small data-i18n="email.eveningDesc">Le bilan de ta journée + « comment ça s'est passé ? »</small></span>
                 <input type="time" id="evening-time" value="21:00">
               </label>
               <label class="toggle-row">
                 <input type="checkbox" id="email-tasks">
                 <span class="switch"></span>
-                <span><strong>⏰ 5 minutes avant chaque tâche</strong><small>Seulement pour les tâches qui ont une heure</small></span>
+                <span><strong data-i18n="email.tasks">⏰ 5 minutes avant chaque tâche</strong><small data-i18n="email.tasksDesc">Seulement pour les tâches qui ont une heure</small></span>
               </label>
               <label class="toggle-row">
                 <input type="checkbox" id="email-weekly">
                 <span class="switch"></span>
-                <span><strong>🧭 Le bilan de la semaine</strong><small>Le dimanche soir, à la place du récap du jour</small></span>
+                <span><strong data-i18n="email.weekly">🧭 Le bilan de la semaine</strong><small data-i18n="email.weeklyDesc">Le dimanche soir, à la place du récap du jour</small></span>
               </label>
             </div>
             <div class="inline-form">
-              <button class="btn btn-primary" id="save-emails">Enregistrer</button>
-              <button class="btn btn-ghost" id="test-email"><i data-lucide="send"></i> M'envoyer un e-mail de test</button>
+              <button class="btn btn-primary" id="save-emails" data-i18n="common.save">Enregistrer</button>
+              <button class="btn btn-ghost" id="test-email"><i data-lucide="send"></i> <span data-i18n="settings.testEmail">M'envoyer un e-mail de test</span></button>
             </div>
           </section>
           <section class="card">
-            <h3>Compte</h3>
+            <h3 data-i18n="settings.account">Compte</h3>
             <p class="muted small" id="settings-email"></p>
-            <button class="btn btn-ghost" id="logout-button-2"><i data-lucide="log-out"></i> Se déconnecter</button>
+            <button class="btn btn-ghost" id="logout-button-2"><i data-lucide="log-out"></i> <span data-i18n="menu.logout">Se déconnecter</span></button>
           </section>
           <section class="card danger-zone">
-            <h3>Supprimer mon compte</h3>
-            <p class="muted small">Supprime définitivement ton compte et TOUTES tes données : objectifs, tâches, suivi, conversations avec Buddy, badges. C'est irréversible.</p>
-            <button class="btn btn-danger" id="delete-account"><i data-lucide="trash-2"></i> Supprimer mon compte et mes données</button>
+            <h3 data-i18n="settings.deleteTitle">Supprimer mon compte</h3>
+            <p class="muted small" data-i18n="settings.deleteHint">Supprime définitivement ton compte et TOUTES tes données : objectifs, tâches, suivi, conversations avec Buddy, badges. C'est irréversible.</p>
+            <button class="btn btn-danger" id="delete-account"><i data-lucide="trash-2"></i> <span data-i18n="settings.deleteBtn">Supprimer mon compte et mes données</span></button>
           </section>
         </div>
       </main>
@@ -422,20 +440,20 @@
   <dialog id="goal-dialog" class="dialog">
     <form method="dialog" id="goal-form">
       <h2 id="goal-dialog-title">Nouvel objectif</h2>
-      <label>Titre<input name="text" required maxlength="120" placeholder="Ex : Courir un semi-marathon"></label>
-      <label>Catégorie</label>
+      <label><span data-i18n="goal.titleLabel">Titre</span><input name="text" required maxlength="120" placeholder="Ex : Courir un semi-marathon" data-i18n-ph="goal.titlePh"></label>
+      <label data-i18n="goal.category">Catégorie</label>
       <div class="cat-picker" id="cat-picker"></div>
-      <label>Pourquoi c'est important pour toi ?<textarea name="reason" rows="2" placeholder="Ta vraie raison. Buddy te la rappellera."></textarea></label>
+      <label><span data-i18n="goal.why">Pourquoi c'est important pour toi ?</span><textarea name="reason" rows="2" placeholder="Ta vraie raison. Buddy te la rappellera." data-i18n-ph="goal.whyPh"></textarea></label>
       <div class="form-row">
-        <label>Échéance (facultatif)<input name="deadline" type="date"></label>
-        <label id="progress-field">Progression : <span id="progress-value">0</span> %<input name="progress" type="range" min="0" max="100" step="5" value="0"></label>
+        <label><span data-i18n="goal.deadline">Échéance (facultatif)</span><input name="deadline" type="date"></label>
+        <label id="progress-field"><span data-i18n="goal.progress">Progression :</span> <span id="progress-value">0</span> %<input name="progress" type="range" min="0" max="100" step="5" value="0"></label>
       </div>
       <p class="muted small hidden" id="progress-auto"></p>
       <p class="form-error" id="goal-error"></p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-danger hidden" id="goal-delete"><i data-lucide="trash-2"></i> Supprimer</button>
-        <button type="button" class="btn btn-ghost" data-close>Annuler</button>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <button type="button" class="btn btn-danger hidden" id="goal-delete"><i data-lucide="trash-2"></i> <span data-i18n="common.delete">Supprimer</span></button>
+        <button type="button" class="btn btn-ghost" data-close data-i18n="common.cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary" data-i18n="common.save">Enregistrer</button>
       </div>
     </form>
   </dialog>
@@ -443,35 +461,36 @@
   <dialog id="task-dialog" class="dialog">
     <form method="dialog" id="task-form">
       <h2 id="task-dialog-title">Nouvelle tâche</h2>
-      <p class="muted small">Une action concrète et courte. Maximum <span class="max-tasks"></span> tâches par jour.</p>
-      <label>Tâche<input name="title" required maxlength="80" placeholder="Ex : Courir 30 minutes"></label>
+      <p class="muted small" data-i18n="task.hint">Une action concrète et courte.</p>
+      <label><span data-i18n="task.label">Tâche</span><input name="title" required maxlength="80" placeholder="Ex : Courir 30 minutes" data-i18n-ph="task.titlePh"></label>
 
-      <label>Quand ?</label>
+      <label data-i18n="task.when">Quand ?</label>
       <div class="segmented" id="repeat-choice">
-        <button type="button" class="chip active" data-repeat="daily">Tous les jours</button>
-        <button type="button" class="chip" data-repeat="days">Certains jours</button>
-        <button type="button" class="chip" data-repeat="date">Une date</button>
+        <button type="button" class="chip active" data-repeat="daily" data-i18n="repeat.daily">Tous les jours</button>
+        <button type="button" class="chip" data-repeat="days" data-i18n="repeat.days">Certains jours</button>
+        <button type="button" class="chip" data-repeat="date" data-i18n="repeat.date">Une date</button>
       </div>
+      <!-- Les initiales des jours (L M M J V S D / M T W T F S S) sont écrites par app.js -->
       <div class="day-picker hidden" id="day-picker">
-        <button type="button" class="day-chip" data-day="1" title="Lundi">L</button>
-        <button type="button" class="day-chip" data-day="2" title="Mardi">M</button>
-        <button type="button" class="day-chip" data-day="3" title="Mercredi">M</button>
-        <button type="button" class="day-chip" data-day="4" title="Jeudi">J</button>
-        <button type="button" class="day-chip" data-day="5" title="Vendredi">V</button>
-        <button type="button" class="day-chip" data-day="6" title="Samedi">S</button>
-        <button type="button" class="day-chip" data-day="7" title="Dimanche">D</button>
+        <button type="button" class="day-chip" data-day="1"></button>
+        <button type="button" class="day-chip" data-day="2"></button>
+        <button type="button" class="day-chip" data-day="3"></button>
+        <button type="button" class="day-chip" data-day="4"></button>
+        <button type="button" class="day-chip" data-day="5"></button>
+        <button type="button" class="day-chip" data-day="6"></button>
+        <button type="button" class="day-chip" data-day="7"></button>
       </div>
-      <label class="hidden" id="date-field">Date<input name="onDate" type="date"></label>
+      <label class="hidden" id="date-field"><span data-i18n="task.date">Date</span><input name="onDate" type="date"></label>
 
       <div class="form-row">
-        <label>Heure (facultatif)<input name="time" type="time"></label>
-        <label>Objectif lié (facultatif)<select name="goalId" id="task-goal-select"></select></label>
+        <label><span data-i18n="task.time">Heure (facultatif)</span><input name="time" type="time"></label>
+        <label><span data-i18n="task.goal">Objectif lié (facultatif)</span><select name="goalId" id="task-goal-select"></select></label>
       </div>
       <p class="form-error" id="task-error"></p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-danger hidden" id="task-delete"><i data-lucide="trash-2"></i> Supprimer</button>
-        <button type="button" class="btn btn-ghost" data-close>Annuler</button>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <button type="button" class="btn btn-danger hidden" id="task-delete"><i data-lucide="trash-2"></i> <span data-i18n="common.delete">Supprimer</span></button>
+        <button type="button" class="btn btn-ghost" data-close data-i18n="common.cancel">Annuler</button>
+        <button type="submit" class="btn btn-primary" data-i18n="common.save">Enregistrer</button>
       </div>
     </form>
   </dialog>
@@ -479,22 +498,22 @@
   <!-- Un nouveau badge ! -->
   <dialog id="badge-dialog" class="dialog badge-dialog">
     <form method="dialog">
-      <p class="eyebrow">Nouveau badge</p>
+      <p class="eyebrow" data-i18n="badge.new">Nouveau badge</p>
       <div id="badge-dialog-list"></div>
-      <button class="btn btn-primary btn-full" value="ok">Trop bien ! 🙌</button>
+      <button class="btn btn-primary btn-full" value="ok" data-i18n="badge.ok">Trop bien ! 🙌</button>
     </form>
   </dialog>
 
   <!-- Confirmation de suppression du compte -->
   <dialog id="delete-dialog" class="dialog">
     <form method="dialog" id="delete-form">
-      <h2>Supprimer ton compte ?</h2>
-      <p class="muted">Tout sera effacé pour toujours : objectifs, tâches, suivi, conversations, badges. Personne ne pourra les récupérer, même pas toi.</p>
-      <label>Pour confirmer, écris <strong>SUPPRIMER</strong><input name="confirm" autocomplete="off" placeholder="SUPPRIMER"></label>
+      <h2 data-i18n="delete.title">Supprimer ton compte ?</h2>
+      <p class="muted" data-i18n="delete.text">Tout sera effacé pour toujours : objectifs, tâches, suivi, conversations, badges. Personne ne pourra les récupérer, même pas toi.</p>
+      <label><span data-i18n-html="delete.confirm">Pour confirmer, écris <strong>SUPPRIMER</strong></span><input name="confirm" autocomplete="off" placeholder="SUPPRIMER" data-i18n-ph="delete.word"></label>
       <p class="form-error" id="delete-error"></p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-ghost" data-close>Annuler</button>
-        <button type="submit" class="btn btn-danger">Tout supprimer définitivement</button>
+        <button type="button" class="btn btn-ghost" data-close data-i18n="common.cancel">Annuler</button>
+        <button type="submit" class="btn btn-danger" data-i18n="delete.submit">Tout supprimer définitivement</button>
       </div>
     </form>
   </dialog>
@@ -502,7 +521,7 @@
   <!-- =========================================================
        BUDDY : la bulle flottante + le panneau de discussion
        ========================================================= -->
-  <button id="buddy-fab" class="buddy-fab hidden" title="Parler à Buddy">
+  <button id="buddy-fab" class="buddy-fab hidden" data-i18n-title="home.talk">
     <img id="fab-buddy" src="buddy/repos.png" alt="">
   </button>
 
@@ -512,16 +531,16 @@
       <span class="drawer-avatar"><img id="drawer-buddy" src="buddy/repos.png" alt=""></span>
       <div>
         <h3>Buddy <span class="style-badge hidden" id="style-badge"></span></h3>
-        <p class="drawer-status"><span class="status-dot"></span><span id="buddy-status">Buddy t'écoute</span></p>
+        <p class="drawer-status"><span class="status-dot"></span><span id="buddy-status" data-i18n="emo.neutral">Buddy t'écoute</span></p>
       </div>
-      <button class="icon-btn round" id="new-topic" title="Changer de sujet"><i data-lucide="message-square-plus"></i></button>
-      <button class="icon-btn round" id="close-chat" title="Fermer"><i data-lucide="x"></i></button>
+      <button class="icon-btn round" id="new-topic" data-i18n-title="chat.newTopic"><i data-lucide="message-square-plus"></i></button>
+      <button class="icon-btn round" id="close-chat" data-i18n-title="chat.close"><i data-lucide="x"></i></button>
     </header>
     <div class="goal-chip hidden" id="topic-chip"><i data-lucide="target"></i> <span id="topic-text"></span></div>
     <div id="chat" class="chat"></div>
     <form id="chat-form" class="chat-form">
-      <input id="message" placeholder="Écris à Buddy…" autocomplete="off">
-      <button id="send-button" class="btn btn-primary btn-icon" type="submit" title="Envoyer"><i data-lucide="send"></i></button>
+      <input id="message" placeholder="Écris à Buddy…" data-i18n-ph="chat.placeholder" autocomplete="off">
+      <button id="send-button" class="btn btn-primary btn-icon" type="submit" data-i18n-title="chat.send"><i data-lucide="send"></i></button>
     </form>
   </aside>
 

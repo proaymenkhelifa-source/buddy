@@ -124,6 +124,8 @@ textarea { resize: vertical; }
 .icon-btn.round { border-radius: 50%; }
 .icon-btn:hover { background: var(--card-strong); }
 .theme-toggle .lucide { color: var(--accent); }
+/* Le bouton FR / EN : on y écrit la langue vers laquelle on passe */
+.lang-toggle { font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; color: var(--accent); cursor: pointer; }
 .soon { opacity: 0.5; cursor: default; }
 
 /* ---------- 4. LES CARTES ---------- */

@@ -23,7 +23,8 @@ This is a **learning project**: simple code we understand beats perfect code we 
 - [x] **Phase 5 – Buddy's personality, in depth**: rework the personality prompt together (tone, examples, how it reacts to progress/excuses). Added by the owner on 2026-09-24.
 - [ ] **Phase 6 – Check-ins**: log completed tasks; the companion knows about them.
 - [ ] **Phase 7 – Reminders**: reminder emails based on the goal and chosen reminder types (max 3 per day).
-- [ ] **Phase 8 – Online**: put the app on Vercel and share a link with friends.
+- [x] **Phase 8 – Online**: put the app on Vercel and share a link with friends. → **https://buddycoach.app** (done 2026-09-26)
+- [x] **Phase 8b – Bilingual FR/EN** (owner's request 2026-09-26): whole interface, Buddy, e-mails and daily phrases in French or English; automatic detection + FR/EN switch; built so more languages can be added later. → dictionary in `public/i18n.js`; SQL `supabase-phase8b.sql` (column `profiles.language`) to run in Supabase.
 - [ ] **Phase 9 – Animated Buddy (Rive)**: the owner makes a real animated character in Rive (`.riv` file with a state machine: signals "réflexion" and "idée"); Claude swaps it in for the static poses. Owner wants to do this at the very end.
 
 ## Rules we follow
@@ -112,6 +113,8 @@ Preparation done by Claude:
 15c. [x] Owner bought **buddycoach.app** on Vercel ($9.99 first year, ~$15/yr after), kept the free Hobby plan. Added to Resend with "Auto configure" (Vercel DNS) → status Pending (DNS propagation). Region: North Virginia (fine).
 15d. [x] `EMAIL_FROM` env var (emails.js) → sender switchable without code change. Pushed.
 15e. [x] Resend **Verified**; https://buddycoach.app serves the app (www certificate still being issued by Vercel). Owner set on Vercel `APP_URL=https://buddycoach.app` + `EMAIL_FROM=Buddy <buddy@buddycoach.app>`; Supabase Site URL + redirect for buddycoach.app; Supabase custom SMTP via Resend (dedicated key "supabase"); "Confirm email" back ON. Done list was: on Vercel set `EMAIL_FROM` = `Buddy <buddy@buddycoach.app>` and `APP_URL` = `https://buddycoach.app` → redeploy; Supabase Auth: Site URL + redirect URL for buddycoach.app; Supabase custom SMTP = Resend (host smtp.resend.com, port 465, user `resend`, password = Resend API key, sender buddy@buddycoach.app); turn "Confirm email" back ON; test with a friend's address.
+15f. [x] Test e-mail went to the saved Gmail (the Yahoo address shown wasn't saved) → the test button now saves the displayed settings first. Removed the outdated "only when the server is on" sentence.
+15g. [x] Owner's request (mobile): sign-in / sign-up is now a full page `#auth-screen` (URL #inscription / #connexion, "Retour" button, phone back button works, switch link) instead of a card appended below the hero. Checked at 375 px.
 15. [ ] Owner tests online (login, chat, confirmation e-mail with a new account) → send the link to friends. Friends' e-mails still need a verified domain on Resend (optional).
 Next steps: GitHub account + Git install (owner) → secret check + first push (Claude) → Vercel account + env vars (owner) → deploy fixes (prompt file path on Vercel, APP_URL) → cron-job.org → Supabase Auth URL settings → test → (optional) domain for friends' e-mails.
 Later ideas kept: installable app with push notifications (PWA), accountability buddy ("binôme"), check a task from the e-mail.

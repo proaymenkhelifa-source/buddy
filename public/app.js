@@ -9,6 +9,7 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { CATEGORIES, MAX_TASKS, BADGES, APP_VERSION, dayKey, addDays, mondayOf, computeStats, occursOn, isCurrent, scheduleLabel, goalWeek, goalProgress } from "./shared.js";
+import { t, getLang, setLang, cleanLang, locale, dayLong, dayInitials, LANGUAGES } from "./i18n.js";
 
 // Raccourci : $("id") = document.getElementById("id")
 const $ = (id) => document.getElementById(id);
@@ -23,13 +24,72 @@ for (const logo of document.querySelectorAll(".logo")) {
 const drawIcons = () => window.lucide?.createIcons(); // dessine les icônes <i data-lucide="...">
 drawIcons();
 
-// Le maximum de tâches par jour (défini dans shared.js) écrit là où la page en parle
-for (const el of document.querySelectorAll(".max-tasks")) el.textContent = MAX_TASKS;
+// =============================================================
+// LA LANGUE (français / anglais)
+// 1. Si la personne a déjà choisi (bouton FR/EN), on garde son choix (retenu dans le navigateur).
+// 2. Sinon, on regarde la langue du téléphone / de l'ordinateur : français → français, sinon anglais.
+// =============================================================
+function savedLang() {
+  try { return cleanLang(localStorage.getItem("buddy-lang")); } catch (e) { return null; }
+}
+function deviceLang() {
+  return (navigator.languages || [navigator.language]).some((l) => cleanLang(l) === "fr") ? "fr" : "en";
+}
+setLang(savedLang() || deviceLang());
+
+// Écrit tous les textes "fixes" de la page dans la langue en cours (voir les data-i18n dans index.html)
+function translatePage() {
+  const lang = getLang();
+  document.documentElement.lang = lang;
+  if (!focusTimer) document.title = t("page.title");
+  const vars = { max: MAX_TASKS, word: t("delete.word") };
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n, vars);
+  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml, vars);
+  for (const el of document.querySelectorAll("[data-i18n-ph]")) el.placeholder = t(el.dataset.i18nPh, vars);
+  for (const el of document.querySelectorAll("[data-i18n-title]")) {
+    el.title = t(el.dataset.i18nTitle);
+    el.setAttribute("aria-label", el.title);
+  }
+  for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
+  // Les boutons FR/EN : ils affichent l'AUTRE langue (celle vers laquelle on passe)
+  const other = Object.keys(LANGUAGES).find((l) => l !== lang);
+  for (const b of document.querySelectorAll(".lang-toggle")) b.textContent = other.toUpperCase();
+  for (const b of document.querySelectorAll("[data-lang-choice]")) b.classList.toggle("active", b.dataset.langChoice === lang);
+  // Les jours dans la fenêtre "tâche" (L M M J V S D / M T W T F S S)
+  for (const b of document.querySelectorAll("[data-day]")) {
+    b.textContent = dayInitials()[b.dataset.day - 1];
+    b.title = capitalize(dayLong(Number(b.dataset.day)));
+  }
+  // Le minuteur de focus (son bouton change de texte)
+  drawFocus();
+  // Les textes des écrans ouverts
+  if (!$("auth-screen").classList.contains("hidden")) openAuth(authMode, false);
+}
+
+// Change de langue : on retient le choix, on retraduit tout, et on prévient le serveur (Buddy + e-mails)
+async function changeLang(lang) {
+  setLang(lang);
+  try { localStorage.setItem("buddy-lang", lang); } catch (e) {}
+  translatePage();
+  if (!state) return;
+  render();
+  showEmotion(currentEmotion, false);
+  toast(t("toast.language"));
+  await api("PATCH", "/api/profile", { language: lang });
+  state.profile.language = lang;
+  loadQuotes().catch((e) => console.error("Phrases du jour :", e)); // les phrases du jour, dans la nouvelle langue
+}
+for (const b of document.querySelectorAll(".lang-toggle")) {
+  b.addEventListener("click", () => changeLang(Object.keys(LANGUAGES).find((l) => l !== getLang())));
+}
+for (const b of document.querySelectorAll("[data-lang-choice]")) {
+  b.addEventListener("click", () => changeLang(b.dataset.langChoice));
+}
 
 // Le jour d'aujourd'hui, au format "AAAA-MM-JJ"
 const today = () => dayKey(new Date());
 const niceDate = (key, options = { weekday: "long", day: "numeric", month: "long" }) =>
-  new Date(key + "T12:00:00").toLocaleDateString("fr-FR", options);
+  new Date(key + "T12:00:00").toLocaleDateString(locale(), options);
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // On demande au serveur l'adresse Supabase et la clé PUBLIQUE.
@@ -97,22 +157,24 @@ let authMode = "signup"; // "signup" = créer un compte, "login" = se connecter
 
 // La page de connexion / inscription est une page à part entière (#inscription ou #connexion dans l'adresse) :
 // le bouton "retour" du téléphone ramène à l'accueil.
-function openAuth(mode) {
+// fresh = false : on ne fait que retraduire l'écran déjà ouvert (changement de langue)
+function openAuth(mode, fresh = true) {
   authMode = mode;
   $("landing").classList.add("hidden");
   $("auth-screen").classList.remove("hidden");
-  window.scrollTo(0, 0);
   for (const tab of document.querySelectorAll(".tab")) {
     tab.classList.toggle("active", tab.dataset.mode === mode);
   }
   const signup = mode === "signup";
-  $("auth-title").textContent = signup ? "Crée ton compte" : "Content de te revoir 👋";
-  $("auth-subtitle").textContent = signup ? "Buddy t'attend pour t'aider à atteindre tes objectifs." : "Connecte-toi pour retrouver Buddy et tes objectifs.";
-  $("auth-submit").textContent = signup ? "Créer mon compte" : "Me connecter";
+  $("auth-title").textContent = t(signup ? "auth.titleSignup" : "auth.titleLogin");
+  $("auth-subtitle").textContent = t(signup ? "auth.subSignup" : "auth.subLogin");
+  $("auth-submit").textContent = t(signup ? "auth.submitSignup" : "auth.submitLogin");
   $("password").autocomplete = signup ? "new-password" : "current-password";
   $("auth-switch").innerHTML = signup
-    ? `Déjà un compte ? <button type="button" data-mode-switch="login">Se connecter</button>`
-    : `Pas encore de compte ? <button type="button" data-mode-switch="signup">Créer un compte</button>`;
+    ? `${t("auth.haveAccount")} <button type="button" data-mode-switch="login">${t("auth.tabLogin")}</button>`
+    : `${t("auth.noAccount")} <button type="button" data-mode-switch="signup">${t("auth.tabSignup")}</button>`;
+  if (!fresh) return;
+  window.scrollTo(0, 0);
   $("auth-info").textContent = "";
   const wanted = signup ? "#inscription" : "#connexion";
   if (location.hash !== wanted) history.pushState(null, "", wanted);
@@ -161,10 +223,10 @@ $("auth-submit").addEventListener("click", async () => {
       ? await supabase.auth.signUp({ email, password })
       : await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) return ($("auth-info").textContent = "Erreur : " + error.message);
+  if (error) return ($("auth-info").textContent = t("auth.error") + error.message);
   if (!data.session) {
     // Si Supabase demande de confirmer l'e-mail, il n'y a pas encore de session.
-    return ($("auth-info").textContent = "Compte créé ! Clique sur le lien reçu par e-mail, puis connecte-toi.");
+    return ($("auth-info").textContent = t("auth.created"));
   }
   loadMyBuddy(data.session);
 });
@@ -205,6 +267,7 @@ async function api(method, url, body) {
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + data.session.access_token,
+      "X-Lang": getLang(), // la langue de la page : le serveur répond dans la même
     },
     body: body ? JSON.stringify({ ...body, today: today() }) : undefined,
   });
@@ -217,7 +280,7 @@ async function refresh() {
   if (data.error) return toast(data.error, "error");
   // Le serveur tourne-t-il avec le même code que la page ? Sinon, des choses peuvent ne pas s'enregistrer.
   if (data.version !== APP_VERSION) {
-    toast("Le serveur n'est pas à jour : redémarre-le (Ctrl+C puis npm.cmd start), puis recharge la page.", "error");
+    toast(t("toast.serverOld"), "error");
   }
   data.badges = data.badges || [];
   state = data;
@@ -287,17 +350,16 @@ function renderProfile() {
   $("greeting-name").textContent = capitalize(name);
   $("user-avatar").textContent = name.charAt(0);
   $("user-email").textContent = email;
-  $("settings-email").textContent = "Connecté avec " + email;
-  const STYLE_LABELS = { military: "Mode militaire", supportive: "Mode bienveillant", balanced: "Mode équilibré" };
-  $("style-badge").textContent = STYLE_LABELS[state.profile.style] || "";
+  $("settings-email").textContent = t("settings.connectedAs", { email });
+  $("style-badge").textContent = state.profile.style ? t("styleBadge." + state.profile.style) : "";
   $("style-badge").classList.toggle("hidden", !state.profile.style);
 
   // La petite phrase sous "Salut …" dépend de la journée
   const { planned, done } = stats.today;
   $("greeting-sub").innerHTML =
-    planned === 0 ? "Choisis tes actions du jour.<br>Peu, mais concrètes." :
-    done === planned ? "Journée bouclée ✅<br>Reviens demain, on continue." :
-    `Il te reste ${planned - done} tâche${planned - done > 1 ? "s" : ""} aujourd'hui.<br>On continue ?`;
+    planned === 0 ? t("greet.noTasks") :
+    done === planned ? t("greet.allDone") :
+    t("greet.left", { n: planned - done });
 }
 
 // --- Aujourd'hui ---
@@ -306,33 +368,33 @@ function renderToday() {
   const tasks = todayTasks();
 
   $("today-list").innerHTML = tasks.length === 0
-    ? `<li class="empty">Aucune tâche prévue aujourd'hui.<br>Ajoute jusqu'à ${MAX_TASKS} actions concrètes par jour.
-         <br><button class="btn btn-primary" data-new-task><i data-lucide="plus"></i> Ajouter une tâche</button></li>`
-    : tasks.map((t) => {
-        const goal = goalById(t.goal_id);
-        return `<li class="${isDoneToday(t) ? "done" : ""}">
-          <button class="check" data-check="${t.id}" title="Cocher / décocher"></button>
-          <button class="task-title" data-edit-task="${t.id}" title="Modifier">
-            ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}<span>${esc(t.title)}</span>
+    ? `<li class="empty">${t("today.empty", { max: MAX_TASKS })}
+         <br><button class="btn btn-primary" data-new-task><i data-lucide="plus"></i> ${t("today.add")}</button></li>`
+    : tasks.map((task) => {
+        const goal = goalById(task.goal_id);
+        return `<li class="${isDoneToday(task) ? "done" : ""}">
+          <button class="check" data-check="${task.id}" title="${t("task.checkTip")}"></button>
+          <button class="task-title" data-edit-task="${task.id}" title="${t("common.edit")}">
+            ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}<span>${esc(task.title)}</span>
           </button>
-          <time>${esc(t.time || "")}</time>
-          <button class="edit-btn" data-edit-task="${t.id}" title="Modifier la tâche"><i data-lucide="pencil"></i></button>
+          <time>${esc(task.time || "")}</time>
+          <button class="edit-btn" data-edit-task="${task.id}" title="${t("task.edit")}"><i data-lucide="pencil"></i></button>
         </li>`;
       }).join("");
 
   const { planned, done } = stats.today;
-  $("today-count").textContent = planned ? `${done}/${planned} tâche${planned > 1 ? "s" : ""} terminée${done > 1 ? "s" : ""}` : "";
+  $("today-count").textContent = planned ? t("today.count", { done, planned }) : "";
   $("today-bar").style.width = planned ? (done / planned) * 100 + "%" : "0%";
 
   // Les tâches des autres jours, repliées sous la liste (clique pour les voir / modifier)
-  const others = activeTasks().filter((t) => !occursOn(t, today()));
+  const others = activeTasks().filter((task) => !occursOn(task, today()));
   $("other-days").classList.toggle("hidden", others.length === 0);
-  $("other-days-summary").textContent = `Autres jours (${others.length} tâche${others.length > 1 ? "s" : ""})`;
-  $("other-list").innerHTML = others.map((t) => {
-    const goal = goalById(t.goal_id);
-    return `<li><button data-edit-task="${t.id}">
-      ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}${esc(t.title)}
-      <span class="when">${esc(scheduleLabel(t))}${t.time ? " · " + esc(t.time) : ""}</span>
+  $("other-days-summary").textContent = t("today.others", { n: others.length });
+  $("other-list").innerHTML = others.map((task) => {
+    const goal = goalById(task.goal_id);
+    return `<li><button data-edit-task="${task.id}">
+      ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}${esc(task.title)}
+      <span class="when">${esc(scheduleLabel(task))}${task.time ? " · " + esc(task.time) : ""}</span>
     </button></li>`;
   }).join("");
 }
@@ -341,7 +403,7 @@ function renderToday() {
 // "Cette semaine : 3/6" pour un objectif, calculé automatiquement à partir des tâches cochées
 function goalWeekText(g) {
   const w = goalWeek(state.tasks, state.logs, today(), g.id);
-  return w.planned ? `Cette semaine : ${w.done}/${w.planned} tâche${w.planned > 1 ? "s" : ""} faite${w.done > 1 ? "s" : ""}` : "Aucune tâche liée cette semaine";
+  return w.planned ? t("goal.week", w) : t("goal.weekNone");
 }
 
 // Le % d'un objectif (automatique s'il a des tâches liées, sinon manuel)
@@ -352,15 +414,15 @@ function goalLine(g) {
   const p = progressOf(g);
   return `<li class="clickable" style="--c:${cat.color}" data-edit-goal="${g.id}">
     <span class="goal-icon"><i data-lucide="${cat.icon}"></i></span>
-    <span>${esc(g.text)}<small class="goal-week">${goalWeekText(g)}</small></span><strong title="${p.auto ? "Régularité sur 4 semaines, calculée avec tes tâches" : "Progression mise à jour à la main"}">${p.value}%</strong>
+    <span>${esc(g.text)}<small class="goal-week">${goalWeekText(g)}</small></span><strong title="${t(p.auto ? "goal.autoTip" : "goal.manualTip")}">${p.value}%</strong>
     <div class="bar"><div style="width:${p.value}%"></div></div>
   </li>`;
 }
 
 function renderGoalsSummary() {
   $("goals-summary").innerHTML = state.goals.length === 0
-    ? `<li class="empty">Pas encore d'objectif.<br>
-         <button class="btn btn-primary" data-new-goal><i data-lucide="plus"></i> Créer un objectif</button></li>`
+    ? `<li class="empty">${t("goals.empty")}<br>
+         <button class="btn btn-primary" data-new-goal><i data-lucide="plus"></i> ${t("goals.create")}</button></li>`
     : state.goals.slice(0, 5).map(goalLine).join("");
 }
 
@@ -370,15 +432,15 @@ function renderWeek() {
   $("week-ring").style.setProperty("--p", w.rate);
   $("week-rate").textContent = w.rate + "%";
   $("week-stats").innerHTML = `
-    <li style="--c: var(--green)"><strong>${w.done}/${w.planned}</strong> tâches faites</li>
-    <li style="--c: var(--blue)"><strong>${w.activeDays}/${w.daysSoFar}</strong> jours actifs</li>
-    <li style="--c: var(--accent)"><strong>${stats.streak} 🔥</strong> jours de streak</li>
+    <li style="--c: var(--green)"><strong>${w.done}/${w.planned}</strong> ${t("week.tasksDone")}</li>
+    <li style="--c: var(--blue)"><strong>${w.activeDays}/${w.daysSoFar}</strong> ${t("week.activeDays")}</li>
+    <li style="--c: var(--accent)"><strong>${stats.streak} 🔥</strong> ${t("week.streak")}</li>
     <li style="--c: var(--violet)"><strong>🛡️</strong> ${jokerText()}</li>`;
 }
 
 // Le joker de la semaine : disponible, ou utilisé tel jour
 function jokerText() {
-  return stats.jokerUsedOn ? `joker utilisé ${niceDate(stats.jokerUsedOn, { weekday: "long" })}` : "joker disponible";
+  return stats.jokerUsedOn ? t("joker.used", { day: niceDate(stats.jokerUsedOn, { weekday: "long" }) }) : t("joker.available");
 }
 
 // --- Mes catégories ---
@@ -388,14 +450,14 @@ function renderCategories() {
     return `<a class="cat" href="#objectifs" data-cat="${key}" style="--c:${cat.color}; --photo:url(images/${key}.jpg)">
       <span class="cat-icon"><i data-lucide="${cat.icon}"></i></span>
       <h4>${cat.label}</h4>
-      <p>${count ? `${count} objectif${count > 1 ? "s" : ""}` : "Aucun objectif"} <i data-lucide="chevron-right"></i></p>
+      <p>${t("cats.count", { n: count })} <i data-lucide="chevron-right"></i></p>
     </a>`;
   }).join("");
 }
 
 // --- Page Mes objectifs ---
 function renderGoalsPage() {
-  const chips = [["toutes", "Toutes", state.goals.length]].concat(
+  const chips = [["toutes", t("filter.all"), state.goals.length]].concat(
     Object.entries(CATEGORIES).map(([key, cat]) => [key, `${cat.emoji} ${cat.label}`, state.goals.filter((g) => g.category === key).length])
   );
   $("goal-filters").innerHTML = chips
@@ -406,10 +468,10 @@ function renderGoalsPage() {
   if (goals.length === 0) {
     const cat = CATEGORIES[goalFilter];
     $("goal-grid").innerHTML = `<div class="card empty">
-      ${cat ? `Pas encore d'objectif en ${cat.label}.` : "Pas encore d'objectif."}
-      Crée-le toi-même, ou parles-en avec Buddy : il t'aidera à le formuler.<br>
-      <button class="btn btn-primary" data-new-goal="${cat ? goalFilter : ""}"><i data-lucide="plus"></i> Nouvel objectif</button>
-      <button class="btn btn-ghost" data-talk-category="${cat ? goalFilter : ""}"><i data-lucide="message-circle"></i> En parler à Buddy</button>
+      ${cat ? t("goals.emptyCat", { cat: cat.label }) : t("goals.empty")}
+      ${t("goals.emptyHelp")}<br>
+      <button class="btn btn-primary" data-new-goal="${cat ? goalFilter : ""}"><i data-lucide="plus"></i> ${t("goals.new")}</button>
+      <button class="btn btn-ghost" data-talk-category="${cat ? goalFilter : ""}"><i data-lucide="message-circle"></i> ${t("goals.talkAbout")}</button>
     </div>`;
     return;
   }
@@ -420,28 +482,26 @@ function renderGoalsPage() {
     return `<article class="card goal-card" style="--c:${cat.color}">
       <div class="goal-card-head">
         <span class="cat-pill"><i data-lucide="${cat.icon}"></i> ${cat.label}</span>
-        <button class="mini-btn" data-edit-goal="${g.id}" title="Modifier"><i data-lucide="pencil"></i></button>
+        <button class="mini-btn" data-edit-goal="${g.id}" title="${t("common.edit")}"><i data-lucide="pencil"></i></button>
       </div>
       <h3>${esc(g.text)}</h3>
-      ${g.reason ? `<p class="reason">« ${esc(g.reason)} »</p>` : ""}
+      ${g.reason ? `<p class="reason">${getLang() === "fr" ? `« ${esc(g.reason)} »` : `“${esc(g.reason)}”`}</p>` : ""}
       <div class="goal-meta">
         ${g.deadline ? `<span><i data-lucide="calendar"></i> ${niceDate(g.deadline, { day: "numeric", month: "long", year: "numeric" })}</span>` : ""}
         <span><i data-lucide="list-checks"></i> ${goalWeekText(g)}</span>
-        ${g.plan ? `<span><i data-lucide="map"></i> Plan défini avec Buddy</span>` : ""}
+        ${g.plan ? `<span><i data-lucide="map"></i> ${t("goal.plan")}</span>` : ""}
       </div>
       ${(() => {
         const p = progressOf(g);
-        return `<div><div class="bar"><div style="width:${p.value}%"></div></div><p class="muted small">${p.auto
-          ? `${p.value}% de régularité sur 4 semaines (${p.done}/${p.planned} tâches faites) · calculé automatiquement`
-          : `${p.value}% atteint · pas de tâche liée : mets-le à jour avec ✏️ ou demande à Buddy`}</p></div>`;
+        return `<div><div class="bar"><div style="width:${p.value}%"></div></div><p class="muted small">${t(p.auto ? "goal.autoText" : "goal.manualText", p)}</p></div>`;
       })()}
-      ${tasks.length ? `<ul class="goal-tasks">${tasks.map((t) =>
-        `<li class="${isDoneToday(t) ? "done" : ""}"><button class="task-link" data-edit-task="${t.id}" title="Modifier la tâche">
-          <i data-lucide="${isDoneToday(t) ? "circle-check" : "circle"}"></i> ${esc(t.title)}
-          <span class="task-when">· ${esc(scheduleLabel(t))}</span> <i class="pen" data-lucide="pencil"></i></button></li>`).join("")}</ul>` : ""}
+      ${tasks.length ? `<ul class="goal-tasks">${tasks.map((task) =>
+        `<li class="${isDoneToday(task) ? "done" : ""}"><button class="task-link" data-edit-task="${task.id}" title="${t("task.edit")}">
+          <i data-lucide="${isDoneToday(task) ? "circle-check" : "circle"}"></i> ${esc(task.title)}
+          <span class="task-when">· ${esc(scheduleLabel(task))}</span> <i class="pen" data-lucide="pencil"></i></button></li>`).join("")}</ul>` : ""}
       <div class="goal-actions">
-        <button class="btn btn-primary" data-talk-goal="${g.id}"><i data-lucide="message-circle"></i> Parler à Buddy</button>
-        <button class="btn btn-ghost" data-new-task="${g.id}"><i data-lucide="plus"></i> Tâche</button>
+        <button class="btn btn-primary" data-talk-goal="${g.id}"><i data-lucide="message-circle"></i> ${t("home.talk")}</button>
+        <button class="btn btn-ghost" data-new-task="${g.id}"><i data-lucide="plus"></i> ${t("goal.taskBtn")}</button>
       </div>
     </article>`;
   }).join("");
@@ -451,12 +511,12 @@ function renderGoalsPage() {
 function renderSuivi() {
   const w = stats.week;
   $("stat-tiles").innerHTML = [
-    [`${w.done}/${w.planned}`, "tâches cette semaine"],
-    [`${w.rate}%`, "de réussite"],
-    [`${w.activeDays}/${w.daysSoFar}`, "jours actifs"],
-    [`${stats.streak} 🔥`, "streak actuel"],
-    [`${stats.best}`, "meilleur streak"],
-    [stats.jokerUsedOn ? "Utilisé" : "Dispo", `🛡️ ${stats.jokerUsedOn ? "joker de la semaine, " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : "joker de la semaine"}`],
+    [`${w.done}/${w.planned}`, t("tile.tasksWeek")],
+    [`${w.rate}%`, t("tile.success")],
+    [`${w.activeDays}/${w.daysSoFar}`, t("tile.activeDays")],
+    [`${stats.streak} 🔥`, t("tile.streak")],
+    [`${stats.best}`, t("tile.best")],
+    [t(stats.jokerUsedOn ? "tile.jokerUsed" : "tile.jokerFree"), `🛡️ ${t("tile.joker")}${stats.jokerUsedOn ? ", " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : ""}`],
   ].map(([value, label]) => `<div class="card stat-tile"><strong>${value}</strong><span>${label}</span></div>`).join("");
 
   // Les 7 derniers jours, tâche par tâche
@@ -465,38 +525,38 @@ function renderSuivi() {
   const initials = last7.map((k) => niceDate(k, { weekday: "short" }).charAt(0).toUpperCase());
   const SYMBOL = { done: "✓", missed: "✗", todo: "·", none: "" };
   $("task-history").innerHTML = stats.perTask.length === 0
-    ? `<p class="empty">Ajoute des tâches dans « Aujourd'hui » pour voir ton suivi ici.</p>`
+    ? `<p class="empty">${t("suivi.emptyTasks")}</p>`
     : `<div class="dots-legend">${initials.map((i) => `<span>${i}</span>`).join("")}</div>` +
       stats.perTask.map(({ task, days }) => {
         const goal = goalById(task.goal_id);
         return `<div class="task-row">
-          <button class="task-row-title task-link" data-edit-task="${task.id}" title="Modifier la tâche">${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}<span>${esc(task.title)}</span> <i class="pen" data-lucide="pencil"></i></button>
+          <button class="task-row-title task-link" data-edit-task="${task.id}" title="${t("task.edit")}">${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}<span>${esc(task.title)}</span> <i class="pen" data-lucide="pencil"></i></button>
           <div class="dots">${days.map((d) => `<span class="dot" data-status="${d.status}" title="${niceDate(d.key)}">${SYMBOL[d.status]}</span>`).join("")}</div>
         </div>`;
       }).join("");
 
   // Les 4 dernières semaines en carrés (du lundi au dimanche)
   const start = addDays(mondayOf(today()), -21);
-  const cells = ["L", "M", "M", "J", "V", "S", "D"].map((d) => `<span class="heat-head">${d}</span>`);
+  const cells = dayInitials().map((d) => `<span class="heat-head">${d}</span>`);
   for (let i = 0; i < 28; i++) {
     const key = addDays(start, i);
     const day = stats.history.find((h) => h.key === key);
     const rate = day && day.planned ? day.done / day.planned : 0;
     const level = rate === 0 ? 0 : rate < 0.5 ? 1 : rate < 1 ? 2 : 3;
     const cls = key === today() ? "today" : key > today() ? "future" : day?.status === "joker" ? "joker" : "";
-    const tip = day ? `${niceDate(key)} : ${day.status === "rest" ? "repos" : `${day.done}/${day.planned}`}${day.status === "joker" ? " (sauvé par le joker 🛡️)" : ""}` : niceDate(key);
+    const tip = day ? `${niceDate(key)} : ${day.status === "rest" ? t("heat.rest") : `${day.done}/${day.planned}`}${day.status === "joker" ? t("heat.saved") : ""}` : niceDate(key);
     cells.push(`<span class="heat-cell ${cls}" data-level="${key > today() ? 0 : level}" title="${tip}"></span>`);
   }
   $("heatmap").innerHTML = cells.join("");
 
   $("week-list").innerHTML = stats.weeks.map((wk) => `<li>
-    <span>Sem. du ${niceDate(wk.start, { day: "numeric", month: "short" })}</span>
+    <span>${t("suivi.weekOf", { date: niceDate(wk.start, { day: "numeric", month: "short" }) })}</span>
     <div class="bar"><div style="width:${wk.rate}%"></div></div>
     <strong>${wk.planned ? wk.rate + "%" : "–"}</strong>
   </li>`).join("");
 
   $("goals-progress").innerHTML = state.goals.length === 0
-    ? `<li class="empty">Pas encore d'objectif.</li>`
+    ? `<li class="empty">${t("goals.empty")}</li>`
     : state.goals.map(goalLine).join("");
 
   // Les badges : gagnés en couleur, les autres en gris avec la façon de les obtenir
@@ -506,7 +566,7 @@ function renderSuivi() {
     <div class="badge-item ${earned.has(b.id) ? "earned" : "locked"}" title="${esc(b.desc)}">
       <span class="badge-emoji">${b.emoji}</span>
       <strong>${esc(b.name)}</strong>
-      <small>${earned.has(b.id) ? "Gagné le " + niceDate(dayKey(earned.get(b.id)), { day: "numeric", month: "short" }) : esc(b.desc)}</small>
+      <small>${earned.has(b.id) ? t("badge.earnedOn", { date: niceDate(dayKey(earned.get(b.id)), { day: "numeric", month: "short" }) }) : esc(b.desc)}</small>
     </div>`).join("");
 }
 
@@ -518,7 +578,7 @@ function celebrateBadges(ids) {
     <div class="badge-won"><span class="badge-emoji big">${b.emoji}</span>
       <div><h2>${esc(b.name)}</h2><p class="muted">${esc(b.desc)}</p></div></div>`).join("");
   $("badge-dialog").showModal();
-  setBuddy("bravo", "saute", "Nouveau badge !");
+  setBuddy("bravo", "saute", t("badge.newStatus"));
   setTimeout(() => showEmotion(currentEmotion, false), 3000);
 }
 
@@ -552,14 +612,14 @@ $("delete-account").addEventListener("click", () => {
 });
 $("delete-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (event.target.confirm.value.trim().toUpperCase() !== "SUPPRIMER") {
-    return ($("delete-error").textContent = "Écris SUPPRIMER pour confirmer.");
+  if (event.target.confirm.value.trim().toUpperCase() !== t("delete.word")) {
+    return ($("delete-error").textContent = t("delete.wrong", { word: t("delete.word") }));
   }
   const result = await api("DELETE", "/api/account");
   if (result.error) return ($("delete-error").textContent = result.error);
   $("delete-dialog").close();
   await logout();
-  toast("Ton compte et toutes tes données ont été supprimés. Merci d'avoir essayé Buddy 🙏");
+  toast(t("toast.accountDeleted"));
 });
 
 // Enregistre les réglages des e-mails tels qu'ils sont affichés à l'écran
@@ -582,37 +642,38 @@ $("save-emails").addEventListener("click", async () => {
   if (result.error) return toast(result.error, "error");
   document.activeElement.blur();
   await refresh();
-  toast("Réglages des e-mails enregistrés");
+  toast(t("toast.emailsSaved"));
 });
 
 $("test-email").addEventListener("click", async () => {
   const button = $("test-email");
+  const label = button.querySelector("span");
   button.disabled = true;
-  button.lastChild.textContent = " Buddy écrit l'e-mail…";
+  label.textContent = t("settings.testWriting");
   // D'abord on enregistre ce qui est affiché (sinon le test partirait vers l'ancienne adresse)
   const saved = await saveEmailSettings();
   if (saved.error) {
     button.disabled = false;
-    button.lastChild.textContent = " M'envoyer un e-mail de test";
+    label.textContent = t("settings.testEmail");
     return toast(saved.error, "error");
   }
   const result = await api("POST", "/api/email/test", {});
   button.disabled = false;
-  button.lastChild.textContent = " M'envoyer un e-mail de test";
+  label.textContent = t("settings.testEmail");
   if (result.error) return toast(result.error, "error");
-  toast("E-mail envoyé à " + result.to + " 📬");
+  toast(t("toast.emailSent", { to: result.to }));
 });
 
 $("save-name").addEventListener("click", async () => {
   await api("PATCH", "/api/profile", { firstName: $("settings-name").value });
   await refresh();
-  toast("Prénom enregistré");
+  toast(t("toast.nameSaved"));
 });
 for (const b of document.querySelectorAll("[data-style]")) {
   b.addEventListener("click", async () => {
     await api("PATCH", "/api/profile", { style: b.dataset.style });
     await refresh();
-    toast("Style de coaching mis à jour : " + b.querySelector("strong").textContent);
+    toast(t("toast.styleSaved", { style: b.querySelector("strong").textContent }));
   });
 }
 
@@ -637,7 +698,7 @@ document.addEventListener("click", async (event) => {
   if ("talkCategory" in el.dataset) {
     const cat = CATEGORIES[el.dataset.talkCategory];
     openChat(true);
-    return sendToBuddy(cat ? `Je voudrais me fixer un objectif en ${cat.label}.` : "Je voudrais me fixer un nouvel objectif.");
+    return sendToBuddy(cat ? t("say.goalIn", { cat: cat.label }) : t("say.newGoal"));
   }
 });
 $("add-task").addEventListener("click", () => openTaskDialog(null));
@@ -655,13 +716,13 @@ async function toggleTask(taskId) {
   render();
   if (done) {
     const allDone = stats.today.done === stats.today.planned;
-    setBuddy(allDone ? "bravo" : "content", "saute", allDone ? "Journée bouclée !" : "Bien joué !");
+    setBuddy(allDone ? "bravo" : "content", "saute", t(allDone ? "buddy.dayDone" : "buddy.nice"));
     setTimeout(() => showEmotion(currentEmotion, false), 2500);
   }
 
   // 3. On vérifie que l'enregistrement a marché, puis on recharge tout (suivi, objectifs, badges…).
   const result = await saving;
-  if (result.error) toast("La coche n'a pas été enregistrée : " + result.error, "error");
+  if (result.error) toast(t("toast.checkFailed") + result.error, "error");
   await refresh();
 }
 
@@ -700,8 +761,8 @@ function openGoalDialog(goal, category) {
   const p = goal ? progressOf(goal) : null;
   $("progress-field").classList.toggle("hidden", !goal || p.auto);
   $("progress-auto").classList.toggle("hidden", !p?.auto);
-  if (p?.auto) $("progress-auto").textContent = `📈 Progression automatique : ${p.value}% (${p.done}/${p.planned} tâches faites sur les 4 dernières semaines). Coche tes tâches pour la faire monter.`;
-  $("goal-dialog-title").textContent = goal ? "Modifier l'objectif" : "Nouvel objectif";
+  if (p?.auto) $("progress-auto").textContent = t("goal.autoInfo", p);
+  $("goal-dialog-title").textContent = t(goal ? "goal.edit" : "goals.new");
   $("goal-delete").classList.toggle("hidden", !goal);
   $("goal-error").textContent = "";
   drawCategoryPicker();
@@ -727,16 +788,16 @@ $("goal-form").addEventListener("submit", async (event) => {
   await refresh();
   const id = editingGoal ? editingGoal.id : result.id;
   flash(`[data-edit-goal="${id}"]`);
-  toast(editingGoal ? "Objectif mis à jour" : "Objectif enregistré");
-  if (!editingGoal) buddyThumbsUp("Nouvel objectif !");
+  toast(t(editingGoal ? "toast.goalUpdated" : "toast.goalSaved"));
+  if (!editingGoal) buddyThumbsUp(t("buddy.newGoal"));
 });
 
 $("goal-delete").addEventListener("click", async () => {
-  if (!confirm(`Supprimer l'objectif « ${editingGoal.text} » ? Ses tâches resteront, sans objectif lié.`)) return;
+  if (!confirm(t("goal.confirmDelete", { goal: editingGoal.text }))) return;
   await api("DELETE", `/api/goals/${editingGoal.id}`);
   $("goal-dialog").close();
   await refresh();
-  toast("Objectif supprimé");
+  toast(t("toast.goalDeleted"));
 });
 
 // --- Tâche ---
@@ -768,7 +829,7 @@ function openTaskDialog(task, goalId = null) {
   editingTask = task;
   const form = $("task-form");
   form.reset();
-  $("task-goal-select").innerHTML = `<option value="">Aucun</option>` +
+  $("task-goal-select").innerHTML = `<option value="">${t("task.noGoal")}</option>` +
     state.goals.map((g) => `<option value="${g.id}">${catOf(g).emoji} ${esc(g.text)}</option>`).join("");
   form.title.value = task?.title || "";
   form.time.value = task?.time || "";
@@ -779,7 +840,7 @@ function openTaskDialog(task, goalId = null) {
   form.onDate.value = task?.on_date || today();
   form.onDate.min = today();
   drawRepeat();
-  $("task-dialog-title").textContent = task ? "Modifier la tâche" : "Nouvelle tâche";
+  $("task-dialog-title").textContent = t(task ? "task.edit" : "task.new");
   $("task-delete").classList.toggle("hidden", !task);
   $("task-error").textContent = "";
   $("task-dialog").showModal();
@@ -788,7 +849,7 @@ function openTaskDialog(task, goalId = null) {
 $("task-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
-  if (repeatMode === "days" && pickedDays.length === 0) return ($("task-error").textContent = "Choisis au moins un jour.");
+  if (repeatMode === "days" && pickedDays.length === 0) return ($("task-error").textContent = t("task.pickDay"));
   const body = {
     title: form.title.value,
     time: form.time.value,
@@ -804,30 +865,30 @@ $("task-form").addEventListener("submit", async (event) => {
   await refresh();
   const id = editingTask ? editingTask.id : result.id;
   flash(`[data-edit-task="${id}"]`);
-  const when = repeatMode === "daily" ? "tous les jours" : repeatMode === "days" ? scheduleLabel({ days: pickedDays }) : scheduleLabel({ on_date: body.onDate }).toLowerCase();
-  toast(editingTask ? "Tâche mise à jour" : `Tâche ajoutée (${when})`);
-  if (!editingTask) buddyThumbsUp("C'est noté !");
+  const when = scheduleLabel({ days: repeatMode === "days" ? pickedDays : [], on_date: body.onDate });
+  toast(editingTask ? t("toast.taskUpdated") : t("toast.taskAdded", { when: getLang() === "fr" ? when.toLowerCase() : when }));
+  if (!editingTask) buddyThumbsUp(t("buddy.noted"));
 });
 
 $("task-delete").addEventListener("click", async () => {
-  if (!confirm(`Supprimer la tâche « ${editingTask.title} » ? Son historique reste dans le suivi.`)) return;
+  if (!confirm(t("task.confirmDelete", { task: editingTask.title }))) return;
   await api("DELETE", `/api/tasks/${editingTask.id}`);
   $("task-dialog").close();
   await refresh();
-  toast("Tâche supprimée");
+  toast(t("toast.taskDeleted"));
 });
 
 // =============================================================
 // LE BONHOMME BUDDY ET SES ÉMOTIONS
 // =============================================================
-// Chaque émotion choisie par Buddy = une pose (image), un petit mouvement et une phrase.
+// Chaque émotion choisie par Buddy = une pose (image), un petit mouvement et une phrase (dans i18n.js : "emo.xxx").
 const EMOTIONS = {
-  neutral:       { pose: "repos",      mouvement: "",      status: "Buddy t'écoute" },
-  happy:         { pose: "content",    mouvement: "pop",   status: "Buddy est content" },
-  celebrating:   { pose: "bravo",      mouvement: "saute", status: "Buddy célèbre !" },
-  understanding: { pose: "idee",       mouvement: "pop",   status: "Buddy a compris" },
-  strict:        { pose: "fache",      mouvement: "pop",   status: "Buddy est sérieux" },
-  motivational:  { pose: "motivation", mouvement: "pop",   status: "Buddy te pousse à agir" },
+  neutral:       { pose: "repos",      mouvement: "" },
+  happy:         { pose: "content",    mouvement: "pop" },
+  celebrating:   { pose: "bravo",      mouvement: "saute" },
+  understanding: { pose: "idee",       mouvement: "pop" },
+  strict:        { pose: "fache",      mouvement: "pop" },
+  motivational:  { pose: "motivation", mouvement: "pop" },
 };
 // On précharge les images, pour qu'il n'y ait pas de "flash" quand il change de pose.
 for (const e of Object.values(EMOTIONS)) new Image().src = "buddy/" + e.pose + ".png";
@@ -848,7 +909,7 @@ function setBuddy(pose, mouvement, status) {
 function showEmotion(emotion, animate = true) {
   currentEmotion = emotion in EMOTIONS ? emotion : "neutral";
   const e = EMOTIONS[currentEmotion];
-  setBuddy(e.pose, animate ? e.mouvement : "", e.status);
+  setBuddy(e.pose, animate ? e.mouvement : "", t("emo." + currentEmotion));
 }
 
 // =============================================================
@@ -863,8 +924,8 @@ const cleanText = (text, max) => {
 // "il y a 2 jours", "hier", "il y a 5 min"…
 function timeAgo(date) {
   const minutes = Math.round((Date.now() - new Date(date).getTime()) / 60000);
-  const rtf = new Intl.RelativeTimeFormat("fr", { numeric: "auto" });
-  if (minutes < 1) return "À l'instant";
+  const rtf = new Intl.RelativeTimeFormat(getLang(), { numeric: "auto" });
+  if (minutes < 1) return t("time.now");
   if (minutes < 60) return capitalize(rtf.format(-minutes, "minute"));
   if (minutes < 60 * 24) return capitalize(rtf.format(-Math.round(minutes / 60), "hour"));
   return capitalize(rtf.format(-Math.round(minutes / (60 * 24)), "day"));
@@ -879,20 +940,20 @@ function renderResume() {
 
   if (index === undefined) {
     // Pas encore de vraie conversation : on n'invente rien, on invite à commencer
-    $("resume-title").textContent = "👋 On commence ?";
-    $("resume-quote").textContent = "« Parle-moi d'un objectif que tu veux vraiment atteindre. »";
+    $("resume-title").textContent = t("resume.startTitle");
+    $("resume-quote").textContent = t("resume.startQuote");
     $("resume-reply").textContent = "";
     $("resume-when").textContent = "";
-    $("resume-btn").textContent = "Parler à Buddy →";
+    $("resume-btn").textContent = t("resume.talk");
     return;
   }
   const said = messages[index];
   const reply = messages.slice(index + 1).find((m) => m.role === "assistant");
-  $("resume-title").textContent = "💬 On reprend où on s'était arrêtés ?";
-  $("resume-quote").textContent = `Tu m'avais dit : « ${cleanText(said.content, 90)} »`;
-  $("resume-reply").textContent = reply ? `Buddy : « ${cleanText(reply.content, 80)} »` : "";
+  $("resume-title").textContent = t("resume.title");
+  $("resume-quote").textContent = t("resume.said", { text: cleanText(said.content, 90) });
+  $("resume-reply").textContent = reply ? t("resume.reply", { text: cleanText(reply.content, 80) }) : "";
   $("resume-when").textContent = timeAgo(said.created_at);
-  $("resume-btn").textContent = "Reprendre →";
+  $("resume-btn").textContent = t("resume.btn");
 }
 
 // =============================================================
@@ -935,13 +996,13 @@ function offerTopics() {
   topicsOffered = true;
   removeChoices();
   const name = state.profile.firstName ? " " + state.profile.firstName : "";
-  showMessage(`Alors${name}, on travaille sur quoi aujourd'hui ?`, "buddy");
+  showMessage(t("topics.ask", { name }), "buddy");
   const box = document.createElement("div");
   box.className = "choices";
   box.innerHTML = state.goals.length
     ? state.goals.slice(0, 6).map((g) => `<button class="chip" data-topic="${g.id}">${catOf(g).emoji} ${esc(g.text)}</button>`).join("") +
-      `<button class="chip" data-topic="review">🧭 Bilan de la semaine</button>` +
-      `<button class="chip" data-topic="new">➕ Nouvel objectif</button>`
+      `<button class="chip" data-topic="review">${t("topics.review")}</button>` +
+      `<button class="chip" data-topic="new">${t("topics.new")}</button>`
     : Object.entries(CATEGORIES).map(([key, cat]) => `<button class="chip" data-topic-cat="${key}">${cat.emoji} ${cat.label}</button>`).join("");
   $("chat").appendChild(box);
   $("chat").scrollTop = $("chat").scrollHeight;
@@ -957,8 +1018,8 @@ $("chat").addEventListener("click", (e) => {
   if (!chip || sendButton.disabled) return;
   removeChoices();
   if (chip.dataset.topic === "review") return startReview();
-  if (chip.dataset.topic === "new") return sendToBuddy("Je voudrais me fixer un nouvel objectif.");
-  if (chip.dataset.topicCat) return sendToBuddy(`Je voudrais me fixer un objectif en ${CATEGORIES[chip.dataset.topicCat].label}.`);
+  if (chip.dataset.topic === "new") return sendToBuddy(t("say.newGoal"));
+  if (chip.dataset.topicCat) return sendToBuddy(t("say.goalIn", { cat: CATEGORIES[chip.dataset.topicCat].label }));
   talkAbout(goalById(Number(chip.dataset.topic)));
 });
 
@@ -968,7 +1029,7 @@ function startReview() {
   currentTopic = null;
   renderTopic();
   openChat(true);
-  sendToBuddy("Faisons le bilan de ma semaine.", { review: true });
+  sendToBuddy(t("say.review"), { review: true });
 }
 
 // Parler d'un objectif précis
@@ -978,7 +1039,7 @@ function talkAbout(goal) {
   currentTopic = goal.id;
   renderTopic();
   openChat(true);
-  sendToBuddy(`On parle de mon objectif « ${goal.text} ».`);
+  sendToBuddy(t("say.talkGoal", { goal: goal.text }));
 }
 
 $("new-topic").addEventListener("click", () => {
@@ -1023,7 +1084,7 @@ let listening = false;
 $("message").addEventListener("input", () => {
   if (!listening && $("message").value.trim() && !sendButton.disabled) {
     listening = true;
-    setBuddy("repos", "", "Buddy t'écoute…");
+    setBuddy("repos", "", t("buddy.listening"));
   }
 });
 
@@ -1033,7 +1094,7 @@ async function sendToBuddy(text, extra = {}) {
   if (text) showMessage(text, "user");
   listening = false;
   sendButton.disabled = true;
-  setBuddy("repos", "reflechit", "Buddy réfléchit…");
+  setBuddy("repos", "reflechit", t("buddy.thinking"));
   const typing = showTyping();
 
   try {
@@ -1048,12 +1109,12 @@ async function sendToBuddy(text, extra = {}) {
       if (data.goalId) currentTopic = data.goalId;
       // Buddy a peut-être créé un objectif, noté un plan, un prénom… ou AGI (tâches) : on recharge tout
       refresh()
-        .then(() => { if (data.acted) toast("Buddy a mis à jour ton application"); })
+        .then(() => { if (data.acted) toast(t("toast.buddyActed")); })
         .catch((e) => console.error("Rechargement impossible :", e));
     }
   } catch (e) {
     typing.remove();
-    showMessage("Impossible de joindre le serveur. Est-il bien lancé ?", "error");
+    showMessage(t("chat.unreachable"), "error");
     showEmotion(currentEmotion, false);
   }
   sendButton.disabled = false;
@@ -1081,8 +1142,8 @@ function drawFocus() {
   const s = String(focusSeconds % 60).padStart(2, "0");
   $("focus-time").textContent = `${m}:${s}`;
   $("focus-time").classList.toggle("running", !!focusTimer);
-  $("focus-start").querySelector("span").textContent = focusTimer ? "Pause" : focusSeconds < focusLength ? "Reprendre" : "Lancer";
-  document.title = focusTimer ? `${m}:${s} – Focus` : "Buddy – Ton coach personnel";
+  $("focus-start").querySelector("span").textContent = t(focusTimer ? "focus.pause" : focusSeconds < focusLength ? "focus.resume" : "focus.start");
+  document.title = focusTimer ? `${m}:${s} – Focus` : t("page.title");
 }
 
 function stopFocus() {
@@ -1097,9 +1158,9 @@ $("focus-start").addEventListener("click", () => {
     if (focusSeconds <= 0) {
       stopFocus();
       focusSeconds = focusLength;
-      setBuddy("bravo", "saute", "Session terminée !");
+      setBuddy("bravo", "saute", t("focus.over"));
       setTimeout(() => showEmotion(currentEmotion, false), 3000);
-      alert("Session terminée 💪 Bravo, tu as tenu !");
+      alert(t("focus.overAlert"));
     }
     drawFocus();
   }, 1000);
@@ -1130,6 +1191,19 @@ async function loadMyBuddy(newSession) {
   chat.innerHTML = "";
   showApp();
   await refresh();
+
+  // LA LANGUE : un choix fait sur CET appareil (bouton FR/EN) passe en premier ;
+  // sinon on reprend la langue enregistrée dans le compte (choisie sur un autre appareil).
+  const accountLang = cleanLang(state.profile.language);
+  if (!savedLang() && accountLang && accountLang !== getLang()) {
+    setLang(accountLang);
+    translatePage();
+    render();
+  }
+  if (state.profile.language !== getLang()) {
+    // On l'enregistre dans le compte : Buddy et les e-mails parleront cette langue
+    api("PATCH", "/api/profile", { language: getLang() }).catch((e) => console.error("Langue :", e));
+  }
   loadQuotes().catch((e) => console.error("Phrases du jour :", e)); // sans bloquer le reste
 
   // Le fuseau horaire de cet ordinateur (ex : "Europe/Paris") : on le donne au serveur
@@ -1158,7 +1232,9 @@ async function loadMyBuddy(newSession) {
   }
 }
 
-// Au chargement : déjà connecté ? (Supabase se souvient de la connexion)
+// Au chargement : on écrit la page dans la bonne langue…
+translatePage();
+// … puis : déjà connecté ? (Supabase se souvient de la connexion)
 const { data } = await supabase.auth.getSession();
 if (data.session) {
   loadMyBuddy(data.session);

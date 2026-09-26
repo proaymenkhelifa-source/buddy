@@ -8,6 +8,10 @@ import {
   CATEGORIES, HISTORY_DAYS, DAY_LONG, dayKey, addDays, isoDay, occursOn, isCurrent, computeStats, religionRule, goalProgress,
   withTimeZone, timeHHMM,
 } from "./public/shared.js";
+import { t, cleanLang } from "./public/i18n.js";
+
+// La langue de la personne (choisie avec le bouton FR/EN, enregistrée dans son profil)
+const langOf = (profile) => cleanLang(profile.language) || "fr";
 
 // Le fuseau utilisé si la page ne nous a pas encore dit celui de la personne
 const DEFAULT_TIMEZONE = "Europe/Paris";
@@ -61,6 +65,7 @@ const pickAngle = () => ANGLES[Math.floor(Math.random() * ANGLES.length)];
 export async function writeEmail(claude, kind, info) {
   const { profile, goals, todays, stats, task, today } = info;
   const name = profile.first_name || "la personne";
+  const en = langOf(profile) === "en";
   const goalsText = goals.length
     ? goals.map((g) => `- [${(CATEGORIES[g.category] || CATEGORIES.autre).label}] ${g.text} (${g.progress} %)`).join("\n")
     : "Aucun objectif pour l'instant.";
@@ -82,7 +87,9 @@ export async function writeEmail(claude, kind, info) {
   const response = await claude.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 800,
-    system: `Tu es Buddy, le coach personnel de l'application Buddy. Tu écris un e-mail à ${name}, en français, en la tutoyant, comme un ami coach.
+    system: `Tu es Buddy, le coach personnel de l'application Buddy. Tu écris un e-mail à ${name}, ${en
+      ? "en ANGLAIS (English) : l'objet et le texte sont entièrement en anglais, sur un ton familier et chaleureux, comme un ami coach"
+      : "en français, en la tutoyant, comme un ami coach"}.
 Style de coaching choisi : ${STYLE_NAMES[profile.communication_style] || "équilibré (encourage et challenge)"}.
 ${instructions}
 Règles :
@@ -108,11 +115,11 @@ ${religionRule(goals)}
 // =============================================================
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-export function emailHtml(kind, message) {
-  const badge = { morning: "🌅 Le mot du matin", evening: "🌙 Le récap du soir", task: "⏰ C'est bientôt l'heure", weekly: "🧭 Le bilan de la semaine", test: "✉️ E-mail de test" }[kind];
+export function emailHtml(kind, message, lang = "fr") {
+  const badge = t("mail." + kind, {}, lang); // "🌅 Le mot du matin", "🌙 Evening recap"…
   // Le bouton du bilan ouvre directement le bilan avec Buddy dans l'application
   const link = kind === "weekly" ? APP_URL + "/#bilan" : APP_URL;
-  const button = kind === "weekly" ? "Faire mon bilan avec Buddy →" : "Ouvrir Buddy →";
+  const button = t(kind === "weekly" ? "mail.btnWeekly" : "mail.btnOpen", {}, lang);
   const paragraphs = message.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 14px">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
   return `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#07090f;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:520px;margin:0 auto;background:#121621;border:1px solid #232838;border-radius:18px;padding:28px;color:#f3efe8">
@@ -120,7 +127,7 @@ export function emailHtml(kind, message) {
     <div style="display:inline-block;font-size:13px;font-weight:700;color:#f6b73c;background:rgba(246,183,60,.14);border-radius:99px;padding:5px 12px;margin-bottom:20px">${badge}</div>
     <div style="font-size:16px;line-height:1.6">${paragraphs}</div>
     <a href="${link}" style="display:inline-block;margin-top:10px;background:#f6b73c;color:#1d1305;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:99px">${button}</a>
-    <p style="margin:24px 0 0;font-size:12px;color:#9aa1b5">— Buddy, ton coach. Tu peux régler ces e-mails dans Paramètres.</p>
+    <p style="margin:24px 0 0;font-size:12px;color:#9aa1b5">${t("mail.footer", {}, lang)}</p>
   </div></body></html>`;
 }
 
@@ -152,7 +159,7 @@ async function gatherInfo(supabase, userId, today, timezone) {
 async function sendOne(supabase, claude, { userId, to, profile, kind, task, today }) {
   const info = await gatherInfo(supabase, userId, today, profile.timezone || DEFAULT_TIMEZONE);
   const { sujet, message } = await writeEmail(claude, kind === "test" ? "morning" : kind, { ...info, profile, task, today });
-  const { error } = await resend.emails.send({ from: FROM, to, subject: sujet, html: emailHtml(kind, message), text: message });
+  const { error } = await resend.emails.send({ from: FROM, to, subject: sujet, html: emailHtml(kind, message, langOf(profile)), text: message });
   if (error) throw new Error(error.message);
   console.log(`📧 E-mail "${kind}" envoyé à ${to} : ${sujet}`);
 }

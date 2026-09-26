@@ -2,17 +2,21 @@
 // Comme ça, les catégories et les calculs de statistiques sont les mêmes partout :
 // ce que tu vois à l'écran = ce que Buddy sait.
 
+import { t, locale, dayShort, DAYS } from "./i18n.js";
+
 // =============================================================
-// LES 7 CATÉGORIES (pour en ajouter une, il suffit d'ajouter une ligne ici)
+// LES 7 CATÉGORIES (pour en ajouter une : une ligne ici + son nom dans i18n.js, "cat.xxx")
+// Le nom affiché ("label") est lu dans le dictionnaire, dans la langue en cours.
 // =============================================================
+const category = (id, emoji, icon, color) => ({ emoji, icon, color, get label() { return t("cat." + id); } });
 export const CATEGORIES = {
-  sport:     { label: "Sport",     emoji: "🏋️", icon: "dumbbell",       color: "var(--orange)" },
-  etudes:    { label: "Études",    emoji: "📚", icon: "book-open",      color: "var(--blue)" },
-  religion:  { label: "Religion",  emoji: "🕌", icon: "moon-star",      color: "var(--green)" },
-  finances:  { label: "Finances",  emoji: "💰", icon: "coins",          color: "var(--yellow)" },
-  voyages:   { label: "Voyages",   emoji: "✈️", icon: "plane",          color: "var(--red)" },
-  quotidien: { label: "Quotidien", emoji: "🏠", icon: "house",          color: "var(--violet)" },
-  autre:     { label: "Autre",     emoji: "✨", icon: "sparkles",       color: "var(--teal)" },
+  sport:     category("sport",     "🏋️", "dumbbell",  "var(--orange)"),
+  etudes:    category("etudes",    "📚", "book-open", "var(--blue)"),
+  religion:  category("religion",  "🕌", "moon-star", "var(--green)"),
+  finances:  category("finances",  "💰", "coins",     "var(--yellow)"),
+  voyages:   category("voyages",   "✈️", "plane",     "var(--red)"),
+  quotidien: category("quotidien", "🏠", "house",     "var(--violet)"),
+  autre:     category("autre",     "✨", "sparkles",  "var(--teal)"),
 };
 
 // Maximum de tâches par jour. 10 pendant la phase de test ;
@@ -20,7 +24,7 @@ export const CATEGORIES = {
 // La "version" du code. Le serveur et la page la comparent : si elles sont différentes,
 // c'est que le serveur tourne encore avec un vieux code → la page demande de le redémarrer.
 // (À changer à chaque grosse modification.)
-export const APP_VERSION = "2026-09-26c";
+export const APP_VERSION = "2026-09-26-i18n";
 
 export const MAX_TASKS = 10;
 
@@ -97,8 +101,9 @@ export function mondayOf(key) {
   return addDays(key, -(isoDay(key) - 1));
 }
 
-export const DAY_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-export const DAY_LONG = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+// Les noms des jours en français (pour les consignes données à Claude, écrites en français).
+// Pour l'affichage, on utilise dayShort / dayLong de i18n.js, dans la langue choisie.
+export const DAY_LONG = DAYS.fr.long;
 
 // =============================================================
 // QUAND UNE TÂCHE A-T-ELLE LIEU ?
@@ -111,14 +116,16 @@ export function occursOn(task, key) {
 }
 
 // Un petit texte lisible : "Tous les jours", "Lun, Mer, Sam", "Le jeudi 2 octobre"
-export function scheduleLabel(task) {
+// (dans la langue en cours ; lang permet d'en choisir une autre)
+export function scheduleLabel(task, lang) {
   if (task.on_date) {
-    return "Le " + keyToUTC(task.on_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+    const date = keyToUTC(task.on_date).toLocaleDateString(locale(lang), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+    return t("sched.on", { date }, lang);
   }
   if (task.days && task.days.length && task.days.length < 7) {
-    return [...task.days].sort().map((d) => DAY_SHORT[d - 1]).join(", ");
+    return [...task.days].sort().map((d) => dayShort(d, lang)).join(", ");
   }
-  return "Tous les jours";
+  return t("sched.daily", {}, lang);
 }
 
 // La tâche est-elle encore "vivante" ? (pas supprimée, et pas une date unique déjà passée)
@@ -127,7 +134,7 @@ export function isCurrent(task, today) {
 }
 
 // Vérifie la règle "MAX_TASKS tâches maximum par jour" avant d'ajouter ou de modifier une tâche.
-// Renvoie un message d'erreur, ou null si tout va bien.
+// Renvoie l'erreur à afficher ({ key, vars } : le nom de la phrase dans i18n.js), ou null si tout va bien.
 export function dailyLimitError(tasks, candidate, today) {
   const others = tasks.filter((t) => isCurrent(t, today) && t.id !== candidate.id);
   // Les jours à vérifier : la date unique, ou les 7 prochains jours (un de chaque jour de la semaine)
@@ -136,8 +143,9 @@ export function dailyLimitError(tasks, candidate, today) {
     if (!occursOn(candidate, key)) continue;
     const count = others.filter((t) => occursOn(t, key)).length;
     if (count >= MAX_TASKS) {
-      const when = candidate.on_date ? "Ce jour-là" : "Le " + DAY_LONG[isoDay(key) - 1];
-      return `${when}, tu as déjà ${MAX_TASKS} tâches. Retire-en une ou choisis d'autres jours.`;
+      return candidate.on_date
+        ? { key: "err.limitDate", vars: { max: MAX_TASKS } }
+        : { key: "err.limitDay", vars: { max: MAX_TASKS, day: isoDay(key) } };
     }
   }
   return null;
@@ -292,21 +300,26 @@ export function goalProgress(tasks, logs, today, goal) {
 // =============================================================
 // LES BADGES
 // Chaque badge a une condition ("test"). Une fois gagné, il est enregistré pour toujours.
-// Pour en ajouter un : ajoute une ligne ici.
+// Pour en ajouter un : ajoute une ligne ici + son nom et sa description dans i18n.js ("badge.xxx").
 // =============================================================
+const badge = (id, emoji, test) => ({
+  id, emoji, test,
+  get name() { return t("badge." + id); },
+  get desc() { return t("badge." + id + ".desc"); },
+});
 export const BADGES = [
-  { id: "first_goal",   emoji: "🎯", name: "Cap fixé",           desc: "Créer ton premier objectif",                     test: (c) => c.goals >= 1 },
-  { id: "first_task",   emoji: "👣", name: "Premier pas",        desc: "Cocher ta première tâche",                       test: (c) => c.totalDone >= 1 },
-  { id: "perfect_day",  emoji: "✅", name: "Journée parfaite",   desc: "Faire toutes tes tâches d'une journée",          test: (c) => c.perfectDays >= 1 },
-  { id: "streak_3",     emoji: "🔥", name: "Lancé",              desc: "3 jours actifs d'affilée",                       test: (c) => c.best >= 3 },
-  { id: "streak_7",     emoji: "⚡", name: "Semaine de feu",     desc: "7 jours actifs d'affilée",                       test: (c) => c.best >= 7 },
-  { id: "streak_30",    emoji: "🏆", name: "Inarrêtable",        desc: "30 jours actifs d'affilée",                      test: (c) => c.best >= 30 },
-  { id: "tasks_50",     emoji: "💪", name: "50 actions",         desc: "Cocher 50 tâches",                               test: (c) => c.totalDone >= 50 },
-  { id: "tasks_100",    emoji: "💯", name: "Centurion",          desc: "Cocher 100 tâches",                              test: (c) => c.totalDone >= 100 },
-  { id: "perfect_week", emoji: "🌟", name: "Semaine parfaite",   desc: "Une semaine entière (lundi → dimanche) à 100 %", test: (c) => c.perfectWeeks >= 1 },
-  { id: "joker_saved",  emoji: "🛡️", name: "Sauvé par le joker", desc: "Ton joker a protégé ta série",                   test: (c) => c.jokerSaves >= 1 },
-  { id: "first_review", emoji: "🧭", name: "Introspection",      desc: "Faire ton premier bilan de la semaine avec Buddy", test: (c) => c.reviews >= 1 },
-  { id: "goal_done",    emoji: "🏁", name: "Objectif atteint",   desc: "Amener un objectif à 100 %",                     test: (c) => c.goalsDone >= 1 },
+  badge("first_goal",   "🎯", (c) => c.goals >= 1),
+  badge("first_task",   "👣", (c) => c.totalDone >= 1),
+  badge("perfect_day",  "✅", (c) => c.perfectDays >= 1),
+  badge("streak_3",     "🔥", (c) => c.best >= 3),
+  badge("streak_7",     "⚡", (c) => c.best >= 7),
+  badge("streak_30",    "🏆", (c) => c.best >= 30),
+  badge("tasks_50",     "💪", (c) => c.totalDone >= 50),
+  badge("tasks_100",    "💯", (c) => c.totalDone >= 100),
+  badge("perfect_week", "🌟", (c) => c.perfectWeeks >= 1),
+  badge("joker_saved",  "🛡️", (c) => c.jokerSaves >= 1),
+  badge("first_review", "🧭", (c) => c.reviews >= 1),
+  badge("goal_done",    "🏁", (c) => c.goalsDone >= 1),
 ];
 
 // Rassemble les chiffres dont les badges ont besoin
