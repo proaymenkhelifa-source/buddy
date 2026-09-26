@@ -1,0 +1,18 @@
+# Ce fichier dit à Git (et donc à GitHub) quels fichiers NE JAMAIS envoyer.
+
+# Tes clés secrètes : ne doivent jamais quitter ton ordinateur
+# (toutes les variantes : .env, .env.local, .env.production…)
+.env
+.env.*
+# … sauf le modèle SANS clés, qui peut être partagé
+!.env.example
+
+# Le code téléchargé par npm : trop gros, et on peut le re-télécharger à tout moment
+node_modules/
+
+# Les réglages locaux de Vercel (créés automatiquement plus tard)
+.vercel/
+
+# Petits fichiers créés par Windows / OneDrive
+Thumbs.db
+desktop.ini

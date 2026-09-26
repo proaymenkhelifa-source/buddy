@@ -1,0 +1,16 @@
+{
+  "name": "buddy",
+  "version": "1.0.0",
+  "description": "Buddy – un compagnon IA pour tenir ses objectifs",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@supabase/supabase-js": "^2.117.1",
+    "express": "^5.2.1",
+    "resend": "^6.30.0"
+  }
+}
