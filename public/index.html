@@ -396,7 +396,7 @@
               <button class="style-option" data-theme-choice="light"><strong data-i18n="theme.light">☀️ Clair</strong></button>
             </div>
           </section>
-          <section class="card">
+          <section class="card" id="email-settings">
             <h3 data-i18n="settings.emails">Rappels par e-mail</h3>
             <p class="muted small" data-i18n="settings.emailsHint">Buddy t'écrit lui-même : jamais deux fois le même e-mail, toujours à ton heure.</p>
             <label class="field"><span data-i18n="settings.address">Adresse de réception</span>
@@ -430,6 +430,11 @@
               <button class="btn btn-primary" id="save-emails" data-i18n="common.save">Enregistrer</button>
               <button class="btn btn-ghost" id="test-email"><i data-lucide="send"></i> <span data-i18n="settings.testEmail">M'envoyer un e-mail de test</span></button>
             </div>
+          </section>
+          <section class="card">
+            <h3 data-i18n="settings.tour">Visite guidée</h3>
+            <p class="muted small" data-i18n="settings.tourHint">Revois le tour de l'application, étape par étape.</p>
+            <button class="btn btn-ghost" id="replay-tour"><i data-lucide="map"></i> <span data-i18n="settings.tourBtn">Revoir la visite guidée</span></button>
           </section>
           <section class="card">
             <h3 data-i18n="settings.account">Compte</h3>
@@ -556,6 +561,29 @@
       <button id="send-button" class="btn btn-primary btn-icon" type="submit" data-i18n-title="chat.send"><i data-lucide="send"></i></button>
     </form>
   </aside>
+
+  <!-- =========================================================
+       LA VISITE GUIDÉE (à la première connexion, ou avec "Revoir la visite" dans Paramètres)
+       L'écran s'assombrit, seule la zone expliquée reste éclairée ("spot"),
+       et une bulle explique à quoi elle sert. Les textes sont dans i18n.js ("tour.xxx").
+       ========================================================= -->
+  <div id="tour" class="tour hidden">
+    <div class="tour-spot" id="tour-spot"></div>
+    <div class="tour-bubble" id="tour-bubble" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      <div class="tour-head">
+        <span class="tour-avatar"><img id="tour-avatar" src="buddy/motivation.png" alt=""></span>
+        <span class="tour-step" id="tour-step"></span>
+        <button type="button" class="tour-skip" id="tour-skip" data-i18n="tour.skip">Passer</button>
+      </div>
+      <h3 id="tour-title"></h3>
+      <p id="tour-text"></p>
+      <div class="tour-foot">
+        <div class="tour-dots" id="tour-dots"></div>
+        <button type="button" class="btn btn-ghost" id="tour-prev" data-i18n="tour.prev">Retour</button>
+        <button type="button" class="btn btn-primary" id="tour-next"></button>
+      </div>
+    </div>
+  </div>
 
   <!-- Le petit message de confirmation en bas de l'écran -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

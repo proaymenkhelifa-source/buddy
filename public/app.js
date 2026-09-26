@@ -1214,6 +1214,139 @@ for (const chip of document.querySelectorAll("[data-minutes]")) {
 }
 
 // =============================================================
+// LA VISITE GUIDÉE
+// À la toute première connexion (ou avec "Revoir la visite guidée" dans Paramètres).
+// Chaque étape : la zone à éclairer (target), la page où elle se trouve, et la pose de Buddy.
+// Les textes sont dans i18n.js : "tour.<key>.title" et "tour.<key>.text".
+// Pour ajouter une étape : une ligne ici + ses 2 textes dans i18n.js.
+// =============================================================
+const TOUR = [
+  { key: "welcome",  page: "accueil",    pose: "motivation" },
+  { key: "goals",    page: "accueil",    target: ".goals-card" },
+  { key: "today",    page: "accueil",    target: ".today-card" },
+  { key: "cats",     page: "accueil",    target: ".cats-card" },
+  { key: "week",     page: "accueil",    target: ".week-card" },
+  { key: "chat",     page: "accueil",    target: "#buddy-fab", round: true, fixed: true, pose: "content" },
+  { key: "settings", page: "accueil",    target: '.side-link[data-page="parametres"]', fixed: true },
+  { key: "emails",   page: "parametres", target: "#email-settings .toggles", pose: "idee" },
+  { key: "end",      page: "accueil",    pose: "bravo" },
+];
+let tourIndex = -1;     // l'étape affichée (-1 = pas de visite en cours)
+let tourAfter = null;   // ce qu'on fait à la fin de la visite
+
+const tourSeen = () => { try { return localStorage.getItem("buddy-tour-done") === "1"; } catch (e) { return false; } };
+
+function startTour(after = null) {
+  tourAfter = after;
+  closeChat();
+  $("user-dropdown").classList.add("hidden");
+  $("tour").classList.remove("hidden");
+  showTourStep(0);
+}
+
+function endTour() {
+  $("tour").classList.add("hidden");
+  tourIndex = -1;
+  try { localStorage.setItem("buddy-tour-done", "1"); } catch (e) {}
+  goToPage("accueil");
+  const after = tourAfter;
+  tourAfter = null;
+  if (after) after();
+}
+
+// Va sur une page de l'appli sans "retour en haut" automatique au mauvais moment
+function goToPage(page) {
+  if (location.hash === "#" + page) return;
+  history.replaceState(null, "", "#" + page);
+  showPage();
+}
+
+function showTourStep(i) {
+  tourIndex = i;
+  const step = TOUR[i];
+  const last = TOUR.length - 1;
+  goToPage(step.page);
+
+  $("tour-step").textContent = t("tour.step", { n: i + 1, total: TOUR.length });
+  $("tour-title").textContent = t(`tour.${step.key}.title`);
+  $("tour-text").textContent = t(`tour.${step.key}.text`);
+  $("tour-avatar").src = "buddy/" + (step.pose || "content") + ".png";
+  $("tour-prev").classList.toggle("hidden", i === 0);
+  $("tour-skip").classList.toggle("hidden", i === last);
+  $("tour-next").textContent = t(i === 0 ? "tour.start" : i === last ? "tour.finish" : "tour.next");
+  $("tour-dots").innerHTML = TOUR.map((_, n) => `<span class="${n === i ? "on" : ""}"></span>`).join("");
+
+  // Petite animation de la bulle à chaque étape
+  const bubble = $("tour-bubble");
+  bubble.classList.remove("pop");
+  void bubble.offsetWidth;
+  bubble.classList.add("pop");
+
+  // On fait défiler la page pour mettre la zone expliquée en haut de l'écran (la bulle se met en dessous),
+  // puis on place le spot et la bulle. (Pas besoin pour ce qui ne bouge pas : bulle de Buddy, menu.)
+  const target = step.target && document.querySelector(step.target);
+  if (target && !step.fixed) {
+    window.scrollBy({ top: target.getBoundingClientRect().top - (innerWidth <= 900 ? 76 : 90), behavior: "smooth" });
+  }
+  placeTour();
+  setTimeout(placeTour, 450); // une fois le défilement terminé
+  $("tour-next").focus({ preventScroll: true });
+}
+
+// Place le spot sur la zone, et la bulle juste en dessous (ou au-dessus s'il n'y a pas la place)
+function placeTour() {
+  if (tourIndex < 0) return;
+  const step = TOUR[tourIndex];
+  const target = step.target && document.querySelector(step.target);
+  const spot = $("tour-spot");
+  const bubble = $("tour-bubble");
+  const margin = 16;
+  const bw = bubble.offsetWidth;
+  const bh = bubble.offsetHeight;
+  const visible = target && target.getClientRects().length > 0;
+  $("tour").classList.toggle("no-target", !visible);
+
+  if (!visible) {
+    // Pas de zone à montrer (bienvenue, fin) : la bulle au milieu de l'écran
+    bubble.style.left = (innerWidth - bw) / 2 + "px";
+    bubble.style.top = Math.max(margin, (innerHeight - bh) / 2) + "px";
+    return;
+  }
+
+  const r = target.getBoundingClientRect();
+  const pad = 8; // le spot déborde un peu autour de la zone
+  Object.assign(spot.style, {
+    left: r.left - pad + "px", top: r.top - pad + "px",
+    width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px",
+    borderRadius: step.round ? "50%" : "18px",
+  });
+
+  const gap = pad + 12;
+  let top;
+  if (r.bottom + gap + bh <= innerHeight - margin) top = r.bottom + gap;   // en dessous
+  else if (r.top - gap - bh >= margin) top = r.top - gap - bh;             // au-dessus
+  // Pas assez de place ni en dessous ni au-dessus : du côté où il y a le plus de place (ça déborde un peu sur la zone)
+  else top = r.top > innerHeight - r.bottom ? margin : innerHeight - bh - margin;
+  const left = Math.min(Math.max(margin, r.left + r.width / 2 - bw / 2), innerWidth - bw - margin);
+  bubble.style.top = top + "px";
+  bubble.style.left = left + "px";
+}
+
+$("tour-next").addEventListener("click", () => (tourIndex < TOUR.length - 1 ? showTourStep(tourIndex + 1) : endTour()));
+$("tour-prev").addEventListener("click", () => tourIndex > 0 && showTourStep(tourIndex - 1));
+$("tour-skip").addEventListener("click", endTour);
+$("replay-tour").addEventListener("click", () => startTour());
+window.addEventListener("resize", placeTour);
+window.addEventListener("scroll", placeTour, true);
+// Au clavier : → ou Entrée = suivant, ← = retour, Échap = passer
+document.addEventListener("keydown", (e) => {
+  if (tourIndex < 0) return;
+  if (e.key === "ArrowRight") $("tour-next").click();
+  else if (e.key === "ArrowLeft") $("tour-prev").click();
+  else if (e.key === "Escape") endTour();
+});
+
+// =============================================================
 // UNE FOIS CONNECTÉ : on charge le Buddy de CETTE personne
 // =============================================================
 // Les 2 phrases de motivation du jour (écrites par Buddy, différentes chaque jour)
@@ -1264,9 +1397,10 @@ async function loadMyBuddy(newSession) {
       startReview();
     }
   } else {
-    // Toute première visite : on ouvre la discussion et Buddy se présente
-    openChat(true);
-    sendToBuddy("");
+    // Toute première visite : la visite guidée, PUIS la discussion s'ouvre et Buddy se présente
+    const hello = () => { openChat(true); sendToBuddy(""); };
+    if (tourSeen()) hello();
+    else startTour(hello);
   }
 }
 
