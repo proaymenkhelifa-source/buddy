@@ -21,6 +21,10 @@ import { startEmailScheduler, sendTestEmail, runEmailTick } from "./emails.js";
 // Sommes-nous en ligne sur Vercel ? (Vercel remplit tout seul cette variable)
 const ONLINE = Boolean(process.env.VERCEL);
 
+// Le chemin de la fiche de personnalité, écrit "à côté de ce fichier" :
+// comme ça Vercel voit qu'on en a besoin et l'emporte avec le serveur en ligne.
+const PROMPT_FILE = new URL("./companion-prompt.md", import.meta.url);
+
 const app = express();
 const PORT = 3000;
 
@@ -655,7 +659,7 @@ app.post("/api/chat", requireUser, async (req, res) => {
     // On la coupe en 2 : la partie FIXE (la personnalité), puis ce que Buddy sait sur la personne.
     // La partie fixe est mise "en cache" chez Anthropic : relue depuis le cache, elle coûte 10 fois moins cher
     // (valable 5 minutes : parfait pendant une conversation).
-    const [fixedPart, afterContext = ""] = fs.readFileSync("companion-prompt.md", "utf-8").split("{{CONTEXTE}}");
+    const [fixedPart, afterContext = ""] = fs.readFileSync(PROMPT_FILE, "utf-8").split("{{CONTEXTE}}");
     const system = [
       { type: "text", text: fixedPart, cache_control: { type: "ephemeral" } },
       // Ce que Buddy sait, calculé dans le fuseau horaire de la personne
