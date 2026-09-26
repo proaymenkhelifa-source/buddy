@@ -215,15 +215,39 @@ window.addEventListener("popstate", () => {
 // Appuyer sur Entrée dans le mot de passe = cliquer sur le bouton
 $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("auth-submit").click(); });
 
+// Les erreurs de Supabase (en anglais technique) → un message clair, dans la langue de la page
+function authErrorText(error) {
+  const m = String(error.message || "");
+  console.error("Connexion / inscription :", error.status, m); // le message exact, pour chercher la cause
+  if (/rate limit|too many|only request this after/i.test(m)) return t("auth.errRate");
+  if (/sending.*email|confirmation email/i.test(m)) return t("auth.errEmailSend");
+  if (/already registered|already exists/i.test(m)) return t("auth.errExists");
+  if (/invalid login credentials/i.test(m)) return t("auth.errCredentials");
+  if (/email not confirmed/i.test(m)) return t("auth.errNotConfirmed");
+  if (/password/i.test(m)) return t("auth.errPassword");
+  if (/email/i.test(m) && /invalid|validate/i.test(m)) return t("auth.errEmail");
+  return t("auth.error") + m;
+}
+
 $("auth-submit").addEventListener("click", async () => {
+  const button = $("auth-submit");
+  if (button.disabled) return; // pas de double clic (Supabase bloquerait les tentatives répétées)
   const email = $("email").value.trim();
   const password = $("password").value;
-  const { data, error } =
-    authMode === "signup"
+  button.disabled = true;
+  $("auth-info").textContent = "…";
+  let result;
+  try {
+    result = authMode === "signup"
       ? await supabase.auth.signUp({ email, password })
       : await supabase.auth.signInWithPassword({ email, password });
+  } catch (e) {
+    result = { data: {}, error: e };
+  }
+  button.disabled = false;
+  const { data, error } = result;
 
-  if (error) return ($("auth-info").textContent = t("auth.error") + error.message);
+  if (error) return ($("auth-info").textContent = authErrorText(error));
   if (!data.session) {
     // Si Supabase demande de confirmer l'e-mail, il n'y a pas encore de session.
     return ($("auth-info").textContent = t("auth.created"));
