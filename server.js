@@ -62,6 +62,11 @@ app.use(express.json());
 // Sert la page web (tout ce qui est dans le dossier "public").
 app.use(express.static("public"));
 
+// L'adresse "racine" (buddy-….vercel.app/) → la page d'accueil.
+// Sur ton ordinateur, la ligne du dessus s'en charge ; en ligne, Vercel l'ignore, donc on le fait ici.
+const INDEX_FILE = new URL("./public/index.html", import.meta.url);
+app.get("/", (req, res) => res.type("html").send(fs.readFileSync(INDEX_FILE, "utf-8")));
+
 // La page a besoin de l'adresse Supabase et de la clé PUBLIQUE pour gérer les connexions.
 // La clé publique ("publishable") est faite pour être visible : elle n'ouvre pas nos tableaux.
 app.get("/api/config", (req, res) => {
