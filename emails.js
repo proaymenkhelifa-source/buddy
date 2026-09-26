@@ -16,8 +16,10 @@ const DEFAULT_TIMEZONE = "Europe/Paris";
 const dayLabel = (key) => `${DAY_LONG[isoDay(key) - 1]} ${Number(key.slice(8))}`;
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-// Sans nom de domaine vérifié, Resend oblige à envoyer depuis cette adresse de test :
-const FROM = "Buddy <onboarding@resend.dev>";
+// L'adresse d'expédition. Réglable avec EMAIL_FROM (dans .env ou sur Vercel), par exemple
+// "Buddy <buddy@buddycoach.app>" une fois le domaine vérifié chez Resend.
+// Sans domaine vérifié, Resend oblige à utiliser son adresse de test :
+const FROM = process.env.EMAIL_FROM || "Buddy <onboarding@resend.dev>";
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
 // La fiche que Claude remplit pour chaque e-mail

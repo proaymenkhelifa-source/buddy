@@ -106,7 +106,9 @@ Preparation done by Claude:
 11. [x] Owner created the Vercel account (GitHub login), imported the repo, set 6 env vars, deployed → **https://buddy-delta-five.vercel.app**. Every push to GitHub `main` redeploys automatically.
 12. [x] Fix: on Vercel `express.static` is ignored and "/" returned 404 → `app.get("/")` sends `public/index.html`. Checked online: page, API (401 without login), cron (403 without secret), secret files not served (404), no console errors.
 13. [x] Owner added `APP_URL` on Vercel; Supabase Auth: Site URL + Redirect URL `https://buddy-delta-five.vercel.app/**`; "Confirm email" turned back ON.
-14. [ ] Wake-up service for reminders: cron-job.org calling `/api/cron/tick` every minute with header `Authorization: Bearer <CRON_SECRET>`.
+14. [x] Owner set up cron-job.org (every minute, header `Authorization: Bearer <CRON_SECRET>`). Claude checked online: right secret → 200 `{"ok":true}`, wrong secret → 403.
+15a. [x] Owner set a monthly spend limit of $15 on the Anthropic console (2026-09-26).
+15b. [~] "Confirm email" turned OFF again by the owner (temporary, 2026-09-26). Supabase's built-in e-mail only sends to project team members → friends can't receive the sign-up confirmation. Temporary: turn "Confirm email" OFF (no abuse risk while Resend can only e-mail the owner). Real fix: buy a domain (suggested: via Vercel), verify it on Resend, switch `FROM` in emails.js, plug Supabase Auth into Resend SMTP, then turn "Confirm email" back ON.
 15. [ ] Owner tests online (login, chat, confirmation e-mail with a new account) → send the link to friends. Friends' e-mails still need a verified domain on Resend (optional).
 Next steps: GitHub account + Git install (owner) → secret check + first push (Claude) → Vercel account + env vars (owner) → deploy fixes (prompt file path on Vercel, APP_URL) → cron-job.org → Supabase Auth URL settings → test → (optional) domain for friends' e-mails.
 Later ideas kept: installable app with push notifications (PWA), accountability buddy ("binôme"), check a task from the e-mail.
