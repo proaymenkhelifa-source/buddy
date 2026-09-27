@@ -123,6 +123,7 @@
       <nav class="side-nav">
         <a class="side-link" href="#accueil" data-page="accueil"><i data-lucide="house"></i><span data-i18n="nav.home">Accueil</span></a>
         <a class="side-link" href="#objectifs" data-page="objectifs"><i data-lucide="circle-check-big"></i><span data-i18n="nav.goals">Mes objectifs</span></a>
+        <a class="side-link" href="#calendrier" data-page="calendrier"><i data-lucide="calendar-days"></i><span data-i18n="nav.calendar">Calendrier</span></a>
         <a class="side-link" href="#suivi" data-page="suivi"><i data-lucide="chart-column"></i><span data-i18n="nav.tracking">Suivi</span></a>
         <a class="side-link" href="#outils" data-page="outils"><i data-lucide="timer"></i><span data-i18n="nav.tools">Outils</span></a>
         <a class="side-link" href="#parametres" data-page="parametres"><i data-lucide="settings"></i><span data-i18n="nav.settings">Paramètres</span></a>
@@ -210,6 +211,10 @@
               <summary id="other-days-summary"></summary>
               <ul class="other-list" id="other-list"></ul>
             </details>
+            <!-- Le raccourci vers le calendrier -->
+            <a class="agenda-link" href="#calendrier">
+              <i data-lucide="calendar-days"></i><span data-i18n="home.agenda">Voir mon agenda</span><i data-lucide="arrow-right"></i>
+            </a>
           </section>
 
           <!-- CITATION -->
@@ -286,6 +291,31 @@
         </header>
         <div class="filters" id="goal-filters"></div>
         <div class="goal-grid" id="goal-grid"></div>
+      </main>
+
+      <!-- ===================== PAGE : CALENDRIER ===================== -->
+      <main id="page-calendrier" class="page page-padded hidden">
+        <header class="page-head">
+          <div>
+            <h1 data-i18n="nav.calendar">Calendrier</h1>
+            <p class="muted" data-i18n="cal.sub">Tes tâches et tes échéances, jour par jour.</p>
+          </div>
+          <button class="btn btn-primary" id="cal-add"><i data-lucide="plus"></i> <span data-i18n="today.add">Ajouter une tâche</span></button>
+        </header>
+        <div class="cal-layout">
+          <!-- Le mois : une case par jour -->
+          <section class="card cal-card">
+            <div class="cal-nav">
+              <button class="icon-btn round" id="cal-prev" data-i18n-title="cal.prev"><i data-lucide="chevron-left"></i></button>
+              <h3 id="cal-month"></h3>
+              <button class="icon-btn round" id="cal-next" data-i18n-title="cal.next"><i data-lucide="chevron-right"></i></button>
+              <button class="btn btn-ghost cal-today-btn" id="cal-today" data-i18n="cal.today">Aujourd'hui</button>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </section>
+          <!-- Le programme du jour choisi -->
+          <section class="card cal-day" id="cal-day"></section>
+        </div>
       </main>
 
       <!-- ===================== PAGE : SUIVI ===================== -->

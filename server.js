@@ -864,7 +864,10 @@ if (!ONLINE) {
       process.exit(1);
     }
     console.log(`Buddy est prêt ! Ouvre http://localhost:${PORT} dans ton navigateur.`);
-    startEmailScheduler(supabase, claude); // ouvre le "bureau de poste" (e-mails automatiques)
+    // Les e-mails automatiques sont envoyés par le site EN LIGNE. Sur l'ordinateur, on ne les envoie pas
+    // (sinon les deux se marchent dessus), sauf si on le demande avec LOCAL_EMAILS=1 dans .env.
+    if (process.env.LOCAL_EMAILS === "1") startEmailScheduler(supabase, claude);
+    else console.log("📧 E-mails automatiques : envoyés par le site en ligne (pas depuis cet ordinateur).");
   });
 }
 

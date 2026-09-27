@@ -8,7 +8,7 @@
 //   3. après chaque action (cocher, ajouter, modifier…), on recommence 1 et 2.
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { CATEGORIES, MAX_TASKS, BADGES, APP_VERSION, dayKey, addDays, mondayOf, computeStats, occursOn, isCurrent, scheduleLabel, goalWeek, goalProgress } from "./shared.js";
+import { CATEGORIES, MAX_TASKS, BADGES, APP_VERSION, HISTORY_DAYS, dayKey, addDays, mondayOf, computeStats, occursOn, isCurrent, isPlanned, isDone, scheduleLabel, goalWeek, goalProgress } from "./shared.js";
 import { t, getLang, setLang, cleanLang, locale, dayLong, dayInitials, LANGUAGES } from "./i18n.js";
 
 // Raccourci : $("id") = document.getElementById("id")
@@ -121,7 +121,7 @@ for (const button of document.querySelectorAll("[data-theme-choice]")) {
 // LES PAGES (Accueil, Mes objectifs, Suivi, Outils, Paramètres)
 // L'adresse change (#suivi, #objectifs…) : le bouton "retour" du navigateur marche aussi.
 // =============================================================
-const PAGES = ["accueil", "objectifs", "suivi", "outils", "parametres"];
+const PAGES = ["accueil", "objectifs", "calendrier", "suivi", "outils", "parametres"];
 
 function showPage() {
   const page = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : "accueil";
@@ -372,7 +372,7 @@ function render() {
   stats = computeStats(state.tasks, state.logs, today());
   // Chaque morceau de la page est dessiné séparément : si l'un plante, les autres s'affichent quand même.
   for (const part of [renderProfile, renderToday, renderGoalsSummary, renderWeek, renderCategories,
-    renderGoalsPage, renderSuivi, renderSettings, renderTopic, renderResume, drawIcons]) {
+    renderGoalsPage, renderCalendar, renderSuivi, renderSettings, renderTopic, renderResume, drawIcons]) {
     try {
       part();
     } catch (error) {
@@ -544,6 +544,99 @@ function renderGoalsPage() {
     </article>`;
   }).join("");
 }
+
+// --- Page Calendrier ---
+// Un mois entier (du lundi au dimanche), et le programme du jour choisi.
+let calMonth = today().slice(0, 8) + "01"; // le 1er du mois affiché ("2026-09-01")
+let calDay = today();                      // le jour choisi (son programme s'affiche à droite)
+
+// Les tâches d'un jour, avec leur état : faite, pas faite (jour passé), à faire (aujourd'hui), prévue (futur)
+function calTasks(key) {
+  const now = today();
+  if (key < addDays(now, -HISTORY_DAYS)) return []; // trop vieux : on ne garde pas l'historique
+  const tasks = key >= now
+    ? state.tasks.filter((task) => isCurrent(task, now) && occursOn(task, key)) // ce qui est prévu
+    : state.tasks.filter((task) => isPlanned(task, key));                       // ce qui était prévu
+  return tasks
+    .map((task) => ({
+      task,
+      status: key > now ? "planned" : isDone(state.logs, task.id, key) ? "done" : key === now ? "todo" : "missed",
+    }))
+    .sort((a, b) => (a.task.time || "99").localeCompare(b.task.time || "99"));
+}
+const calDeadlines = (key) => state.goals.filter((g) => g.deadline === key);
+
+function renderCalendar() {
+  const now = today();
+  $("cal-month").textContent = new Date(calMonth + "T12:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
+
+  // Les cases : du lundi de la 1re semaine jusqu'au dimanche de la dernière
+  const start = mondayOf(calMonth);
+  const nextMonth = addDays(calMonth, 32).slice(0, 8) + "01";
+  const cells = dayInitials().map((d) => `<span class="cal-head">${d}</span>`);
+  for (let key = start; key < nextMonth || cells.length % 7 !== 0; key = addDays(key, 1)) {
+    const items = calTasks(key);
+    const flags = calDeadlines(key).length ? `<span title="${esc(calDeadlines(key).map((g) => g.text).join(", "))}">🎯</span>` : "";
+    const cls = [key.slice(0, 7) !== calMonth.slice(0, 7) && "other", key === now && "today", key === calDay && "selected"].filter(Boolean).join(" ");
+    // La couleur de la catégorie de l'objectif lié (gris si la tâche n'a pas d'objectif)
+    const colorOf = ({ task }) => (goalById(task.goal_id) ? catOf(goalById(task.goal_id)).color : "var(--muted)");
+    cells.push(`<button class="cal-cell ${cls}" data-cal-day="${key}">
+      <span class="cal-num"><b>${Number(key.slice(8))}</b>${flags}</span>
+      ${items.slice(0, 3).map((it) => `<span class="cal-item ${it.status}" style="--c:${colorOf(it)}" title="${esc((it.task.time ? it.task.time + " · " : "") + it.task.title)}">${esc(it.task.title)}</span>`).join("")}
+      ${items.length > 3 ? `<span class="cal-more">${t("cal.more", { n: items.length - 3, s: items.length - 3 > 1 ? "s" : "" })}</span>` : ""}
+      <span class="cal-dots">${items.map((it) => `<span class="${it.status}" style="--c:${colorOf(it)}"></span>`).join("")}</span>
+    </button>`);
+  }
+  $("cal-grid").innerHTML = cells.join("");
+  renderCalendarDay();
+}
+
+// Le programme du jour choisi
+function renderCalendarDay() {
+  const now = today();
+  const items = calTasks(calDay);
+  const deadlines = calDeadlines(calDay);
+  const past = calDay < now;
+  const done = items.filter((it) => it.status === "done").length;
+  $("cal-day").innerHTML = `
+    <h3>${esc(capitalize(niceDate(calDay)))}</h3>
+    <p class="muted small">${items.length ? t("cal.summary", { n: items.length, done, past: calDay <= now }) : ""}</p>
+    ${items.length ? `<ul class="cal-list">${items.map(({ task, status }) => {
+      const goal = goalById(task.goal_id);
+      // Une tâche encore active s'ouvre pour être modifiée ; les jours passés sont juste un souvenir
+      const editable = !past && !task.archived_at;
+      return `<li><button ${editable ? `data-edit-task="${task.id}"` : `class="cal-past" disabled`}>
+        <span class="cal-time">${esc(task.time || "")}</span>
+        ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}
+        <span class="cal-title">${esc(task.title)}</span>
+        <span class="cal-status ${status}">${t("cal." + status)}</span>
+      </button></li>`;
+    }).join("")}</ul>` : `<p class="empty">${calDay < addDays(now, -HISTORY_DAYS) ? t("cal.old") : t("cal.empty")}</p>`}
+    ${deadlines.map((g) => `<div class="cal-deadline">${t("cal.deadline", { goal: esc(g.text) })}</div>`).join("")}
+    ${past ? "" : `<button class="btn btn-ghost btn-full" data-cal-add="${calDay}" style="margin-top:14px"><i data-lucide="plus"></i> ${t("cal.addDay")}</button>`}`;
+  drawIcons();
+}
+
+$("cal-grid").addEventListener("click", (e) => {
+  const cell = e.target.closest("[data-cal-day]");
+  if (!cell) return;
+  calDay = cell.dataset.calDay;
+  // Un jour d'un autre mois (grisé) : on passe à ce mois-là
+  if (calDay.slice(0, 7) !== calMonth.slice(0, 7)) calMonth = calDay.slice(0, 8) + "01";
+  renderCalendar();
+  drawIcons();
+  // Sur téléphone, le programme du jour est sous le calendrier : on descend jusqu'à lui
+  if (innerWidth <= 1100) $("cal-day").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+$("cal-day").addEventListener("click", (e) => {
+  const add = e.target.closest("[data-cal-add]");
+  if (add) openTaskDialog(null, null, add.dataset.calAdd);
+});
+$("cal-prev").addEventListener("click", () => { calMonth = addDays(calMonth, -1).slice(0, 8) + "01"; renderCalendar(); drawIcons(); });
+$("cal-next").addEventListener("click", () => { calMonth = addDays(calMonth, 32).slice(0, 8) + "01"; renderCalendar(); drawIcons(); });
+$("cal-today").addEventListener("click", () => { calMonth = today().slice(0, 8) + "01"; calDay = today(); renderCalendar(); drawIcons(); });
+// "Ajouter une tâche" en haut de la page : pour le jour choisi (ou aujourd'hui s'il est passé)
+$("cal-add").addEventListener("click", () => openTaskDialog(null, null, calDay >= today() ? calDay : null));
 
 // --- Page Suivi ---
 function renderSuivi() {
@@ -863,7 +956,8 @@ $("day-picker").addEventListener("click", (e) => {
   drawRepeat();
 });
 
-function openTaskDialog(task, goalId = null) {
+// onDate : une nouvelle tâche pour un jour précis (depuis le calendrier)
+function openTaskDialog(task, goalId = null, onDate = null) {
   editingTask = task;
   const form = $("task-form");
   form.reset();
@@ -873,9 +967,9 @@ function openTaskDialog(task, goalId = null) {
   form.time.value = task?.time || "";
   form.goalId.value = String(task?.goal_id || goalId || "");
   // Le "Quand ?" de la tâche (ou "tous les jours" pour une nouvelle)
-  repeatMode = task?.on_date ? "date" : task?.days?.length ? "days" : "daily";
+  repeatMode = task?.on_date || onDate ? "date" : task?.days?.length ? "days" : "daily";
   pickedDays = task?.days ? [...task.days] : [];
-  form.onDate.value = task?.on_date || today();
+  form.onDate.value = task?.on_date || onDate || today();
   form.onDate.min = today();
   drawRepeat();
   $("task-dialog-title").textContent = t(task ? "task.edit" : "task.new");
@@ -1226,6 +1320,7 @@ const TOUR = [
   { key: "today",    page: "accueil",    target: ".today-card" },
   { key: "cats",     page: "accueil",    target: ".cats-card" },
   { key: "week",     page: "accueil",    target: ".week-card" },
+  { key: "calendar", page: "accueil",    target: '.side-link[data-page="calendrier"]', fixed: true },
   { key: "chat",     page: "accueil",    target: "#buddy-fab", round: true, fixed: true, pose: "content" },
   { key: "settings", page: "accueil",    target: '.side-link[data-page="parametres"]', fixed: true },
   { key: "emails",   page: "parametres", target: "#email-settings .toggles", pose: "idee" },

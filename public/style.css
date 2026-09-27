@@ -820,6 +820,84 @@ textarea { resize: vertical; }
 .toast.error { border-color: rgba(251, 113, 133, 0.5); white-space: normal; width: max-content; max-width: min(560px, calc(100vw - 32px)); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- LE CALENDRIER ---------- */
+/* Le raccourci "Voir mon agenda →" en bas de la carte Aujourd'hui */
+.agenda-link {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 11px 14px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--card-strong);
+  color: var(--text); font-weight: 600; font-size: 0.92rem; text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.agenda-link .lucide { width: 18px; height: 18px; color: var(--accent); }
+.agenda-link .lucide-arrow-right { margin-left: auto; color: var(--muted); transition: transform 0.2s, color 0.2s; }
+.agenda-link:hover { border-color: rgba(246, 183, 60, 0.5); background: rgba(246, 183, 60, 0.08); }
+.agenda-link:hover .lucide-arrow-right { transform: translateX(3px); color: var(--accent); }
+
+.cal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.cal-card { padding: 18px; }
+.cal-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+#cal-month { font-size: 1.2rem; font-weight: 800; text-transform: capitalize; min-width: 170px; text-align: center; }
+.cal-today-btn { margin-left: auto; padding: 8px 14px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.cal-head { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding-bottom: 4px; }
+.cal-cell {
+  min-height: 96px; padding: 6px; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column; gap: 3px;
+  border: 1px solid var(--border); background: var(--card-strong); color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; transition: border-color 0.2s;
+}
+.cal-cell:hover { border-color: rgba(246, 183, 60, 0.5); }
+.cal-cell.other { opacity: 0.4; }
+.cal-cell.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cal-num { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700; }
+.cal-cell.today .cal-num b { background: var(--accent); color: #1d1305; border-radius: 99px; padding: 1px 7px; }
+.cal-item {
+  font-size: 0.72rem; line-height: 1.3; padding: 2px 5px; border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 18%, transparent); border-left: 3px solid var(--c);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-item.done { opacity: 0.55; text-decoration: line-through; }
+.cal-item.missed { opacity: 0.45; }
+.cal-more { font-size: 0.7rem; color: var(--muted); padding-left: 4px; }
+.cal-dots { display: none; flex-wrap: wrap; gap: 3px; }
+.cal-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.cal-dots span.done, .cal-dots span.missed { opacity: 0.4; }
+
+/* Le programme du jour choisi */
+.cal-day h3 { font-size: 1.15rem; font-weight: 800; }
+.cal-list { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 8px; }
+.cal-list button {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--card-strong);
+  color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.2s;
+}
+.cal-list button:hover { border-color: rgba(246, 183, 60, 0.5); }
+.cal-list .cal-past { cursor: default; }
+.cal-time { min-width: 42px; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.cal-title { flex: 1; min-width: 0; }
+.cal-status { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.cal-status.done { color: var(--green); background: rgba(74, 222, 128, 0.12); }
+.cal-status.missed { color: var(--red); background: rgba(251, 113, 133, 0.12); }
+.cal-status.todo { color: var(--accent); background: rgba(246, 183, 60, 0.12); }
+.cal-status.planned { color: var(--muted); background: var(--card); }
+.cal-deadline {
+  margin-top: 8px; padding: 10px 12px; border-radius: 12px; font-size: 0.9rem;
+  background: rgba(246, 183, 60, 0.1); border: 1px solid rgba(246, 183, 60, 0.35);
+}
+@media (max-width: 1100px) { .cal-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) {
+  .cal-card { padding: 14px; }
+  .cal-nav { gap: 6px; }
+  .cal-nav .icon-btn { width: 36px; height: 36px; }
+  .cal-today-btn { padding: 7px 11px; font-size: 0.85rem; }
+  /* Sur téléphone : les tâches deviennent des petits points de couleur */
+  .cal-grid { gap: 4px; }
+  .cal-cell { min-height: 54px; padding: 5px 4px; gap: 4px; border-radius: 10px; }
+  .cal-item, .cal-more { display: none; }
+  .cal-dots { display: flex; }
+  .cal-num { font-size: 0.8rem; }
+  #cal-month { min-width: 0; font-size: 1.05rem; }
+}
 /* ---------- LA VISITE GUIDÉE ----------
    Le "spot" est un cadre transparent posé sur la zone expliquée : son ombre géante
    assombrit tout le reste de l'écran. La bulle se place juste au-dessus ou en dessous. */
@@ -948,4 +1026,11 @@ textarea { resize: vertical; }
   .buddy-fab { right: 16px; bottom: 16px; width: 58px; height: 58px; }
   .dot { width: 22px; height: 22px; }
   .dots-legend span { width: 22px; }
+}
+
+/* Petit téléphone : 6 icônes dans la barre du haut, on les resserre un peu */
+@media (max-width: 420px) {
+  .sidebar { gap: 8px; }
+  .side-link { padding: 7px; }
+  .sidebar .logo { font-size: 1.05rem; }
 }
