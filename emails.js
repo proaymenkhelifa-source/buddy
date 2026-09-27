@@ -170,6 +170,18 @@ async function markSent(supabase, userId, kind, ref, day) {
   return !error; // erreur = la ligne existait déjà
 }
 
+// Envoie un e-mail automatique UNE seule fois. S'il n'a pas pu partir (Resend, Claude…),
+// on le raye du carnet : il sera réessayé à la minute suivante (tant qu'on est dans le bon créneau).
+async function sendOnce(supabase, claude, base, kind, ref = "", task = null) {
+  if (!(await markSent(supabase, base.userId, kind, ref, base.today))) return; // déjà parti
+  try {
+    await sendOne(supabase, claude, { ...base, kind, task });
+  } catch (error) {
+    await supabase.from("email_log").delete().match({ user_id: base.userId, kind, ref, day: base.today });
+    throw error;
+  }
+}
+
 // Un e-mail de test, envoyé tout de suite (bouton dans Paramètres)
 export async function sendTestEmail(supabase, claude, { userId, to, profile, today }) {
   if (!resend) throw new Error("Il manque la clé RESEND_API_KEY dans .env.");
@@ -190,7 +202,13 @@ export async function runEmailTick(supabase, claude) {
   // Réglages par défaut (tout activé) pour quelqu'un qui n'a encore rien modifié
   const DEFAULTS = { email_morning: true, morning_time: "08:00", email_evening: true, evening_time: "21:00", email_tasks: true, email_weekly: true };
 
-  for (const user of usersPage.users) {
+  // Seulement les comptes CONFIRMÉS : écrire à une adresse non vérifiée (ou fausse) fait "rebondir" l'e-mail,
+  // et trop de rebonds abîment la réputation du domaine (les vrais e-mails finiraient dans les spams).
+  const confirmed = usersPage.users.filter((u) => u.email_confirmed_at);
+
+  // Tout le monde EN MÊME TEMPS (et pas l'un après l'autre) : la "sonnette" répond vite,
+  // sinon le service qui sonne chaque minute croit à une panne et finit par se désactiver.
+  await Promise.all(confirmed.map(async (user) => {
     const profile = { ...DEFAULTS, ...(profiles?.find((p) => p.user_id === user.id) || {}) };
     const to = profile.notify_email || user.email; // par défaut : l'adresse du compte
     // Le jour et l'heure… À L'HEURE DE LA PERSONNE (pas celle du serveur)
@@ -203,15 +221,15 @@ export async function runEmailTick(supabase, claude) {
     try {
       // 🌅 Le matin : dans l'heure qui suit l'heure choisie (si le serveur était éteint à 8h pile, ça part à 8h20)
       const morning = toMinutes(profile.morning_time || "08:00");
-      if (profile.email_morning && now >= morning && now < morning + 60 && (await markSent(supabase, user.id, "morning", "", today))) {
-        await sendOne(supabase, claude, { ...base, kind: "morning" });
+      if (profile.email_morning && now >= morning && now < morning + 60) {
+        await sendOnce(supabase, claude, base, "morning");
       }
 
       // 🌙 Le soir. Le dimanche, le bilan de la semaine remplace le récap du jour (un seul e-mail).
       const evening = toMinutes(profile.evening_time || "21:00");
       const eveningKind = isSunday && profile.email_weekly ? "weekly" : profile.email_evening ? "evening" : null;
-      if (eveningKind && now >= evening && now < evening + 60 && (await markSent(supabase, user.id, eveningKind, "", today))) {
-        await sendOne(supabase, claude, { ...base, kind: eveningKind });
+      if (eveningKind && now >= evening && now < evening + 60) {
+        await sendOnce(supabase, claude, base, eveningKind);
       }
 
       // ⏰ 5 minutes avant chaque tâche du jour qui a une heure (et qui n'est pas déjà faite)
@@ -220,15 +238,15 @@ export async function runEmailTick(supabase, claude) {
         for (const task of todays) {
           if (!task.time || task.done) continue;
           const start = toMinutes(task.time);
-          if (now >= start - 5 && now < start && (await markSent(supabase, user.id, "task", String(task.id), today))) {
-            await sendOne(supabase, claude, { ...base, kind: "task", task });
+          if (now >= start - 5 && now < start) {
+            await sendOnce(supabase, claude, base, "task", String(task.id), task);
           }
         }
       }
     } catch (e) {
       console.error(`📧 Souci d'e-mail pour ${to} :`, e.message);
     }
-  }
+  }));
 }
 
 // Sur ton ordinateur seulement : une minuterie qui lance le réveil toutes les minutes
