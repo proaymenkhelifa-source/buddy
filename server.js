@@ -476,7 +476,8 @@ const BUDDY_FORM = {
     analyse: { type: "string", description: "1 phrase : ce que la personne exprime et ce dont elle a besoin" },
     emotion: {
       type: "string",
-      enum: ["neutral", "happy", "celebrating", "understanding", "strict", "motivational"],
+      enum: ["neutral", "happy", "celebrating", "understanding", "strict", "motivational",
+        "hello", "empathy", "encouraging", "worried", "proud", "impressed", "laughing"],
     },
     message: { type: "string", description: "La réponse de Buddy, affichée à la personne" },
     prenom: { type: "string", description: "Prénom tout juste donné par la personne, ou vide" },

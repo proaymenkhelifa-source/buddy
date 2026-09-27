@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buddy – Ton coach personnel</title>
+  <!-- L'icône de Buddy (onglet du navigateur, et écran d'accueil du téléphone) -->
+  <link rel="icon" type="image/png" href="icons/logo.png">
+  <link rel="apple-touch-icon" href="icons/logo.png">
+  <meta name="theme-color" content="#07090f">
 
   <!-- La police d'écriture (gratuite, de Google Fonts) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,9 +35,9 @@
     Le français écrit ici ne sert que pendant le chargement.
   -->
 
-  <!-- Le logo (une petite montagne + "Buddy"), réutilisé à plusieurs endroits -->
+  <!-- Le logo (le "B" doré + "Buddy"), réutilisé à plusieurs endroits -->
   <template id="logo-template">
-    <svg class="logo-mark" viewBox="0 0 34 22" aria-hidden="true"><path d="M2 20 L12 6 L17 13 L21 8 L32 20"/></svg>Buddy
+    <img class="logo-img" src="icons/logo.png" alt="" width="36" height="36">Buddy
   </template>
 
   <!-- =========================================================
@@ -71,7 +75,7 @@
         </svg>
         <div class="scene-photo" style="--photo: url(images/hero.jpg)"></div>
         <div class="scene-window"></div>
-        <img class="buddy-img" src="buddy/repos.png" alt="Buddy">
+        <img class="buddy-img" src="buddy/base.webp" alt="Buddy">
         <div class="scene-desk"><div class="laptop"></div></div>
       </div>
     </main>
@@ -84,7 +88,7 @@
     <button class="btn btn-ghost auth-back" id="auth-back"><i data-lucide="arrow-left"></i> <span data-i18n="auth.back">Retour</span></button>
     <div class="card auth-card" id="auth-card">
       <a class="logo auth-logo" href="#"></a>
-      <div class="auth-avatar"><img src="buddy/motivation.png" alt=""></div>
+      <div class="auth-avatar"><img src="buddy/salut.webp" alt=""></div>
       <h1 id="auth-title">Crée ton compte</h1>
       <p class="muted" id="auth-subtitle">Buddy t'attend pour t'aider à atteindre tes objectifs.</p>
       <div class="tabs">
@@ -100,7 +104,7 @@
 
     <!-- Juste après l'inscription : "Bravo, va voir tes e-mails !" (remplace le formulaire) -->
     <div class="card auth-card auth-done hidden" id="auth-done">
-      <div class="auth-avatar auth-avatar-big"><img src="buddy/bravo.png" alt=""></div>
+      <div class="auth-avatar auth-avatar-big"><img src="buddy/bravo.webp" alt=""></div>
       <h1 data-i18n="auth.doneTitle">Bienvenue dans l'équipe ! 🎉</h1>
       <p class="muted" data-i18n="auth.doneText">Ton compte est prêt. Plus qu'une petite étape et Buddy est à toi :</p>
       <div class="mail-step">
@@ -178,7 +182,8 @@
           </div>
 
           <div class="banner-buddy">
-            <img class="buddy-img" id="buddy-img" src="buddy/motivation.png" alt="Buddy">
+            <img class="buddy-img" id="buddy-img" src="buddy/motivation.webp" alt="Buddy">
+            <span class="tenue-poof" id="tenue-poof" aria-hidden="true"></span>
           </div>
 
           <!-- "On reprend où on s'était arrêtés ?" : un aperçu de la dernière vraie conversation avec Buddy -->
@@ -226,7 +231,7 @@
               <circle class="hiker-head" cx="296" cy="140" r="3.5"/>
             </svg>
             <div class="photo" style="--photo: url(images/quote.jpg)"></div>
-            <svg class="logo-mark quote-mark" viewBox="0 0 34 22" aria-hidden="true"><path d="M2 20 L12 6 L17 13 L21 8 L32 20"/></svg>
+            <img class="logo-img quote-mark" src="icons/logo.png" alt="" width="32" height="32">
             <blockquote id="quote-long" data-i18n="quote.long">« La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus. »</blockquote>
           </section>
 
@@ -570,13 +575,13 @@
        BUDDY : la bulle flottante + le panneau de discussion
        ========================================================= -->
   <button id="buddy-fab" class="buddy-fab hidden" data-i18n-title="home.talk">
-    <img id="fab-buddy" src="buddy/repos.png" alt="">
+    <img id="fab-buddy" src="buddy/repos.webp" alt="">
   </button>
 
   <div id="drawer-backdrop" class="drawer-backdrop hidden"></div>
   <aside id="chat-drawer" class="drawer" aria-hidden="true">
     <header class="drawer-head">
-      <span class="drawer-avatar"><img id="drawer-buddy" src="buddy/repos.png" alt=""></span>
+      <span class="drawer-avatar"><img id="drawer-buddy" src="buddy/repos.webp" alt=""></span>
       <div>
         <h3>Buddy <span class="style-badge hidden" id="style-badge"></span></h3>
         <p class="drawer-status"><span class="status-dot"></span><span id="buddy-status" data-i18n="emo.neutral">Buddy t'écoute</span></p>
@@ -601,7 +606,7 @@
     <div class="tour-spot" id="tour-spot"></div>
     <div class="tour-bubble" id="tour-bubble" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       <div class="tour-head">
-        <span class="tour-avatar"><img id="tour-avatar" src="buddy/motivation.png" alt=""></span>
+        <span class="tour-avatar"><img id="tour-avatar" src="buddy/salut.webp" alt=""></span>
         <span class="tour-step" id="tour-step"></span>
         <button type="button" class="tour-skip" id="tour-skip" data-i18n="tour.skip">Passer</button>
       </div>

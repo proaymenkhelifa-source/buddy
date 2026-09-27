@@ -16,3 +16,6 @@ node_modules/
 # Petits fichiers créés par Windows / OneDrive
 Thumbs.db
 desktop.ini
+
+# Les planches d'origine de ChatGPT (lourdes) : gardées sur l'ordinateur / OneDrive, pas sur GitHub
+design/nouvelles-poses/

@@ -1013,7 +1013,8 @@ $("task-delete").addEventListener("click", async () => {
 // =============================================================
 // LE BONHOMME BUDDY ET SES ÉMOTIONS
 // =============================================================
-// Chaque émotion choisie par Buddy = une pose (image), un petit mouvement et une phrase (dans i18n.js : "emo.xxx").
+// Chaque émotion choisie par Buddy = une pose (image dans le dossier buddy/), un petit mouvement
+// et une phrase (dans i18n.js : "emo.xxx"). Buddy (Claude) choisit l'émotion à chaque réponse.
 const EMOTIONS = {
   neutral:       { pose: "repos",      mouvement: "" },
   happy:         { pose: "content",    mouvement: "pop" },
@@ -1021,19 +1022,96 @@ const EMOTIONS = {
   understanding: { pose: "idee",       mouvement: "pop" },
   strict:        { pose: "fache",      mouvement: "pop" },
   motivational:  { pose: "motivation", mouvement: "pop" },
+  hello:         { pose: "salut",      mouvement: "pop" },
+  empathy:       { pose: "compassion", mouvement: "" },
+  encouraging:   { pose: "encourage",  mouvement: "pop" },
+  worried:       { pose: "inquiet",    mouvement: "" },
+  proud:         { pose: "fier",       mouvement: "saute" },
+  impressed:     { pose: "surpris",    mouvement: "pop" },
+  laughing:      { pose: "rire",       mouvement: "pop" },
 };
-// On précharge les images, pour qu'il n'y ait pas de "flash" quand il change de pose.
-for (const e of Object.values(EMOTIONS)) new Image().src = "buddy/" + e.pose + ".png";
+
+// -------------------------------------------------------------
+// LES TENUES : Buddy "se transforme" selon le sujet de la discussion.
+// Chaque tenue n'a que quelques poses : pour une émotion qui n'y est pas, on prend la pose
+// la plus proche DANS LA MÊME TENUE (il ne change pas de tenue à chaque message).
+// Pour ajouter une tenue (ex : le costume) : ajoute ses poses ici, c'est tout.
+// -------------------------------------------------------------
+const OUTFITS = {
+  militaire: { repos: "militaire-salut", salut: "militaire-salut", fache: "militaire-fache", motivation: "militaire-motivation", bravo: "militaire-bravo" },
+  sport:     { repos: "sport-repos", content: "sport-content", motivation: "sport-motivation", bravo: "sport-bravo" },
+  etudiant:  { repos: "etudiant-repos", content: "etudiant-content", idee: "etudiant-idee", bravo: "etudiant-bravo" },
+  voyageur:  { repos: "voyageur-repos", content: "voyageur-content", montre: "voyageur-montre", bravo: "voyageur-bravo" },
+  qamis:     { repos: "qamis-repos", content: "qamis-content", encourage: "qamis-encourage", idee: "qamis-idee" },
+  // costume : pas encore dessiné → en attendant, les objectifs Finances gardent la tenue normale
+};
+// La pose la plus proche, quand une tenue n'a pas celle demandée (dans l'ordre de préférence)
+const CLOSEST = {
+  content: ["bravo"], bravo: ["content"], idee: ["content"], motivation: ["content", "bravo"],
+  fache: ["motivation"], salut: ["content"], fier: ["bravo", "content"], surpris: ["content"],
+  rire: ["content"], montre: ["content"], reflechit: ["idee"], ecoute: [],
+};
+// Les moments sensibles : Buddy "enlève le costume" et reprend sa tenue normale pour parler sérieusement
+const SENSITIVE = ["compassion", "inquiet", "encourage"];
+
+// La tenue qui a du sens MAINTENANT (null = tenue normale), décidée par l'application, jamais devinée :
+//   1. on parle d'un objectif précis → la tenue de sa catégorie (Sport → sport, Études → étudiant, Voyages → voyageur,
+//      Religion → qamis SEULEMENT si l'objectif parle clairement de l'islam, Finances → costume quand il existera) ;
+//   2. sinon, style de coaching "militaire" → tenue militaire ;
+//   3. sinon → tenue normale.
+const ISLAM_WORDS = /islam|musulman|muslim|pri[èe]re|salat|salah|coran|quran|qur'?an|ramadan|mosqu|allah|hadith|dhikr|sunna|jumu|fajr|du'?a\b|douaa?|invocation|tarawih|hajj|omra|umrah|zakat|sourate|surah/i;
+const CATEGORY_OUTFIT = { sport: "sport", etudes: "etudiant", voyages: "voyageur", finances: "costume" };
+
+function currentOutfit() {
+  if (!state) return null;
+  const goal = currentTopic && goalById(currentTopic);
+  if (goal) {
+    if (goal.category === "religion") return ISLAM_WORDS.test(`${goal.text} ${goal.reason || ""}`) ? "qamis" : null;
+    const outfit = CATEGORY_OUTFIT[goal.category];
+    if (outfit) return OUTFITS[outfit] ? outfit : null;
+  }
+  return state.profile.style === "military" ? "militaire" : null;
+}
+
+// Le nom de l'image à afficher pour une pose, dans la tenue du moment
+function poseFile(pose) {
+  const outfit = OUTFITS[currentOutfit()];
+  if (!outfit || (SENSITIVE.includes(pose) && !outfit[pose])) return pose; // tenue normale
+  for (const p of [pose, ...(CLOSEST[pose] || [])]) if (outfit[p]) return outfit[p];
+  return outfit.repos;
+}
+
+// On précharge les images (petites : ~35 Ko), pour qu'il n'y ait pas de "blanc" quand il change de pose.
+const preloaded = new Set();
+function preload(files) {
+  for (const f of files) if (!preloaded.has(f)) { preloaded.add(f); new Image().src = "buddy/" + f + ".webp"; }
+}
+preload(Object.values(EMOTIONS).map((e) => e.pose).concat(["ecoute", "reflechit"]));
 
 let currentEmotion = "motivational"; // l'émotion "de fond", gardée jusqu'à la prochaine réponse
+let shownOutfit = null;              // la tenue affichée en ce moment
 
 // Change la pose, le mouvement et la petite phrase de Buddy (bannière, discussion, bulle flottante)
 function setBuddy(pose, mouvement, status) {
+  const outfit = currentOutfit();
+  if (outfit) preload(Object.values(OUTFITS[outfit]));
+  const file = poseFile(pose);
   const img = $("buddy-img");
-  for (const other of [img, $("drawer-buddy"), $("fab-buddy")]) other.src = "buddy/" + pose + ".png";
+  for (const other of [img, $("drawer-buddy"), $("fab-buddy")]) other.src = "buddy/" + file + ".webp";
   img.className = "buddy-img";
   void img.offsetWidth; // petite astuce pour pouvoir rejouer la même animation
-  if (mouvement) img.classList.add(mouvement);
+  // Il vient de changer de tenue : petit effet magique ✨ (plutôt que le mouvement habituel)
+  const changed = (OUTFITS[outfit] && file !== pose ? outfit : null) !== shownOutfit;
+  shownOutfit = OUTFITS[outfit] && file !== pose ? outfit : null;
+  if (changed) {
+    img.classList.add("tenue");
+    const poof = $("tenue-poof");
+    poof.classList.remove("go");
+    void poof.offsetWidth;
+    poof.classList.add("go");
+  } else if (mouvement) {
+    img.classList.add(mouvement);
+  }
   $("buddy-status").textContent = status;
 }
 
@@ -1184,6 +1262,9 @@ function renderTopic() {
   const goal = currentTopic && state && goalById(currentTopic);
   $("topic-chip").classList.toggle("hidden", !goal);
   if (goal) $("topic-text").textContent = `${catOf(goal).emoji} ${goal.text}`;
+  // Le sujet (ou le style de coaching) a changé → Buddy change de tenue si besoin
+  const outfit = OUTFITS[currentOutfit()] ? currentOutfit() : null;
+  if (state && outfit !== shownOutfit) showEmotion(currentEmotion, false);
 }
 
 // =============================================================
@@ -1216,7 +1297,7 @@ let listening = false;
 $("message").addEventListener("input", () => {
   if (!listening && $("message").value.trim() && !sendButton.disabled) {
     listening = true;
-    setBuddy("repos", "", t("buddy.listening"));
+    setBuddy("ecoute", "", t("buddy.listening"));
   }
 });
 
@@ -1226,7 +1307,7 @@ async function sendToBuddy(text, extra = {}) {
   if (text) showMessage(text, "user");
   listening = false;
   sendButton.disabled = true;
-  setBuddy("repos", "reflechit", t("buddy.thinking"));
+  setBuddy("reflechit", "reflechit", t("buddy.thinking"));
   const typing = showTyping();
 
   try {
@@ -1237,8 +1318,9 @@ async function sendToBuddy(text, extra = {}) {
       showEmotion(currentEmotion, false);
     } else {
       showMessage(data.reply, "buddy");
-      showEmotion(data.emotion); // Buddy prend l'expression qu'il a choisie
+      // L'objectif dont on parle (d'abord : c'est lui qui décide de la tenue de Buddy)
       if (data.goalId) currentTopic = data.goalId;
+      showEmotion(data.emotion); // Buddy prend l'expression qu'il a choisie
       // Buddy a peut-être créé un objectif, noté un plan, un prénom… ou AGI (tâches) : on recharge tout
       refresh()
         .then(() => { if (data.acted) toast(t("toast.buddyActed")); })
@@ -1315,14 +1397,14 @@ for (const chip of document.querySelectorAll("[data-minutes]")) {
 // Pour ajouter une étape : une ligne ici + ses 2 textes dans i18n.js.
 // =============================================================
 const TOUR = [
-  { key: "welcome",  page: "accueil",    pose: "motivation" },
-  { key: "goals",    page: "accueil",    target: ".goals-card" },
-  { key: "today",    page: "accueil",    target: ".today-card" },
-  { key: "cats",     page: "accueil",    target: ".cats-card" },
-  { key: "week",     page: "accueil",    target: ".week-card" },
-  { key: "calendar", page: "accueil",    target: '.side-link[data-page="calendrier"]', fixed: true },
+  { key: "welcome",  page: "accueil",    pose: "salut" },
+  { key: "goals",    page: "accueil",    target: ".goals-card", pose: "montre" },
+  { key: "today",    page: "accueil",    target: ".today-card", pose: "montre" },
+  { key: "cats",     page: "accueil",    target: ".cats-card", pose: "montre" },
+  { key: "week",     page: "accueil",    target: ".week-card", pose: "fier" },
+  { key: "calendar", page: "accueil",    target: '.side-link[data-page="calendrier"]', fixed: true, pose: "montre" },
   { key: "chat",     page: "accueil",    target: "#buddy-fab", round: true, fixed: true, pose: "content" },
-  { key: "settings", page: "accueil",    target: '.side-link[data-page="parametres"]', fixed: true },
+  { key: "settings", page: "accueil",    target: '.side-link[data-page="parametres"]', fixed: true, pose: "montre" },
   { key: "emails",   page: "parametres", target: "#email-settings .toggles", pose: "idee" },
   { key: "end",      page: "accueil",    pose: "bravo" },
 ];
@@ -1365,7 +1447,7 @@ function showTourStep(i) {
   $("tour-step").textContent = t("tour.step", { n: i + 1, total: TOUR.length });
   $("tour-title").textContent = t(`tour.${step.key}.title`);
   $("tour-text").textContent = t(`tour.${step.key}.text`);
-  $("tour-avatar").src = "buddy/" + (step.pose || "content") + ".png";
+  $("tour-avatar").src = "buddy/" + (step.pose || "content") + ".webp";
   $("tour-prev").classList.toggle("hidden", i === 0);
   $("tour-skip").classList.toggle("hidden", i === last);
   $("tour-next").textContent = t(i === 0 ? "tour.start" : i === last ? "tour.finish" : "tour.next");

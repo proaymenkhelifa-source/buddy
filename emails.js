@@ -123,7 +123,7 @@ export function emailHtml(kind, message, lang = "fr") {
   const paragraphs = message.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 14px">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
   return `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#07090f;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:520px;margin:0 auto;background:#121621;border:1px solid #232838;border-radius:18px;padding:28px;color:#f3efe8">
-    <div style="font-size:22px;font-weight:800;margin-bottom:6px">Buddy<span style="color:#f6b73c">.</span></div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:6px"><img src="${APP_URL}/icons/logo.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;margin-right:10px">Buddy</div>
     <div style="display:inline-block;font-size:13px;font-weight:700;color:#f6b73c;background:rgba(246,183,60,.14);border-radius:99px;padding:5px 12px;margin-bottom:20px">${badge}</div>
     <div style="font-size:16px;line-height:1.6">${paragraphs}</div>
     <a href="${link}" style="display:inline-block;margin-top:10px;background:#f6b73c;color:#1d1305;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:99px">${button}</a>
