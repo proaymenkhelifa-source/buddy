@@ -228,6 +228,13 @@ textarea { resize: vertical; }
 .tab { flex: 1; background: transparent; border: none; color: var(--muted); font: inherit; font-weight: 600; padding: 9px; border-radius: 10px; cursor: pointer; }
 .tab.active { background: var(--card); color: var(--text); }
 .auth-info { color: var(--red); font-size: 0.9rem; min-height: 1.2em; }
+.auth-info.ok { color: var(--green); }
+/* "Mot de passe oublié ?" : un petit lien discret, sous le mot de passe, à droite */
+.auth-forgot {
+  justify-self: end; margin-top: -4px; padding: 2px 0;
+  background: none; border: none; color: var(--muted); font: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer;
+}
+.auth-forgot:hover { color: var(--accent); }
 /* L'écran "Bienvenue dans l'équipe !" après l'inscription */
 .auth-avatar-big { width: 120px; height: 120px; animation: pop-in 0.6s cubic-bezier(.2, 1.6, .4, 1); }
 .auth-done h1 { font-size: 1.7rem; }

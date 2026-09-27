@@ -92,6 +92,11 @@ const niceDate = (key, options = { weekday: "long", day: "numeric", month: "long
   new Date(key + "T12:00:00").toLocaleDateString(locale(), options);
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+// On arrive depuis le lien "choisir un nouveau mot de passe" reçu par e-mail ?
+// (on le regarde MAINTENANT : Supabase efface ces informations de l'adresse une fois lues)
+const RECOVERY_LINK = /type=recovery/.test(location.hash);
+const EXPIRED_LINK = /error_code=otp_expired|error=access_denied/.test(location.hash);
+
 // On demande au serveur l'adresse Supabase et la clé PUBLIQUE.
 const config = await (await fetch("/api/config")).json();
 const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
@@ -153,35 +158,61 @@ function showApp() {
 // =============================================================
 // LE COMPTE (inscription / connexion / déconnexion)
 // =============================================================
-let authMode = "signup"; // "signup" = créer un compte, "login" = se connecter
+// Les 4 écrans possibles :
+//   "signup" = créer un compte · "login" = se connecter
+//   "forgot" = mot de passe oublié (on reçoit un lien par e-mail) · "reset" = choisir un nouveau mot de passe
+let authMode = "signup";
+const AUTH_SCREENS = {
+  signup: { hash: "#inscription",          title: "auth.titleSignup", sub: "auth.subSignup", submit: "auth.submitSignup" },
+  login:  { hash: "#connexion",            title: "auth.titleLogin",  sub: "auth.subLogin",  submit: "auth.submitLogin" },
+  forgot: { hash: "#mot-de-passe-oublie",  title: "auth.titleForgot", sub: "auth.subForgot", submit: "auth.submitForgot" },
+  reset:  { hash: "#nouveau-mot-de-passe", title: "auth.titleReset",  sub: "auth.subReset",  submit: "auth.submitReset" },
+};
 
-// La page de connexion / inscription est une page à part entière (#inscription ou #connexion dans l'adresse) :
+// Montre un petit message sous le bouton (en rouge, ou en vert si c'est une bonne nouvelle)
+function authInfo(text, ok = false) {
+  $("auth-info").textContent = text;
+  $("auth-info").classList.toggle("ok", ok);
+}
+
+// La page de connexion / inscription est une page à part entière (#inscription, #connexion… dans l'adresse) :
 // le bouton "retour" du téléphone ramène à l'accueil.
 // fresh = false : on ne fait que retraduire l'écran déjà ouvert (changement de langue)
 function openAuth(mode, fresh = true) {
   authMode = mode;
+  const screen = AUTH_SCREENS[mode];
   $("landing").classList.add("hidden");
   $("auth-screen").classList.remove("hidden");
   for (const tab of document.querySelectorAll(".tab")) {
     tab.classList.toggle("active", tab.dataset.mode === mode);
   }
-  const signup = mode === "signup";
-  $("auth-title").textContent = t(signup ? "auth.titleSignup" : "auth.titleLogin");
-  $("auth-subtitle").textContent = t(signup ? "auth.subSignup" : "auth.subLogin");
-  $("auth-submit").textContent = t(signup ? "auth.submitSignup" : "auth.submitLogin");
-  $("password").autocomplete = signup ? "new-password" : "current-password";
-  $("auth-switch").innerHTML = signup
-    ? `${t("auth.haveAccount")} <button type="button" data-mode-switch="login">${t("auth.tabLogin")}</button>`
-    : `${t("auth.noAccount")} <button type="button" data-mode-switch="signup">${t("auth.tabSignup")}</button>`;
+  $("auth-title").textContent = t(screen.title);
+  $("auth-subtitle").textContent = t(screen.sub);
+  $("auth-submit").textContent = t(screen.submit);
+  // Ce qu'on affiche selon l'écran
+  document.querySelector(".auth-card .tabs").classList.toggle("hidden", mode === "forgot" || mode === "reset");
+  $("email").classList.toggle("hidden", mode === "reset");
+  $("password").classList.toggle("hidden", mode === "forgot");
+  $("password2").classList.toggle("hidden", mode !== "reset");
+  $("auth-forgot").classList.toggle("hidden", mode !== "login");
+  $("password").placeholder = t(mode === "reset" ? "auth.newPasswordPh" : "auth.passwordPh");
+  $("password").autocomplete = mode === "login" ? "current-password" : "new-password";
+  $("auth-switch").innerHTML =
+    mode === "signup" ? `${t("auth.haveAccount")} <button type="button" data-mode-switch="login">${t("auth.tabLogin")}</button>` :
+    mode === "login" ? `${t("auth.noAccount")} <button type="button" data-mode-switch="signup">${t("auth.tabSignup")}</button>` :
+    mode === "forgot" ? `${t("auth.remember")} <button type="button" data-mode-switch="login">${t("auth.tabLogin")}</button>` : "";
   if (!fresh) return;
   $("auth-card").classList.remove("hidden"); // le formulaire (et pas l'écran "Bienvenue dans l'équipe")
   $("auth-done").classList.add("hidden");
   window.scrollTo(0, 0);
-  $("auth-info").textContent = "";
-  const wanted = signup ? "#inscription" : "#connexion";
-  if (location.hash !== wanted) history.pushState(null, "", wanted);
-  setTimeout(() => $("email").focus(), 50);
+  authInfo("");
+  if (location.hash !== screen.hash) history.pushState(null, "", screen.hash);
+  setTimeout(() => $(mode === "reset" ? "password" : "email").focus(), 50);
 }
+$("auth-forgot").addEventListener("click", () => openAuth("forgot"));
+
+// L'écran qui correspond à l'adresse (#connexion…), pour le bouton "retour" du téléphone
+const authModeFromHash = () => Object.keys(AUTH_SCREENS).find((m) => AUTH_SCREENS[m].hash === location.hash && m !== "reset");
 
 function closeAuth() {
   $("auth-screen").classList.add("hidden");
@@ -202,20 +233,18 @@ $("auth-back").addEventListener("click", () => {
   closeAuth();
 });
 // Le bouton "retour" du navigateur ou du téléphone
-window.addEventListener("hashchange", () => {
-  if (session) return;
-  if (location.hash === "#inscription") openAuth("signup");
-  else if (location.hash === "#connexion") openAuth("login");
-  else closeAuth();
-});
-window.addEventListener("popstate", () => {
-  if (session) return;
-  if (location.hash === "#inscription") openAuth("signup");
-  else if (location.hash === "#connexion") openAuth("login");
-  else closeAuth();
-});
-// Appuyer sur Entrée dans le mot de passe = cliquer sur le bouton
-$("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("auth-submit").click(); });
+for (const event of ["hashchange", "popstate"]) {
+  window.addEventListener(event, () => {
+    if (session || authMode === "reset") return;
+    const mode = authModeFromHash();
+    if (mode) { if (mode !== authMode || $("auth-screen").classList.contains("hidden")) openAuth(mode); }
+    else closeAuth();
+  });
+}
+// Appuyer sur Entrée dans un champ = cliquer sur le bouton
+for (const id of ["email", "password", "password2"]) {
+  $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("auth-submit").click(); });
+}
 
 // Les erreurs de Supabase (en anglais technique) → un message clair, dans la langue de la page
 function authErrorText(error) {
@@ -226,6 +255,8 @@ function authErrorText(error) {
   if (/already registered|already exists/i.test(m)) return t("auth.errExists");
   if (/invalid login credentials/i.test(m)) return t("auth.errCredentials");
   if (/email not confirmed/i.test(m)) return t("auth.errNotConfirmed");
+  if (/different from the old/i.test(m)) return t("auth.errSamePassword");
+  if (/session|expired|jwt/i.test(m)) return t("auth.linkExpired");
   if (/password/i.test(m)) return t("auth.errPassword");
   if (/email/i.test(m) && /invalid|validate/i.test(m)) return t("auth.errEmail");
   return t("auth.error") + m;
@@ -236,24 +267,43 @@ $("auth-submit").addEventListener("click", async () => {
   if (button.disabled) return; // pas de double clic (Supabase bloquerait les tentatives répétées)
   const email = $("email").value.trim();
   const password = $("password").value;
+  // Vérifications simples avant de demander quoi que ce soit à Supabase
+  if (authMode !== "reset" && !email) return authInfo(t("auth.errEmailMissing"));
+  if (authMode === "reset" && password.length < 6) return authInfo(t("auth.errPassword"));
+  if (authMode === "reset" && password !== $("password2").value) return authInfo(t("auth.errMismatch"));
   button.disabled = true;
-  $("auth-info").textContent = "…";
+  authInfo("…");
   let result;
   try {
-    result = authMode === "signup"
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password });
+    if (authMode === "signup") result = await supabase.auth.signUp({ email, password });
+    else if (authMode === "login") result = await supabase.auth.signInWithPassword({ email, password });
+    // Mot de passe oublié : Supabase envoie un e-mail avec un lien qui ramène ici
+    else if (authMode === "forgot") result = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/" });
+    // Le nouveau mot de passe (on est connecté grâce au lien de l'e-mail)
+    else result = await supabase.auth.updateUser({ password });
   } catch (e) {
     result = { data: {}, error: e };
   }
   button.disabled = false;
   const { data, error } = result;
 
-  if (error) return ($("auth-info").textContent = authErrorText(error));
+  if (error) return authInfo(authErrorText(error));
+  if (authMode === "forgot") {
+    // On ne dit jamais si l'adresse a un compte ou pas (sinon n'importe qui pourrait le vérifier)
+    return authInfo(t("auth.forgotSent"), true);
+  }
+  if (authMode === "reset") {
+    for (const id of ["password", "password2"]) $(id).value = "";
+    authMode = "login";
+    history.replaceState(null, "", "#accueil");
+    const { data: current } = await supabase.auth.getSession();
+    await loadMyBuddy(current.session);
+    return toast(t("toast.passwordChanged"));
+  }
   if (!data.session) {
     // Si Supabase demande de confirmer l'e-mail, il n'y a pas encore de session :
     // on affiche l'écran "Bienvenue dans l'équipe ! Va voir tes e-mails".
-    $("auth-info").textContent = "";
+    authInfo("");
     $("auth-done-email").textContent = email;
     $("auth-card").classList.add("hidden");
     $("auth-done").classList.remove("hidden");
@@ -1585,11 +1635,21 @@ async function loadMyBuddy(newSession) {
 translatePage();
 // … puis : déjà connecté ? (Supabase se souvient de la connexion)
 const { data } = await supabase.auth.getSession();
-if (data.session) {
+if (data.session && RECOVERY_LINK) {
+  // On vient du lien "mot de passe oublié" : on choisit d'abord un nouveau mot de passe
+  showLanding();
+  openAuth("reset");
+} else if (data.session) {
   loadMyBuddy(data.session);
 } else {
   showLanding();
-  // Un lien direct vers la page d'inscription ou de connexion (ex : buddycoach.app/#inscription)
-  if (location.hash === "#inscription") openAuth("signup");
-  if (location.hash === "#connexion") openAuth("login");
+  if (EXPIRED_LINK) {
+    // Le lien de l'e-mail a expiré (ou a déjà servi) : on propose d'en redemander un
+    openAuth("forgot");
+    authInfo(t("auth.linkExpired"));
+  } else {
+    // Un lien direct vers la page d'inscription, de connexion… (ex : buddycoach.app/#inscription)
+    const mode = authModeFromHash();
+    if (mode) openAuth(mode);
+  }
 }

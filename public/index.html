@@ -97,6 +97,9 @@
       </div>
       <input id="email" type="email" placeholder="Ton e-mail" data-i18n-ph="auth.emailPh" autocomplete="email">
       <input id="password" type="password" placeholder="Mot de passe (6 caractères minimum)" data-i18n-ph="auth.passwordPh" autocomplete="current-password">
+      <!-- Seulement pour choisir un nouveau mot de passe : on le tape 2 fois (pour éviter une faute de frappe) -->
+      <input id="password2" class="hidden" type="password" placeholder="Confirme le mot de passe" data-i18n-ph="auth.password2Ph" autocomplete="new-password">
+      <button type="button" class="auth-forgot hidden" id="auth-forgot" data-i18n="auth.forgot">Mot de passe oublié ?</button>
       <button class="btn btn-primary btn-full" id="auth-submit">Créer mon compte</button>
       <p id="auth-info" class="auth-info"></p>
       <p class="muted small auth-switch" id="auth-switch"></p>
