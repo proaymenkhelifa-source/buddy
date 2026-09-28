@@ -9,6 +9,7 @@ import {
   withTimeZone, timeHHMM,
 } from "./public/shared.js";
 import { t, cleanLang } from "./public/i18n.js";
+import { sendPush, pushReady } from "./push.js";
 
 // La langue de la personne (choisie avec le bouton FR/EN, enregistrée dans son profil)
 const langOf = (profile) => cleanLang(profile.language) || "fr";
@@ -26,21 +27,23 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const FROM = process.env.EMAIL_FROM || "Buddy <onboarding@resend.dev>";
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
-// La fiche que Claude remplit pour chaque e-mail
+// La fiche que Claude remplit pour chaque rappel : l'e-mail ET la notification du téléphone (en une seule fois)
 const EMAIL_FORM = {
   type: "object",
   properties: {
-    sujet: { type: "string", description: "Objet de l'e-mail, court et accrocheur (max 60 caractères)" },
-    message: { type: "string", description: "Le texte de l'e-mail, 2 à 6 phrases, paragraphes séparés par une ligne vide" },
+    sujet: { type: "string", description: "Objet de l'e-mail : précis et personnel, 45 caractères max" },
+    message: { type: "string", description: "Le texte de l'e-mail, 2 à 5 phrases, paragraphes séparés par une ligne vide" },
+    notif_titre: { type: "string", description: "Titre de la notification du téléphone : 35 caractères max, précis" },
+    notif_texte: { type: "string", description: "Texte de la notification : UNE phrase, 90 caractères max, qui donne envie d'ouvrir" },
   },
-  required: ["sujet", "message"],
+  required: ["sujet", "message", "notif_titre", "notif_texte"],
   additionalProperties: false,
 };
 
 const STYLE_NAMES = {
-  military: "militaire (sans excuses, très direct)",
-  supportive: "bienveillant (chaleureux, rassurant)",
-  balanced: "équilibré (encourage et challenge)",
+  military: "militaire : sec, exigeant, zéro excuse, phrases courtes",
+  supportive: "bienveillant : chaleureux et rassurant, mais adulte (jamais gnangnan)",
+  balanced: "équilibré : direct, exigeant quand il faut, reconnaît les vrais efforts",
 };
 
 // "08:30" → 510 (le nombre de minutes depuis minuit)
@@ -48,14 +51,13 @@ const toMinutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3,
 
 // Pour que les e-mails ne se ressemblent jamais : chaque e-mail reçoit un "angle" tiré au hasard.
 const ANGLES = [
-  "commence par une question directe",
-  "utilise une image ou une métaphore tirée du domaine de ses objectifs",
-  "appuie-toi sur un chiffre précis de sa semaine (streak, tâches faites)",
-  "propose un mini-défi concret pour aujourd'hui",
-  "rappelle pourquoi ses objectifs comptent vraiment",
-  "sois ultra bref et percutant",
-  "commence par une observation sur sa progression",
-  "termine par une phrase courte qui claque",
+  "commence par une question directe et précise",
+  "commence par un chiffre précis de sa semaine (série, tâches faites) et ce qu'il veut dire",
+  "va droit à la tâche la plus importante du jour",
+  "rappelle en une phrase POURQUOI son objectif compte pour lui (sa raison, s'il l'a donnée)",
+  "sois ultra bref : 2 phrases, pas une de plus",
+  "commence par une observation honnête sur sa régularité",
+  "pose un petit défi concret et mesurable pour aujourd'hui",
 ];
 const pickAngle = () => ANGLES[Math.floor(Math.random() * ANGLES.length)];
 
@@ -67,17 +69,17 @@ export async function writeEmail(claude, kind, info) {
   const name = profile.first_name || "la personne";
   const en = langOf(profile) === "en";
   const goalsText = goals.length
-    ? goals.map((g) => `- [${(CATEGORIES[g.category] || CATEGORIES.autre).label}] ${g.text} (${g.progress} %)`).join("\n")
+    ? goals.map((g) => `- [${(CATEGORIES[g.category] || CATEGORIES.autre).label}] ${g.text} (${g.progress} %)${g.deadline ? ` — échéance : ${g.deadline}` : ""}${g.reason ? ` — sa raison : « ${g.reason} »` : ""}`).join("\n")
     : "Aucun objectif pour l'instant.";
   const tasksText = todays.length
     ? todays.map((t) => `- ${t.done ? "✓ FAITE" : "○ pas faite"} : ${t.title}${t.time ? " à " + t.time : ""}`).join("\n")
     : "Aucune tâche prévue aujourd'hui.";
 
   const instructions = {
-    morning: `Écris le MOT DU MATIN : souhaite une bonne journée et du courage, rappelle très brièvement 1 ou 2 objectifs, et annonce les tâches du jour. Termine par une phrase qui donne envie de s'y mettre.`,
-    evening: `Écris le RÉCAP DU SOIR : fais le bilan des tâches du jour (faites / pas faites), félicite sincèrement ce qui a été fait, et pour ce qui n'a pas été fait, pose une question pour comprendre sans culpabiliser. Demande comment s'est passée la journée et invite à venir en parler à Buddy dans l'application.`,
-    task: `Écris un RAPPEL : la tâche « ${task?.title} » commence à ${task?.time}, dans 5 minutes. Très court (2-3 phrases) : donne l'élan pour la commencer maintenant.`,
-    weekly: `Écris le BILAN DE LA SEMAINE (c'est dimanche soir) : les chiffres clés de la semaine (tâches faites, jours actifs, streak, joker), 1 chose à féliciter précisément, 1 point qui a coincé. Termine en l'invitant à cliquer sur le bouton pour faire le bilan complet avec Buddy et ajuster son plan pour la semaine prochaine.`,
+    morning: `Écris le MOT DU MATIN : ce qui l'attend aujourd'hui (les tâches, la plus importante d'abord) et pourquoi ça compte, en lien avec UN de ses objectifs. Pas de « bonne journée ! » creux.`,
+    evening: `Écris le POINT DU SOIR : le résultat exact de la journée (X tâches sur Y). Si tout est fait, reconnais-le en une phrase sobre. S'il manque quelque chose, nomme la tâche et pose UNE vraie question pour comprendre ce qui a bloqué. Invite à répondre à Buddy dans l'application.`,
+    task: `Écris un RAPPEL : la tâche « ${task?.title} » commence à ${task?.time}, dans 5 minutes. 1 à 2 phrases, pas plus : ce qu'il faut faire maintenant, concrètement.`,
+    weekly: `Écris le BILAN DE LA SEMAINE (c'est dimanche soir), droit au but : les chiffres de la semaine d'abord (tâches faites, jours actifs, série, joker), 1 vraie réussite précise, 1 point qui a coincé. Termine en invitant à faire le bilan complet avec Buddy pour ajuster la semaine prochaine.`,
   }[kind];
   // Pour le bilan de la semaine, Claude a besoin du détail des 7 derniers jours
   const weekDetail = stats.history.slice(-7)
@@ -87,20 +89,33 @@ export async function writeEmail(claude, kind, info) {
   const response = await claude.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 800,
-    system: `Tu es Buddy, le coach personnel de l'application Buddy. Tu écris un e-mail à ${name}, ${en
-      ? "en ANGLAIS (English) : l'objet et le texte sont entièrement en anglais, sur un ton familier et chaleureux, comme un ami coach"
-      : "en français, en la tutoyant, comme un ami coach"}.
-Style de coaching choisi : ${STYLE_NAMES[profile.communication_style] || "équilibré (encourage et challenge)"}.
+    system: `Tu es Buddy, le coach personnel de l'application Buddy. Tu écris à ${name} un e-mail ET le texte de la notification de son téléphone, ${en
+      ? "en ANGLAIS (English) : tout est entièrement en anglais"
+      : "en français, en tutoyant"}.
+Style de coaching choisi : ${STYLE_NAMES[profile.communication_style] || STYLE_NAMES.balanced}.
 ${instructions}
-Règles :
-- Chaque e-mail doit être différent : varie les formulations, les images, les angles. Jamais de formule toute faite.
-- Utilise le vocabulaire du domaine de ses objectifs (sport, études, finances, voyages…).
+
+LE TON (très important) :
+- Tu parles comme un vrai coach qui connaît la personne, d'adulte à adulte. Direct, sobre, personnel. Pas comme une pub, pas comme un animateur de colonie.
+- INTERDIT : l'enthousiasme forcé et les formules marketing (« Tu vas tout déchirer ! », « C'est ton moment ! », « Let's go ! », « Ne lâche rien ! », « Tu es incroyable »), les points d'exclamation à répétition, les MAJUSCULES pour crier, les métaphores clichés (montagne, sommet, marathon de la vie…), les questions rhétoriques creuses.
+- 0 ou 1 emoji au maximum, et seulement s'il apporte quelque chose.
+- Commence directement par le concret : la tâche, le chiffre, l'objectif. Pas d'introduction, pas de « J'espère que tu vas bien ».
+- Sois spécifique : nomme SES tâches et SES objectifs avec leurs vrais mots. Un message qu'on pourrait envoyer à n'importe qui est raté.
+- Même en style bienveillant : chaleureux mais adulte, jamais infantilisant.
+
+L'OBJET ET LA NOTIFICATION (c'est ce qui décide si la personne ouvre) :
+- Précis et personnel : ils contiennent un vrai élément de sa journée (le nom de la tâche, l'heure, un chiffre). Exemples de l'esprit attendu (ne les recopie pas) : « 18h : ta séance de course », « 2 sur 3 aujourd'hui. Et la lecture ? », « 5 jours d'affilée. On garde le rythme ».
+- Donne envie d'ouvrir par la curiosité ou l'enjeu, jamais par le racolage (pas de « Tu ne devineras jamais », pas de « Urgent »).
+- La notification se comprend seule, en un coup d'œil sur l'écran verrouillé.
+
+RÈGLES :
+- Chaque message doit être différent des précédents. Angle imposé pour celui-ci : ${pickAngle()}.
+- Utilise le vocabulaire du domaine de ses objectifs (sport, études, finances, voyages…) quand c'est naturel.
 ${religionRule(goals)}
-- Angle imposé pour CET e-mail (pour qu'il ne ressemble pas aux précédents) : ${pickAngle()}.
 - N'invente aucune tâche ni aucun chiffre, et ne modifie JAMAIS un chiffre des objectifs (si l'objectif dit « 10 km », c'est 10 km) : utilise seulement les données ci-dessous, recopiées exactement.
-- Tu ne sais pas si la personne est un homme ou une femme : pas de « champion », « prêt », « il », « frère »… Formule de façon neutre (« tu te sens d'attaque ? »).
-- Court et percutant : 3 à 6 phrases au total, en 2 ou 3 petits paragraphes.
-- Pas de Markdown (pas de ** ni de #). Pas de signature (elle est ajoutée automatiquement).`,
+- N'invente aucune durée ni date (« dans 2 mois », « plus que 3 semaines ») : parle d'une échéance seulement si elle est donnée ci-dessous.
+- Tu ne sais pas si la personne est un homme ou une femme : pas de « champion », « prêt », « il », « frère »… Formule de façon neutre.
+- E-mail court : 2 à 5 phrases, en 1 à 3 petits paragraphes. Pas de Markdown (pas de ** ni de #). Pas de signature (elle est ajoutée automatiquement).`,
     messages: [{
       role: "user",
       content: `Date : ${dayLabel(today)} (${today})\n\nSes objectifs :\n${goalsText}\n\nSes tâches d'aujourd'hui :\n${tasksText}\n\nSon streak : ${stats.streak} jour(s) d'affilée. Cette semaine : ${stats.week.done}/${stats.week.planned} tâches faites, ${stats.week.activeDays} jour(s) actif(s). Joker de la semaine : ${stats.jokerUsedOn ? "utilisé le " + dayLabel(stats.jokerUsedOn) : "pas utilisé"}.\nLes 7 derniers jours : ${weekDetail}`,
@@ -138,7 +153,7 @@ export function emailHtml(kind, message, lang = "fr") {
 async function gatherInfo(supabase, userId, today, timezone) {
   const since = addDays(today, -(HISTORY_DAYS + 5));
   const [goalsRes, tasksRes, logsRes] = await Promise.all([
-    supabase.from("goals").select("id, text, category, progress, created_at").eq("user_id", userId),
+    supabase.from("goals").select("id, text, category, progress, reason, deadline, created_at").eq("user_id", userId),
     supabase.from("tasks").select("*").eq("user_id", userId).or(`archived_at.is.null,archived_at.gte.${since}`),
     supabase.from("task_logs").select("task_id, day").eq("user_id", userId).gte("day", since),
   ]);
@@ -156,12 +171,32 @@ async function gatherInfo(supabase, userId, today, timezone) {
   });
 }
 
+// Envoie UN rappel (écrit une seule fois par Claude) :
+//   1. en NOTIFICATION sur ses téléphones / ordinateurs, si la personne les a activées (gratuit) ;
+//   2. par E-MAIL si elle n'a pas de notification, ou si elle a demandé les deux (et toujours pour l'e-mail de test).
 async function sendOne(supabase, claude, { userId, to, profile, kind, task, today }) {
   const info = await gatherInfo(supabase, userId, today, profile.timezone || DEFAULT_TIMEZONE);
-  const { sujet, message } = await writeEmail(claude, kind === "test" ? "morning" : kind, { ...info, profile, task, today });
-  const { error } = await resend.emails.send({ from: FROM, to, subject: sujet, html: emailHtml(kind, message, langOf(profile)), text: message });
-  if (error) throw new Error(error.message);
-  console.log(`📧 E-mail "${kind}" envoyé à ${to} : ${sujet}`);
+  const written = await writeEmail(claude, kind === "test" ? "morning" : kind, { ...info, profile, task, today });
+
+  let pushed = 0;
+  if (kind !== "test") {
+    pushed = await sendPush(supabase, userId, {
+      title: written.notif_titre,
+      body: written.notif_texte,
+      url: kind === "weekly" ? "/#bilan" : "/#accueil",
+      tag: kind === "task" ? "task-" + task.id : kind, // une nouvelle notification du même genre remplace l'ancienne
+      ttl: kind === "task" ? 600 : 4 * 3600,          // un rappel "dans 5 min" ne doit pas arriver des heures après
+    });
+    if (pushed) console.log(`🔔 Notification "${kind}" envoyée (${pushed} appareil(s)) : ${written.notif_titre}`);
+  }
+
+  if (resend && (kind === "test" || !pushed || profile.email_with_push)) {
+    const { error } = await resend.emails.send({ from: FROM, to, subject: written.sujet, html: emailHtml(kind, written.message, langOf(profile)), text: written.message });
+    if (error) throw new Error(error.message);
+    console.log(`📧 E-mail "${kind}" envoyé à ${to} : ${written.sujet}`);
+  } else if (!pushed) {
+    throw new Error("ni notification ni e-mail possible");
+  }
 }
 
 // Note dans le carnet qu'un e-mail part. Renvoie false s'il était déjà parti (on ne l'envoie pas 2 fois).
@@ -194,7 +229,7 @@ export async function sendTestEmail(supabase, claude, { userId, to, profile, tod
 // En ligne (Vercel) : un service extérieur "sonne" à l'adresse /api/cron/tick toutes les minutes.
 // =============================================================
 export async function runEmailTick(supabase, claude) {
-  if (!resend) return;
+  if (!resend && !pushReady) return;
   const { data: usersPage, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   if (error) throw error;
   const { data: profiles } = await supabase.from("profiles").select("*");

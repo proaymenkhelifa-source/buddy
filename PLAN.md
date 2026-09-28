@@ -182,5 +182,10 @@ Known gotchas:
 - Instead: each network gets its own link (`buddycoach.app/?src=insta-fr`, `?src=tiktok-en`…). The page keeps the FIRST tag seen (`localStorage` "buddy-source"), sends it with the sign-up (Supabase `user_metadata.source`, so it survives opening the confirmation e-mail in another browser), and `/api/state` files it once in `profiles.source`. SQL: `supabase-source.sql` (owner to run). See it in Supabase → Table Editor → profiles → column `source`.
 - Before pushing the carousels: watch the Anthropic budget ($15/month limit would be hit fast with many users) + legal pages (privacy policy, terms).
 
+## Phone notifications (2026-09-28)
+- Web Push (no extra service, free): `public/manifest.webmanifest` + icons 192/512 (installable app), `public/sw.js` (the "mailman" showing notifications), `push.js` (server side, library `web-push`, VAPID keys in `.env` → to copy to Vercel: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT). Table `push_subscriptions` + `profiles.email_with_push` (`supabase-push.sql`). Routes `/api/push/subscribe|unsubscribe|test`.
+- Each reminder is written ONCE by Claude (e-mail + short notification) → sent as a notification if the person has turned them on, otherwise by e-mail (or both if "Aussi par e-mail"). Home banner "Active les notifications" + Settings card; iPhone: guide to add Buddy to the home screen (required by Apple).
+- New tone for e-mails/notifications (owner: "less childish, less ad-like, more direct and personal"): rules in `writeEmail` (emails.js). Samples reviewed.
+
 ## Marketing & next steps
 See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

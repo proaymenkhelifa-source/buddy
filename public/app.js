@@ -375,6 +375,11 @@ $("user-btn").addEventListener("click", (e) => {
 document.addEventListener("click", () => $("user-dropdown").classList.add("hidden"));
 
 async function logout() {
+  // Ce téléphone ne doit plus recevoir les notifications de la personne qui se déconnecte
+  try {
+    const sub = await currentSubscription();
+    if (sub && session) await api("POST", "/api/push/unsubscribe", { endpoint: sub.endpoint });
+  } catch (e) {}
   // "local" : on oublie la connexion sur cet appareil (marche même si le compte vient d'être supprimé)
   try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
   // On "débarrasse la table" : on efface tout ce que la personne précédente a laissé (brouillons compris).
@@ -471,13 +476,18 @@ function render() {
   stats = computeStats(state.tasks, state.logs, today());
   // Chaque morceau de la page est dessiné séparément : si l'un plante, les autres s'affichent quand même.
   for (const part of [renderProfile, renderToday, renderGoalsSummary, renderWeek, renderCategories,
-    renderGoalsPage, renderCalendar, renderSuivi, renderSettings, renderTopic, renderResume, drawIcons]) {
+    renderGoalsPage, renderCalendar, renderSuivi, renderSettings, renderTopic, renderResume, renderPushLater, drawIcons]) {
     try {
       part();
     } catch (error) {
       console.error(`Erreur d'affichage dans ${part.name} :`, error);
     }
   }
+}
+
+// La carte des notifications se dessine "à côté" (elle doit demander l'état au navigateur, ce qui prend un instant)
+function renderPushLater() {
+  renderPush().then(drawIcons).catch((e) => console.error("Notifications :", e));
 }
 
 function renderProfile() {
@@ -831,6 +841,7 @@ function renderSettings() {
     $("evening-time").value = p.eveningTime;
     $("email-tasks").checked = p.emailTasks;
     $("email-weekly").checked = p.emailWeekly;
+    $("email-with-push").checked = p.emailWithPush;
   }
 }
 
@@ -864,6 +875,7 @@ function saveEmailSettings() {
     eveningTime: $("evening-time").value,
     emailTasks: $("email-tasks").checked,
     emailWeekly: $("email-weekly").checked,
+    emailWithPush: $("email-with-push").checked,
   });
 }
 
@@ -1706,6 +1718,133 @@ document.addEventListener("keydown", (e) => {
 });
 
 // =============================================================
+// LES NOTIFICATIONS DU TÉLÉPHONE
+// Le "facteur" (sw.js) est installé dans le navigateur ; quand la personne touche "Activer",
+// le téléphone demande la permission, puis nous donne une "adresse" qu'on range sur le serveur.
+// Sur iPhone : ça ne marche que si Buddy est installé sur l'écran d'accueil (on explique comment).
+// =============================================================
+const PUSH_OK = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const IS_INSTALLED = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const swReady = "serviceWorker" in navigator
+  ? navigator.serviceWorker.register("/sw.js").catch((e) => { console.error("Facteur (service worker) :", e); return null; })
+  : Promise.resolve(null);
+
+// Android / ordinateur : le navigateur peut proposer "Installer Buddy" comme une appli
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  renderPush().catch(console.error);
+});
+
+// La clé publique arrive en "base64" : le navigateur la veut en octets
+function base64ToBytes(b64) {
+  const raw = atob((b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+async function currentSubscription() {
+  const reg = await swReady;
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+// L'état des notifications sur CET appareil
+async function pushStatus() {
+  if (IS_IOS && !IS_INSTALLED) return "ios";          // iPhone : il faut d'abord installer Buddy
+  if (!PUSH_OK || !config.vapidPublicKey) return "unsupported";
+  if (Notification.permission === "denied") return "denied";
+  return Notification.permission === "granted" && (await currentSubscription()) ? "on" : "off";
+}
+
+async function enablePush() {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      await renderPush();
+      return toast(t(permission === "denied" ? "push.deniedToast" : "push.notNow"), "error");
+    }
+    const reg = await swReady;
+    const sub = (await reg.pushManager.getSubscription()) ||
+      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(config.vapidPublicKey) }));
+    const result = await api("POST", "/api/push/subscribe", { subscription: sub.toJSON() });
+    if (result.error) return toast(result.error, "error");
+    toast(t("push.enabledToast"));
+  } catch (e) {
+    console.error("Notifications :", e);
+    toast(t("push.error"), "error");
+  }
+  await renderPush();
+}
+
+async function disablePush() {
+  const sub = await currentSubscription();
+  if (sub) {
+    await api("POST", "/api/push/unsubscribe", { endpoint: sub.endpoint }).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+  }
+  toast(t("push.disabledToast"));
+  await renderPush();
+}
+
+async function testPush() {
+  const result = await api("POST", "/api/push/test", {});
+  toast(result.error || t("push.testSent"), result.error ? "error" : "ok");
+}
+
+async function installApp() {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => {});
+  installPrompt = null;
+  await renderPush();
+}
+
+const pushBannerClosed = () => { try { return localStorage.getItem("buddy-push-banner") === "ferme"; } catch (e) { return false; } };
+
+// Dessine la carte "Notifications" (Paramètres) et la bannière de l'accueil, selon l'état
+async function renderPush() {
+  if (!state) return;
+  const status = await pushStatus();
+  $("push-status").textContent = t("push.status." + status);
+  $("push-status").dataset.status = status;
+  const buttons = [];
+  if (status === "off") buttons.push(`<button class="btn btn-primary" data-push="enable">${t("push.enable")}</button>`);
+  if (status === "on") buttons.push(`<button class="btn btn-ghost" data-push="test">${t("push.test")}</button>`, `<button class="btn btn-ghost" data-push="disable">${t("push.disable")}</button>`);
+  if (status === "ios") buttons.push(`<button class="btn btn-primary" data-push="ios">${t("push.howIos")}</button>`);
+  if (installPrompt && !IS_INSTALLED) buttons.push(`<button class="btn btn-ghost" data-push="install">📲 ${t("push.install")}</button>`);
+  $("push-actions").innerHTML = buttons.join("");
+
+  // La bannière de l'accueil : seulement si c'est activable ici, pas encore fait, et pas fermée
+  const banner = (status === "off" || status === "ios") && !pushBannerClosed();
+  $("push-banner").classList.toggle("hidden", !banner);
+  if (banner) {
+    $("push-banner-text").textContent = t(status === "off" ? "push.bannerText" : "push.bannerIos");
+    $("push-banner-btn").textContent = t(status === "off" ? "push.enable" : "push.howIos");
+    $("push-banner-btn").dataset.push = status === "off" ? "enable" : "ios";
+  }
+  return status;
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-push]");
+  if (!b) return;
+  const actions = { enable: enablePush, disable: disablePush, test: testPush, install: installApp, ios: () => $("ios-dialog").showModal() };
+  actions[b.dataset.push]?.();
+});
+$("push-banner-close").addEventListener("click", () => {
+  try { localStorage.setItem("buddy-push-banner", "ferme"); } catch (e) {}
+  $("push-banner").classList.add("hidden");
+});
+
+// Au chargement : si cet appareil a déjà les notifications, on redonne son adresse au serveur
+// (au cas où elle aurait changé, ou si quelqu'un d'autre s'était connecté sur ce téléphone avant)
+async function syncPush() {
+  if ((await pushStatus()) !== "on") return;
+  const sub = await currentSubscription();
+  await api("POST", "/api/push/subscribe", { subscription: sub.toJSON() });
+}
+
+// =============================================================
 // UNE FOIS CONNECTÉ : on charge le Buddy de CETTE personne
 // =============================================================
 // Les 2 phrases de motivation du jour (écrites par Buddy, différentes chaque jour)
@@ -1735,6 +1874,7 @@ async function loadMyBuddy(newSession) {
     api("PATCH", "/api/profile", { language: getLang() }).catch((e) => console.error("Langue :", e));
   }
   loadQuotes().catch((e) => console.error("Phrases du jour :", e)); // sans bloquer le reste
+  syncPush().catch((e) => console.error("Notifications :", e));
 
   // Le fuseau horaire de cet ordinateur (ex : "Europe/Paris") : on le donne au serveur
   // pour que les rappels arrivent à la bonne heure, même si le serveur est à l'autre bout du monde.

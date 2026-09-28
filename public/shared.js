@@ -24,7 +24,7 @@ export const CATEGORIES = {
 // La "version" du code. Le serveur et la page la comparent : si elles sont différentes,
 // c'est que le serveur tourne encore avec un vieux code → la page demande de le redémarrer.
 // (À changer à chaque grosse modification.)
-export const APP_VERSION = "2026-09-27-poses";
+export const APP_VERSION = "2026-09-28-notifs";
 
 export const MAX_TASKS = 10;
 

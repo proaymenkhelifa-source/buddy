@@ -855,6 +855,26 @@ textarea { resize: vertical; }
 .toast.error { border-color: rgba(251, 113, 133, 0.5); white-space: normal; width: max-content; max-width: min(560px, calc(100vw - 32px)); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- LES NOTIFICATIONS ---------- */
+/* La bannière "Active les notifications" en haut de l'accueil */
+.push-banner {
+  display: flex; align-items: center; gap: 14px; margin: 0 0 18px; padding: 14px 16px;
+  border-radius: 16px; background: rgba(246, 183, 60, 0.1); border: 1px solid rgba(246, 183, 60, 0.4);
+  animation: fade-up 0.35s ease-out;
+}
+.push-banner-icon { font-size: 1.6rem; }
+.push-banner p { margin: 0; flex: 1; font-weight: 600; line-height: 1.4; }
+.push-banner .btn { white-space: nowrap; }
+.push-banner-close { width: 34px; height: 34px; flex: none; }
+.push-status { margin: 12px 0; font-weight: 600; }
+.push-status[data-status="denied"], .push-status[data-status="unsupported"] { color: var(--muted); font-weight: 500; font-size: 0.92rem; }
+.ios-steps { margin: 14px 0 18px; padding-left: 20px; display: grid; gap: 10px; line-height: 1.5; }
+@media (max-width: 700px) {
+  .push-banner { flex-wrap: wrap; gap: 10px; }
+  .push-banner p { flex-basis: calc(100% - 90px); font-size: 0.92rem; }
+  .push-banner .btn { flex: 1; }
+}
+
 /* ---------- LE CALENDRIER ---------- */
 /* Le raccourci "Voir mon agenda →" en bas de la carte Aujourd'hui */
 .agenda-link {

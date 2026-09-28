@@ -18,6 +18,7 @@ import {
 } from "./public/shared.js";
 import { t, cleanLang, dayLong } from "./public/i18n.js";
 import { startEmailScheduler, sendTestEmail, runEmailTick } from "./emails.js";
+import { sendPush, pushReady, vapidPublicKey } from "./push.js";
 
 // Sommes-nous en ligne sur Vercel ? (Vercel remplit tout seul cette variable)
 const ONLINE = Boolean(process.env.VERCEL);
@@ -82,6 +83,7 @@ app.get("/api/config", (req, res) => {
   res.json({
     supabaseUrl: process.env.SUPABASE_URL,
     supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
+    vapidPublicKey, // la clé PUBLIQUE des notifications (faite pour être visible)
   });
 });
 
@@ -135,6 +137,7 @@ async function loadAll(userId, today) {
       eveningTime: profile?.evening_time || "21:00",
       emailTasks: profile?.email_tasks ?? true,
       emailWeekly: profile?.email_weekly ?? true,
+      emailWithPush: profile?.email_with_push ?? false, // recevoir AUSSI les e-mails quand on a les notifications
       reviewsCount: profile?.reviews_count || 0,
       timezone: profile?.timezone || null, // ex : "Europe/Paris"
       language: profile?.language || null, // "fr" ou "en"
@@ -263,7 +266,7 @@ app.patch("/api/profile", requireUser, async (req, res) => {
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: tr(req, "err.emailInvalid") });
       changes.notify_email = email || null;
     }
-    for (const [field, column] of [["emailMorning", "email_morning"], ["emailEvening", "email_evening"], ["emailTasks", "email_tasks"], ["emailWeekly", "email_weekly"]]) {
+    for (const [field, column] of [["emailMorning", "email_morning"], ["emailEvening", "email_evening"], ["emailTasks", "email_tasks"], ["emailWeekly", "email_weekly"], ["emailWithPush", "email_with_push"]]) {
       if (typeof req.body[field] === "boolean") changes[column] = req.body[field];
     }
     for (const [field, column] of [["morningTime", "morning_time"], ["eveningTime", "evening_time"]]) {
@@ -294,6 +297,49 @@ app.post("/api/email/test", requireUser, async (req, res) => {
   } catch (error) {
     console.error("E-mail de test :", error.message);
     res.status(500).json({ error: tr(req, "err.emailNotSent", { msg: error.message }) });
+  }
+});
+
+// --- Les notifications du téléphone ---
+// La page nous donne l'"adresse" de l'appareil qui vient d'accepter les notifications : on la range.
+app.post("/api/push/subscribe", requireUser, async (req, res) => {
+  const s = req.body.subscription || {};
+  const valid = typeof s.endpoint === "string" && s.endpoint.startsWith("https://") && s.endpoint.length < 1000 &&
+    typeof s.keys?.p256dh === "string" && typeof s.keys?.auth === "string" && s.keys.p256dh.length < 200 && s.keys.auth.length < 100;
+  if (!valid) return res.status(400).json({ error: tr(req, "err.generic") });
+  try {
+    // upsert : si l'appareil était déjà connu (même sous un autre compte), il passe à la personne connectée
+    check(await supabase.from("push_subscriptions").upsert(
+      { user_id: req.user.id, endpoint: s.endpoint, p256dh: s.keys.p256dh, auth: s.keys.auth },
+      { onConflict: "endpoint" },
+    ));
+    res.json({ ok: true });
+  } catch (error) {
+    fail(res, error, "err.pushSave");
+  }
+});
+
+// L'appareil ne veut plus de notifications (ou on se déconnecte) : on oublie son adresse
+app.post("/api/push/unsubscribe", requireUser, async (req, res) => {
+  try {
+    if (typeof req.body.endpoint === "string") {
+      check(await supabase.from("push_subscriptions").delete().eq("endpoint", req.body.endpoint).eq("user_id", req.user.id));
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// "Envoie-moi une notification de test" (texte fixe : ça ne coûte rien)
+app.post("/api/push/test", requireUser, async (req, res) => {
+  if (!pushReady) return res.status(500).json({ error: tr(req, "err.pushOff") });
+  try {
+    const sent = await sendPush(supabase, req.user.id, { title: "Buddy", body: tr(req, "push.testBody"), url: "/#accueil", tag: "test", ttl: 600 });
+    if (!sent) return res.status(400).json({ error: tr(req, "err.pushNone") });
+    res.json({ ok: true, sent });
+  } catch (error) {
+    fail(res, error);
   }
 });
 

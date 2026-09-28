@@ -8,6 +8,12 @@
   <link rel="icon" type="image/png" href="icons/logo.png">
   <link rel="apple-touch-icon" href="icons/logo.png">
   <meta name="theme-color" content="#07090f">
+  <!-- Buddy "s'installe" comme une appli (écran d'accueil du téléphone) : c'est ce qui permet les notifications -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Buddy">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <!-- La police d'écriture (gratuite, de Google Fonts) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -201,6 +207,14 @@
           </aside>
           <div class="banner-desk"><div class="laptop"></div><div class="mug"></div></div>
         </section>
+
+        <!-- "Active les notifications" (affiché tant qu'elles ne sont pas activées sur cet appareil) -->
+        <div class="push-banner hidden" id="push-banner">
+          <span class="push-banner-icon">🔔</span>
+          <p id="push-banner-text"></p>
+          <button class="btn btn-primary" id="push-banner-btn"></button>
+          <button class="icon-btn round push-banner-close" id="push-banner-close" data-i18n-title="chat.close"><i data-lucide="x"></i></button>
+        </div>
 
         <div class="grid">
           <!-- AUJOURD'HUI : les tâches du jour -->
@@ -434,9 +448,15 @@
               <button class="style-option" data-theme-choice="light"><strong data-i18n="theme.light">☀️ Clair</strong></button>
             </div>
           </section>
+          <section class="card" id="push-settings">
+            <h3 data-i18n="push.title">Notifications sur cet appareil</h3>
+            <p class="muted small" data-i18n="push.hint">Buddy te prévient directement sur ton téléphone : 5 minutes avant tes tâches, le matin, le soir.</p>
+            <p class="push-status" id="push-status"></p>
+            <div class="inline-form" id="push-actions"></div>
+          </section>
           <section class="card" id="email-settings">
-            <h3 data-i18n="settings.emails">Rappels par e-mail</h3>
-            <p class="muted small" data-i18n="settings.emailsHint">Buddy t'écrit lui-même : jamais deux fois le même e-mail, toujours à ton heure.</p>
+            <h3 data-i18n="settings.emails">Tes rappels</h3>
+            <p class="muted small" data-i18n="settings.emailsHint">Buddy les écrit lui-même, jamais deux fois pareil, à ton heure. Par notification si elles sont activées, sinon par e-mail.</p>
             <label class="field"><span data-i18n="settings.address">Adresse de réception</span>
               <input id="notify-email" type="email" placeholder="Par défaut : l'adresse de ton compte" data-i18n-ph="settings.addressPh" autocomplete="email">
             </label>
@@ -462,6 +482,11 @@
                 <input type="checkbox" id="email-weekly">
                 <span class="switch"></span>
                 <span><strong data-i18n="email.weekly">🧭 Le bilan de la semaine</strong><small data-i18n="email.weeklyDesc">Le dimanche soir, à la place du récap du jour</small></span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="email-with-push">
+                <span class="switch"></span>
+                <span><strong data-i18n="email.withPush">📧 Aussi par e-mail</strong><small data-i18n="email.withPushDesc">Recevoir les e-mails en plus des notifications</small></span>
               </label>
             </div>
             <div class="inline-form">
@@ -548,6 +573,20 @@
         <button type="button" class="btn btn-ghost" data-close data-i18n="common.cancel">Annuler</button>
         <button type="submit" class="btn btn-primary" data-i18n="common.save">Enregistrer</button>
       </div>
+    </form>
+  </dialog>
+
+  <!-- iPhone : comment installer Buddy sur l'écran d'accueil (obligatoire pour les notifications sur iPhone) -->
+  <dialog id="ios-dialog" class="dialog">
+    <form method="dialog">
+      <h2 data-i18n="ios.title">Installer Buddy sur ton iPhone</h2>
+      <p class="muted" data-i18n="ios.why">Sur iPhone, les notifications marchent seulement quand Buddy est sur ton écran d'accueil. Ça prend 10 secondes :</p>
+      <ol class="ios-steps">
+        <li data-i18n-html="ios.step1">Dans Safari, touche le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut).</li>
+        <li data-i18n-html="ios.step2">Choisis <strong>Sur l'écran d'accueil</strong>, puis <strong>Ajouter</strong>.</li>
+        <li data-i18n-html="ios.step3">Ouvre Buddy depuis sa nouvelle icône, puis touche <strong>Activer les notifications</strong>.</li>
+      </ol>
+      <button class="btn btn-primary btn-full" value="ok" data-i18n="ios.ok">Compris 👍</button>
     </form>
   </dialog>
 
