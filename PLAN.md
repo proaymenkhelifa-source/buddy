@@ -177,5 +177,10 @@ Known gotchas:
 ## Friends' feedback
 - 2026-09-28 (friend's idea "persistence"): auto-saved drafts in the browser (`localStorage`, prefix `buddy-draft-`, one set per user): chat message (reopens the chat), "New goal" / "New task" windows (reopen with their content), login e-mail (never the password). Cleared when sent/saved/cancelled, and all cleared on logout. A failed chat message goes back into the input. Tested (7 scenarios).
 
+## Where sign-ups come from (2026-09-28)
+- Owner decided: NO waitlist (Buddy already works → people sign up directly).
+- Instead: each network gets its own link (`buddycoach.app/?src=insta-fr`, `?src=tiktok-en`…). The page keeps the FIRST tag seen (`localStorage` "buddy-source"), sends it with the sign-up (Supabase `user_metadata.source`, so it survives opening the confirmation e-mail in another browser), and `/api/state` files it once in `profiles.source`. SQL: `supabase-source.sql` (owner to run). See it in Supabase → Table Editor → profiles → column `source`.
+- Before pushing the carousels: watch the Anthropic budget ($15/month limit would be hit fast with many users) + legal pages (privacy policy, terms).
+
 ## Marketing & next steps
 See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

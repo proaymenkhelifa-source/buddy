@@ -138,6 +138,7 @@ async function loadAll(userId, today) {
       reviewsCount: profile?.reviews_count || 0,
       timezone: profile?.timezone || null, // ex : "Europe/Paris"
       language: profile?.language || null, // "fr" ou "en"
+      source: profile?.source || null,     // d'où vient la personne (ex : "insta-fr"), null = inconnu / lien direct
     },
     goals,
     tasks,
@@ -194,6 +195,17 @@ app.get("/api/state", requireUser, async (req, res) => {
   try {
     const today = todayFrom(req);
     const data = await loadAll(req.user.id, today);
+    // D'où vient la personne : l'étiquette envoyée à l'inscription (?src=insta-fr…) est rangée une fois dans son profil.
+    // Rangée à part : si la colonne "source" n'existe pas encore dans Supabase, le reste marche quand même.
+    const source = String(req.user.user_metadata?.source || "").toLowerCase();
+    if (/^[a-z0-9_-]{1,40}$/.test(source) && !data.profile.source) {
+      try {
+        await saveProfile(req.user.id, { source });
+        data.profile.source = source;
+      } catch (error) {
+        console.error("Source non enregistrée (as-tu lancé supabase-source.sql ?) :", error.message);
+      }
+    }
     const { badges, newBadges } = await updateBadges(req.user.id, data, today);
     res.json({ ...data, badges, newBadges, maxMessages: MAX_MESSAGES_PER_DAY, version: APP_VERSION });
   } catch (error) {

@@ -114,6 +114,27 @@ function clearAllDrafts() {
   try { for (const k of Object.keys(localStorage)) if (k.startsWith(DRAFT_PREFIX)) localStorage.removeItem(k); } catch (e) {}
 }
 
+// =============================================================
+// D'OÙ VIENT LA PERSONNE ? (pour savoir quel réseau social amène des inscrits)
+// Chaque réseau a son lien : buddycoach.app/?src=insta-fr, ?src=tiktok-en…
+// On retient la PREMIÈRE étiquette vue, puis elle est envoyée avec l'inscription
+// et rangée dans le profil (colonne "source" dans Supabase).
+// =============================================================
+const SOURCE_KEY = "buddy-source";
+const cleanSource = (v) => { const s = String(v || "").toLowerCase().trim(); return /^[a-z0-9_-]{1,40}$/.test(s) ? s : null; };
+{
+  const params = new URLSearchParams(location.search);
+  const src = cleanSource(params.get("src") || params.get("utm_source"));
+  if (src) {
+    try { if (!localStorage.getItem(SOURCE_KEY)) localStorage.setItem(SOURCE_KEY, src); } catch (e) {}
+    // On enlève l'étiquette de l'adresse (plus propre si la personne la partage)
+    params.delete("src");
+    params.delete("utm_source");
+    history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
+  }
+}
+const visitorSource = () => { try { return localStorage.getItem(SOURCE_KEY); } catch (e) { return null; } };
+
 // On arrive depuis le lien "choisir un nouveau mot de passe" reçu par e-mail ?
 // (on le regarde MAINTENANT : Supabase efface ces informations de l'adresse une fois lues)
 const RECOVERY_LINK = /type=recovery/.test(location.hash);
@@ -299,7 +320,9 @@ $("auth-submit").addEventListener("click", async () => {
   authInfo("…");
   let result;
   try {
-    if (authMode === "signup") result = await supabase.auth.signUp({ email, password });
+    // L'étiquette "d'où vient la personne" part avec l'inscription (elle suit le compte, même si
+    // l'e-mail de confirmation est ouvert dans un autre navigateur)
+    if (authMode === "signup") result = await supabase.auth.signUp({ email, password, options: { data: visitorSource() ? { source: visitorSource() } : {} } });
     else if (authMode === "login") result = await supabase.auth.signInWithPassword({ email, password });
     // Mot de passe oublié : Supabase envoie un e-mail avec un lien qui ramène ici
     else if (authMode === "forgot") result = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/" });
