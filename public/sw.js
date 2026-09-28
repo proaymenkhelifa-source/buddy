@@ -8,8 +8,8 @@ self.addEventListener("push", (event) => {
   try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data?.text() }; }
   event.waitUntil(self.registration.showNotification(data.title || "Buddy", {
     body: data.body || "",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: "/icons/buddy-192.png",
+    badge: "/icons/buddy-192.png",
     tag: data.tag || "buddy",   // une notification du même genre remplace la précédente
     renotify: true,
     data: { url: data.url || "/" },
