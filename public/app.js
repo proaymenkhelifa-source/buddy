@@ -92,6 +92,28 @@ const niceDate = (key, options = { weekday: "long", day: "numeric", month: "long
   new Date(key + "T12:00:00").toLocaleDateString(locale(), options);
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+// =============================================================
+// LES BROUILLONS (idée d'un ami testeur)
+// Ce qu'on est en train d'écrire est gardé dans le navigateur (jamais sur Internet) :
+// si la page se recharge par accident, rien n'est perdu. Le brouillon s'efface une fois envoyé,
+// et tous les brouillons s'effacent à la déconnexion. Jamais de mot de passe dedans.
+// =============================================================
+const DRAFT_PREFIX = "buddy-draft-";
+// Un brouillon par personne (si deux comptes utilisent le même téléphone, chacun a les siens)
+const draftKey = (name) => DRAFT_PREFIX + (session?.user?.id || "visiteur") + "-" + name;
+function saveDraft(name, value) {
+  try { localStorage.setItem(draftKey(name), JSON.stringify(value)); } catch (e) {}
+}
+function readDraft(name) {
+  try { return JSON.parse(localStorage.getItem(draftKey(name))); } catch (e) { return null; }
+}
+function clearDraft(name) {
+  try { localStorage.removeItem(draftKey(name)); } catch (e) {}
+}
+function clearAllDrafts() {
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith(DRAFT_PREFIX)) localStorage.removeItem(k); } catch (e) {}
+}
+
 // On arrive depuis le lien "choisir un nouveau mot de passe" reçu par e-mail ?
 // (on le regarde MAINTENANT : Supabase efface ces informations de l'adresse une fois lues)
 const RECOVERY_LINK = /type=recovery/.test(location.hash);
@@ -245,6 +267,8 @@ for (const event of ["hashchange", "popstate"]) {
 for (const id of ["email", "password", "password2"]) {
   $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("auth-submit").click(); });
 }
+// L'e-mail tapé sur la page de connexion est gardé en brouillon (le mot de passe, JAMAIS)
+$("email").addEventListener("input", () => saveDraft("auth-email", $("email").value));
 
 // Les erreurs de Supabase (en anglais technique) → un message clair, dans la langue de la page
 function authErrorText(error) {
@@ -310,6 +334,7 @@ $("auth-submit").addEventListener("click", async () => {
     window.scrollTo(0, 0);
     return;
   }
+  clearDraft("auth-email"); // connecté : plus besoin de garder l'e-mail en brouillon
   loadMyBuddy(data.session);
 });
 
@@ -329,7 +354,8 @@ document.addEventListener("click", () => $("user-dropdown").classList.add("hidde
 async function logout() {
   // "local" : on oublie la connexion sur cet appareil (marche même si le compte vient d'être supprimé)
   try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
-  // On "débarrasse la table" : on efface tout ce que la personne précédente a laissé.
+  // On "débarrasse la table" : on efface tout ce que la personne précédente a laissé (brouillons compris).
+  clearAllDrafts();
   state = null;
   session = null;
   currentTopic = null;
@@ -911,7 +937,53 @@ async function toggleTask(taskId) {
 // LES FENÊTRES : OBJECTIF ET TÂCHE
 // =============================================================
 for (const button of document.querySelectorAll("[data-close]")) {
-  button.addEventListener("click", () => button.closest("dialog").close());
+  button.addEventListener("click", () => {
+    const dialog = button.closest("dialog");
+    clearDialogDraft(dialog); // "Annuler" = on ne garde pas le brouillon
+    dialog.close();
+  });
+}
+
+// Les brouillons des fenêtres : "open" = la fenêtre qui était ouverte (pour la rouvrir après un rechargement),
+// "goal-new" / "goal-12" / "task-new" / "task-7" = ce qu'on y avait tapé.
+// Une fenêtre fermée par la personne (Enregistrer, Annuler, Supprimer, Échap) = brouillon effacé tout de suite.
+// Un rechargement de la page, lui, ne passe par aucun de ces boutons : le brouillon reste.
+const goalDraftName = () => "goal-" + (editingGoal?.id || "new");
+const taskDraftName = () => "task-" + (editingTask?.id || "new");
+// Efface le brouillon d'une fenêtre (appelé directement par Enregistrer / Annuler / Supprimer / Échap)
+function clearDialogDraft(dialog) {
+  if (dialog.id === "goal-dialog") clearDraft(goalDraftName());
+  if (dialog.id === "task-dialog") clearDraft(taskDraftName());
+  if (dialog.id === "goal-dialog" || dialog.id === "task-dialog") clearDraft("open");
+}
+for (const id of ["goal-dialog", "task-dialog"]) {
+  $(id).addEventListener("cancel", () => clearDialogDraft($(id))); // touche Échap
+}
+
+function saveGoalDraft() {
+  const form = $("goal-form");
+  saveDraft(goalDraftName(), { text: form.text.value, reason: form.reason.value, deadline: form.deadline.value, progress: form.progress.value, category: pickedCategory });
+}
+function saveTaskDraft() {
+  const form = $("task-form");
+  saveDraft(taskDraftName(), { title: form.title.value, time: form.time.value, goalId: form.goalId.value, repeatMode, pickedDays, onDate: form.onDate.value });
+}
+for (const type of ["input", "change"]) {
+  $("goal-form").addEventListener(type, saveGoalDraft);
+  $("task-form").addEventListener(type, saveTaskDraft);
+}
+
+// Après un rechargement : une fenêtre était ouverte avec quelque chose dedans ? On la rouvre telle quelle.
+function reopenDraftDialog() {
+  const open = readDraft("open");
+  if (!open) return;
+  if (open.type === "goal" && readDraft("goal-" + (open.id || "new"))) {
+    const goal = open.id ? goalById(open.id) : null;
+    if (!open.id || goal) openGoalDialog(goal);
+  } else if (open.type === "task" && readDraft("task-" + (open.id || "new"))) {
+    const task = open.id ? state.tasks.find((t) => t.id === open.id && !t.archived_at) : null;
+    if (!open.id || task) openTaskDialog(task);
+  }
 }
 
 // --- Objectif ---
@@ -925,7 +997,7 @@ function drawCategoryPicker() {
 }
 $("cat-picker").addEventListener("click", (e) => {
   const chip = e.target.closest("[data-pick]");
-  if (chip) { pickedCategory = chip.dataset.pick; drawCategoryPicker(); }
+  if (chip) { pickedCategory = chip.dataset.pick; drawCategoryPicker(); saveGoalDraft(); }
 });
 
 function openGoalDialog(goal, category) {
@@ -943,11 +1015,22 @@ function openGoalDialog(goal, category) {
   $("progress-field").classList.toggle("hidden", !goal || p.auto);
   $("progress-auto").classList.toggle("hidden", !p?.auto);
   if (p?.auto) $("progress-auto").textContent = t("goal.autoInfo", p);
+  // Un brouillon attendait (page rechargée pendant qu'on écrivait) : on le remet
+  const draft = readDraft(goalDraftName());
+  if (draft) {
+    form.text.value = draft.text || "";
+    form.reason.value = draft.reason || "";
+    form.deadline.value = draft.deadline || "";
+    form.progress.value = draft.progress || 0;
+    $("progress-value").textContent = form.progress.value;
+    if (draft.category in CATEGORIES) pickedCategory = draft.category;
+  }
   $("goal-dialog-title").textContent = t(goal ? "goal.edit" : "goals.new");
   $("goal-delete").classList.toggle("hidden", !goal);
   $("goal-error").textContent = "";
   drawCategoryPicker();
   $("goal-dialog").showModal();
+  saveDraft("open", { type: "goal", id: goal?.id || null });
 }
 $("goal-form").progress.addEventListener("input", (e) => ($("progress-value").textContent = e.target.value));
 
@@ -965,6 +1048,7 @@ $("goal-form").addEventListener("submit", async (event) => {
     ? await api("PATCH", `/api/goals/${editingGoal.id}`, body)
     : await api("POST", "/api/goals", body);
   if (result.error) return ($("goal-error").textContent = result.error);
+  clearDialogDraft($("goal-dialog")); // enregistré : le brouillon peut partir
   $("goal-dialog").close();
   await refresh();
   const id = editingGoal ? editingGoal.id : result.id;
@@ -976,6 +1060,7 @@ $("goal-form").addEventListener("submit", async (event) => {
 $("goal-delete").addEventListener("click", async () => {
   if (!confirm(t("goal.confirmDelete", { goal: editingGoal.text }))) return;
   await api("DELETE", `/api/goals/${editingGoal.id}`);
+  clearDialogDraft($("goal-dialog"));
   $("goal-dialog").close();
   await refresh();
   toast(t("toast.goalDeleted"));
@@ -996,7 +1081,7 @@ function drawRepeat() {
 }
 $("repeat-choice").addEventListener("click", (e) => {
   const b = e.target.closest("[data-repeat]");
-  if (b) { repeatMode = b.dataset.repeat; drawRepeat(); }
+  if (b) { repeatMode = b.dataset.repeat; drawRepeat(); saveTaskDraft(); }
 });
 $("day-picker").addEventListener("click", (e) => {
   const b = e.target.closest("[data-day]");
@@ -1004,6 +1089,7 @@ $("day-picker").addEventListener("click", (e) => {
   const day = Number(b.dataset.day);
   pickedDays = pickedDays.includes(day) ? pickedDays.filter((d) => d !== day) : [...pickedDays, day];
   drawRepeat();
+  saveTaskDraft();
 });
 
 // onDate : une nouvelle tâche pour un jour précis (depuis le calendrier)
@@ -1021,11 +1107,25 @@ function openTaskDialog(task, goalId = null, onDate = null) {
   pickedDays = task?.days ? [...task.days] : [];
   form.onDate.value = task?.on_date || onDate || today();
   form.onDate.min = today();
+  // Un brouillon attendait (page rechargée pendant qu'on écrivait) : on le remet
+  // (sauf le jour, si on vient de choisir un jour précis dans le calendrier)
+  const draft = readDraft(taskDraftName());
+  if (draft) {
+    form.title.value = draft.title || "";
+    form.time.value = draft.time || "";
+    if ([...form.goalId.options].some((o) => o.value === draft.goalId)) form.goalId.value = draft.goalId;
+    if (!onDate) {
+      repeatMode = ["daily", "days", "date"].includes(draft.repeatMode) ? draft.repeatMode : repeatMode;
+      pickedDays = Array.isArray(draft.pickedDays) ? draft.pickedDays : pickedDays;
+      if (draft.onDate && draft.onDate >= today()) form.onDate.value = draft.onDate;
+    }
+  }
   drawRepeat();
   $("task-dialog-title").textContent = t(task ? "task.edit" : "task.new");
   $("task-delete").classList.toggle("hidden", !task);
   $("task-error").textContent = "";
   $("task-dialog").showModal();
+  saveDraft("open", { type: "task", id: task?.id || null });
 }
 
 $("task-form").addEventListener("submit", async (event) => {
@@ -1043,6 +1143,7 @@ $("task-form").addEventListener("submit", async (event) => {
     ? await api("PATCH", `/api/tasks/${editingTask.id}`, body)
     : await api("POST", "/api/tasks", body);
   if (result.error) return ($("task-error").textContent = result.error);
+  clearDialogDraft($("task-dialog")); // enregistré : le brouillon peut partir
   $("task-dialog").close();
   await refresh();
   const id = editingTask ? editingTask.id : result.id;
@@ -1055,6 +1156,7 @@ $("task-form").addEventListener("submit", async (event) => {
 $("task-delete").addEventListener("click", async () => {
   if (!confirm(t("task.confirmDelete", { task: editingTask.title }))) return;
   await api("DELETE", `/api/tasks/${editingTask.id}`);
+  clearDialogDraft($("task-dialog"));
   $("task-dialog").close();
   await refresh();
   toast(t("toast.taskDeleted"));
@@ -1345,6 +1447,7 @@ function showTyping() {
 // Pendant que tu écris : Buddy t'écoute calmement (une seule fois, pas à chaque touche).
 let listening = false;
 $("message").addEventListener("input", () => {
+  saveDraft("chat", $("message").value); // brouillon : rien n'est perdu si la page se recharge
   if (!listening && $("message").value.trim() && !sendButton.disabled) {
     listening = true;
     setBuddy("ecoute", "", t("buddy.listening"));
@@ -1353,8 +1456,11 @@ $("message").addEventListener("input", () => {
 
 // Envoie un message à Buddy (ou rien du tout : Buddy parle alors en premier).
 // extra : des informations en plus pour le serveur (ex : { review: true } pour le bilan de la semaine)
-async function sendToBuddy(text, extra = {}) {
+// typed = true : le texte vient du champ de saisie (son brouillon s'efface seulement si Buddy a bien reçu le message)
+async function sendToBuddy(text, extra = {}, typed = false) {
   if (text) showMessage(text, "user");
+  // Le message n'est pas parti (erreur) : on le remet dans le champ pour pouvoir réessayer, rien n'est perdu
+  const giveBack = () => { if (typed && !$("message").value) { $("message").value = text; saveDraft("chat", text); } };
   listening = false;
   sendButton.disabled = true;
   setBuddy("reflechit", "reflechit", t("buddy.thinking"));
@@ -1366,7 +1472,9 @@ async function sendToBuddy(text, extra = {}) {
     if (data.error) {
       showMessage(data.error, "error");
       showEmotion(currentEmotion, false);
+      giveBack();
     } else {
+      if (typed && !$("message").value) clearDraft("chat"); // bien reçu : le brouillon peut partir
       showMessage(data.reply, "buddy");
       // L'objectif dont on parle (d'abord : c'est lui qui décide de la tenue de Buddy)
       if (data.goalId) currentTopic = data.goalId;
@@ -1380,6 +1488,7 @@ async function sendToBuddy(text, extra = {}) {
     typing.remove();
     showMessage(t("chat.unreachable"), "error");
     showEmotion(currentEmotion, false);
+    giveBack();
   }
   sendButton.disabled = false;
   $("message").focus();
@@ -1391,7 +1500,7 @@ $("chat-form").addEventListener("submit", (event) => {
   if (!text || sendButton.disabled) return;
   $("message").value = "";
   removeChoices();
-  sendToBuddy(text);
+  sendToBuddy(text, {}, true);
 });
 
 // =============================================================
@@ -1622,6 +1731,14 @@ async function loadMyBuddy(newSession) {
       history.replaceState(null, "", "#accueil");
       showPage();
       startReview();
+    } else {
+      // Des brouillons attendaient (la page s'est rechargée pendant qu'on écrivait) : on remet tout en place
+      const chatDraft = readDraft("chat");
+      if (chatDraft) {
+        $("message").value = chatDraft;
+        openChat(true); // on rouvre la discussion, pour que le message soit sous les yeux
+      }
+      reopenDraftDialog();
     }
   } else {
     // Toute première visite : la visite guidée, PUIS la discussion s'ouvre et Buddy se présente
@@ -1643,6 +1760,8 @@ if (data.session && RECOVERY_LINK) {
   loadMyBuddy(data.session);
 } else {
   showLanding();
+  // L'e-mail tapé avant un rechargement (brouillon)
+  if (!$("email").value) $("email").value = readDraft("auth-email") || "";
   if (EXPIRED_LINK) {
     // Le lien de l'e-mail a expiré (ou a déjà servi) : on propose d'en redemander un
     openAuth("forgot");

@@ -173,3 +173,9 @@ Known gotchas:
 - 2026-09-24: Two-account test passed (data correctly separated in Supabase). Fixed two page bugs: fields not cleared on logout, and account bar still visible when logged out (`.hidden` now uses `!important`). Phase 3 validated.
 - 2026-09-24: Phase 4 design done (from the owner's prompt + ChatGPT mockup). Phase 5 personality/emotions code written and tested against the API.
 - 2026-09-24: Owner ran `supabase-phase5.sql`, asked for a more human Buddy (first name, friend tone, domain vocabulary, careful hadith rules) → done. Then sent the Phase 6 brief → built (see above).
+
+## Friends' feedback
+- 2026-09-28 (friend's idea "persistence"): auto-saved drafts in the browser (`localStorage`, prefix `buddy-draft-`, one set per user): chat message (reopens the chat), "New goal" / "New task" windows (reopen with their content), login e-mail (never the password). Cleared when sent/saved/cancelled, and all cleared on logout. A failed chat message goes back into the input. Tested (7 scenarios).
+
+## Marketing & next steps
+See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
