@@ -126,7 +126,7 @@ const DICT = {
     "today.title": "Aujourd'hui",
     "today.add": "Ajouter une tâche",
     "today.empty": "Aucune tâche prévue aujourd'hui.<br>Ajoute jusqu'à {max} actions concrètes par jour.",
-    "today.count": ({ done, planned }) => `${done}/${planned} tâche${s(planned)} terminée${s(done)}`,
+    "today.count": ({ done, planned }) => `${done}/${planned}`,
     "today.others": ({ n }) => `Autres jours (${n} tâche${s(n)})`,
     "task.checkTip": "Cocher / décocher",
 
@@ -588,7 +588,7 @@ const DICT = {
     "today.title": "Today",
     "today.add": "Add a task",
     "today.empty": "No tasks planned today.<br>Add up to {max} concrete actions a day.",
-    "today.count": ({ done, planned }) => `${done}/${planned} task${s(planned)} done`,
+    "today.count": ({ done, planned }) => `${done}/${planned}`,
     "today.others": ({ n }) => `Other days (${n} task${s(n)})`,
     "task.checkTip": "Check / uncheck",
 

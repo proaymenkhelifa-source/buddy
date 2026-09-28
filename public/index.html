@@ -184,7 +184,7 @@
           <div class="banner-shade"></div>
 
           <div class="banner-copy">
-            <span class="pill" data-i18n="home.pill">Bienvenue</span>
+            <span class="hero-eyebrow" data-i18n="home.pill">Bienvenue</span>
             <h1><span data-i18n="home.hello">Salut</span> <span id="greeting-name"></span> <span class="wave">👋</span></h1>
             <p id="greeting-sub"></p>
             <button class="btn btn-primary btn-big" id="open-chat"><span data-i18n="home.talk">Parler à Buddy</span> <i data-lucide="arrow-right"></i></button>
@@ -227,9 +227,12 @@
               </div>
               <button class="mini-btn" id="add-task" data-i18n-title="today.add"><i data-lucide="plus"></i></button>
             </div>
+            <!-- La progression du jour, en haut : "2/4" et sa barre -->
+            <div class="today-progress">
+              <div class="bar bar-accent"><div id="today-bar" style="width:0%"></div></div>
+              <span class="today-count" id="today-count"></span>
+            </div>
             <ul class="checklist" id="today-list"></ul>
-            <p class="today-count" id="today-count"></p>
-            <div class="bar bar-accent"><div id="today-bar" style="width:0%"></div></div>
             <details class="other-days hidden" id="other-days">
               <summary id="other-days-summary"></summary>
               <ul class="other-list" id="other-list"></ul>
