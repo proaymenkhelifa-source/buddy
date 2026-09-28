@@ -1186,6 +1186,8 @@ $("task-form").addEventListener("submit", async (event) => {
   const when = scheduleLabel({ days: repeatMode === "days" ? pickedDays : [], on_date: body.onDate });
   toast(editingTask ? t("toast.taskUpdated") : t("toast.taskAdded", { when: getLang() === "fr" ? when.toLowerCase() : when }));
   if (!editingTask) buddyThumbsUp(t("buddy.noted"));
+  // Une tâche avec une heure : c'est LE bon moment pour proposer les notifications
+  if (!editingTask && body.time) setTimeout(() => askPushForTask(body).catch(console.error), 900);
 });
 
 $("task-delete").addEventListener("click", async () => {
@@ -1799,7 +1801,27 @@ async function installApp() {
   await renderPush();
 }
 
-const pushBannerClosed = () => { try { return localStorage.getItem("buddy-push-banner") === "ferme"; } catch (e) { return false; } };
+// La bannière fermée revient au bout de 5 jours (on ne harcèle pas, mais on n'abandonne pas non plus)
+const pushBannerClosed = () => {
+  try { return Date.now() - Number(localStorage.getItem("buddy-push-banner-closed") || 0) < 5 * 24 * 3600 * 1000; } catch (e) { return false; }
+};
+
+// Demander AU BON MOMENT : juste après avoir créé une tâche avec une heure
+// ("Je te préviens 5 minutes avant ?"). Au maximum une fois par jour.
+async function askPushForTask(task) {
+  const status = await pushStatus();
+  if (status !== "off" && status !== "ios") return;
+  try {
+    if (Date.now() - Number(localStorage.getItem("buddy-push-asked") || 0) < 24 * 3600 * 1000) return;
+    localStorage.setItem("buddy-push-asked", String(Date.now()));
+  } catch (e) {}
+  $("push-ask-title").textContent = t("push.askTitle", { task: task.title, time: task.time });
+  $("push-ask-text").textContent = t(status === "off" ? "push.askText" : "push.askTextIos");
+  $("push-ask-yes").textContent = t(status === "off" ? "push.askYes" : "push.howIos");
+  $("push-ask-yes").dataset.push = status === "off" ? "enable" : "ios";
+  $("push-ask").showModal();
+}
+$("push-ask-yes").addEventListener("click", () => $("push-ask").close());
 
 // Dessine la carte "Notifications" (Paramètres) et la bannière de l'accueil, selon l'état
 async function renderPush() {
@@ -1821,6 +1843,8 @@ async function renderPush() {
     $("push-banner-text").textContent = t(status === "off" ? "push.bannerText" : "push.bannerIos");
     $("push-banner-btn").textContent = t(status === "off" ? "push.enable" : "push.howIos");
     $("push-banner-btn").dataset.push = status === "off" ? "enable" : "ios";
+    // Android / ordinateur : on propose aussi d'installer Buddy comme une vraie appli (un seul clic)
+    $("push-banner-install").classList.toggle("hidden", !(installPrompt && !IS_INSTALLED));
   }
   return status;
 }
@@ -1832,7 +1856,7 @@ document.addEventListener("click", (e) => {
   actions[b.dataset.push]?.();
 });
 $("push-banner-close").addEventListener("click", () => {
-  try { localStorage.setItem("buddy-push-banner", "ferme"); } catch (e) {}
+  try { localStorage.setItem("buddy-push-banner-closed", String(Date.now())); } catch (e) {}
   $("push-banner").classList.add("hidden");
 });
 

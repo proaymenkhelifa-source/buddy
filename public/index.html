@@ -213,6 +213,7 @@
           <span class="push-banner-icon">🔔</span>
           <p id="push-banner-text"></p>
           <button class="btn btn-primary" id="push-banner-btn"></button>
+          <button class="btn btn-ghost hidden" id="push-banner-install" data-push="install" data-i18n="push.installShort">📲 Installer l'appli</button>
           <button class="icon-btn round push-banner-close" id="push-banner-close" data-i18n-title="chat.close"><i data-lucide="x"></i></button>
         </div>
 
@@ -572,6 +573,19 @@
         <button type="button" class="btn btn-danger hidden" id="task-delete"><i data-lucide="trash-2"></i> <span data-i18n="common.delete">Supprimer</span></button>
         <button type="button" class="btn btn-ghost" data-close data-i18n="common.cancel">Annuler</button>
         <button type="submit" class="btn btn-primary" data-i18n="common.save">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- "Je te préviens 5 minutes avant ?" (juste après avoir créé une tâche avec une heure) -->
+  <dialog id="push-ask" class="dialog push-ask">
+    <form method="dialog">
+      <div class="push-ask-avatar"><img src="buddy/content.webp" alt=""></div>
+      <h2 id="push-ask-title"></h2>
+      <p class="muted" id="push-ask-text"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" value="later" data-i18n="push.askLater">Plus tard</button>
+        <button type="button" class="btn btn-primary" id="push-ask-yes"></button>
       </div>
     </form>
   </dialog>
