@@ -1169,12 +1169,23 @@ textarea { resize: vertical; }
 .push-ask .dialog-actions { justify-content: center; }
 .push-ask .btn { white-space: nowrap; }
 
-/* Thème clair : les catégories deviennent claires elles aussi (même modèle, teinte douce de leur couleur) */
-:root[data-theme="light"] .cat {
-  color: var(--text);
-  background: linear-gradient(150deg, color-mix(in srgb, var(--c) 16%, #ffffff) 0%, #ffffff 80%);
-  border-color: color-mix(in srgb, var(--c) 18%, var(--border));
+/* LES VRAIES PHOTOS (public/images) : le décor dessiné ne sert plus que de secours pendant le chargement.
+   On cache ce qui ferait doublon avec la photo (ville, soleil, bureau et ordinateur dessinés). */
+.banner .scene-city, .banner .scene-sun, .banner-desk,
+.scene-hero .scene-city, .scene-hero .scene-sun, .scene-hero .scene-window, .scene-hero .scene-desk,
+.quote-landscape { display: none; }
+.scene-photo, .quote-card .photo { background-position: center; }
+/* La bannière : la photo un peu plus sombre à gauche (le texte) et en bas (la transition vers les cartes) */
+.banner .scene-photo { background-position: 62% 40%; }
+.quote-card .photo { background-position: 30% 40%; }
+/* Thème clair : les catégories gardent leurs photos (des cartes-images), avec une bordure plus douce */
+:root[data-theme="light"] .cat { border-color: transparent; }
+/* Buddy devant une vraie photo : il est posé en bas du cadre (sa coupe à mi-cuisse se fond dans l'ombre),
+   et la lueur autour de lui est plus discrète (sinon elle ferait un halo sur la photo) */
+.scene-hero .buddy-img { bottom: 0; height: 90%; }
+.scene-hero::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 26%; z-index: 2; pointer-events: none;
+  background: linear-gradient(to top, rgba(7, 9, 15, 0.92), transparent);
 }
-:root[data-theme="light"] .cat p { color: var(--muted); }
-:root[data-theme="light"] .cat-icon { background: color-mix(in srgb, var(--c) 16%, #ffffff); }
-:root[data-theme="light"] .cat:hover { box-shadow: 0 12px 26px rgba(40, 30, 10, 0.1); }
+.buddy-img { filter: drop-shadow(0 0 10px rgba(255, 170, 80, 0.16)) drop-shadow(0 22px 30px rgba(0, 0, 0, 0.55)); }
+.banner-buddy::before { opacity: 0.55; }
