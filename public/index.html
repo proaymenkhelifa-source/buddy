@@ -66,6 +66,8 @@
     <main class="hero">
       <div class="hero-text">
         <p class="eyebrow" data-i18n="hero.eyebrow">Ton coach personnel</p>
+        <!-- L'essai gratuit, visible dès l'arrivée : un clic descend jusqu'aux offres -->
+        <a class="trial-pill" href="#plans" id="trial-pill"><i data-lucide="gift"></i><span data-i18n-html="hero.trial"><strong>7 jours de Premium offerts</strong> · teste tout gratuitement</span><i data-lucide="caret-down"></i></a>
         <h1 data-i18n-html="hero.title">Une meilleure<br>version de toi,<br><span class="accent">chaque jour.</span></h1>
         <p class="hero-sub" data-i18n-html="hero.sub">
           Reste focus sur ce qui compte.<br>
@@ -116,7 +118,9 @@
         <article class="plan-card premium reveal" style="--d: 0.15s">
           <span class="premium-trial"><i data-lucide="gift"></i> <span data-i18n="premium.trial">7 jours offerts</span></span>
           <h3 data-i18n="plans.premiumName">Premium</h3>
-          <p class="plan-price"><strong data-i18n="plans.premiumPrice">9,99 €</strong><span data-i18n="plans.perMonth">/mois</span></p>
+          <!-- L'essai gratuit en grand, le prix ensuite -->
+          <p class="plan-price"><strong data-i18n="plans.trialPrice">0 €</strong><span data-i18n="plans.trialFor">pendant 7 jours</span></p>
+          <p class="plan-then" data-i18n="plans.then">puis 9,99 €/mois, sans engagement</p>
           <ul class="plan-list">
             <li><i data-lucide="chat-circle-dots"></i><span data-i18n="premium.perk1">Parle à Buddy sans limite</span></li>
             <li><i data-lucide="list-checks"></i><span data-i18n="premium.perk2">Tâches sans limite</span></li>
@@ -126,7 +130,7 @@
           </ul>
           <!-- Le bouton mis en avant : essayer Premium gratuitement -->
           <button class="btn btn-primary btn-big btn-full plan-btn" data-plan-choice="premium"><span data-i18n="plans.premiumCta">Essayer 7 jours gratuitement</span> <i data-lucide="arrow-right"></i></button>
-          <p class="plan-note" data-i18n="plans.premiumNote">Puis 9,99 €/mois · Annule quand tu veux, en 2 clics</p>
+          <p class="plan-note" data-i18n="plans.premiumNote">Annule quand tu veux, en 2 clics</p>
         </article>
       </div>
     </section>
@@ -721,7 +725,8 @@
        BUDDY : la bulle flottante + le panneau de discussion
        ========================================================= -->
   <button id="buddy-fab" class="buddy-fab hidden" data-i18n-title="home.talk">
-    <img id="fab-buddy" src="buddy/repos.webp" alt="">
+    <!-- Toujours Buddy qui te fait coucou -->
+    <img id="fab-buddy" src="buddy/salut.webp" alt="">
   </button>
 
   <div id="drawer-backdrop" class="drawer-backdrop hidden"></div>

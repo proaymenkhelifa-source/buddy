@@ -299,6 +299,8 @@ function closeAuth() {
 
 // "C'est parti" : on descend en douceur vers la suite (les captures, puis les offres).
 $("hero-cta").addEventListener("click", () => $("showcase").scrollIntoView({ behavior: "smooth", block: "start" }));
+// La pastille "7 jours de Premium offerts" : on descend en douceur jusqu'aux offres
+$("trial-pill").addEventListener("click", (e) => { e.preventDefault(); $("plans").scrollIntoView({ behavior: "smooth", block: "start" }); });
 // Les boutons des offres : la personne choisit Gratuit ou Premium AVANT de créer son compte.
 // Le choix est gardé dans le navigateur, puis enregistré juste après l'inscription (l'écran Premium ne redemande pas).
 for (const b of document.querySelectorAll("[data-plan-choice]")) {
@@ -1636,7 +1638,7 @@ function setBuddy(pose, mouvement, status) {
   const file = poseFile(pose);
   const img = $("buddy-img");
   const src = "buddy/" + file + ".webp";
-  for (const other of [$("drawer-buddy"), $("fab-buddy")]) other.src = src;
+  $("drawer-buddy").src = src; // (la bulle flottante, elle, montre toujours Buddy qui fait coucou)
   $("buddy-status").textContent = status;
   // Il vient de changer de tenue : petit effet magique ✨ (plutôt que le mouvement habituel)
   const outfitNow = OUTFITS[outfit] && file !== pose ? outfit : null;

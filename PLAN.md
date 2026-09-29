@@ -207,5 +207,10 @@ Known gotchas:
 - [x] **3. Motivating first day**: never "0 %": week ring shows 💪 + "Écris ton premier défi" / "Ta première semaine commence aujourd'hui" / "Nouvelle semaine, nouveau départ"; goals at 0 % show "À lancer"; Suivi page for a new account = one invitation card instead of zero tiles; 0 % tiles → "ta semaine démarre" / "ta série commence aujourd'hui"; friendlier empty states (today, goals, tracking, timeline, greeting). Buddy's prompt: "RÈGLE DES NOUVEAUX DÉPARTS" (first sentence always encouraging when starting or restarting).
 - [x] **4. Legal pages** (`public/legal/`: `mentions-legales.html`, `conditions.html` incl. Premium terms, `confidentialite.html`), FR + EN in the same page (`legal.js` picks the app language, FR/EN button). Linked from the home page footer, Settings ("Informations légales") and the sign-up screen ("En créant ton compte, tu acceptes…"). Owner's info = yellow `[PLACEHOLDERS]` to fill in; **to be reviewed by a professional before the official launch** (withdrawal right, consumer mediator, minimum age, sensitive data).
 
+## Polish after tester feedback (2026-09-29)
+- Calistoga only for real titles (h1, logo, home section titles, Buddy Premium); card titles, subtitles, numbers, dialogs, quote → Plus Jakarta Sans bold, smaller.
+- Chat bubble (FAB) always shows Buddy waving (`salut`), with a small wave every few seconds.
+- Free trial made obvious: "7 jours de Premium offerts" pill at the top of the home page (scrolls to the plans); Premium card headline "0 € pendant 7 jours" then "puis 9,99 €/mois"; Premium card first on phones.
+
 ## Marketing & next steps
 See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
