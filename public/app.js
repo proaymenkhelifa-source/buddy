@@ -8,6 +8,7 @@
 //   3. après chaque action (cocher, ajouter, modifier…), on recommence 1 et 2.
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, styleAllowed } from "./shared.js";
 import { CATEGORIES, MAX_TASKS, BADGES, APP_VERSION, HISTORY_DAYS, dayKey, addDays, mondayOf, computeStats, occursOn, isCurrent, isPlanned, isDone, scheduleLabel, goalWeek, goalProgress } from "./shared.js";
 import { t, getLang, setLang, cleanLang, locale, dayLong, dayInitials, LANGUAGES } from "./i18n.js";
 
@@ -410,6 +411,7 @@ async function logout() {
   try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
   // On "débarrasse la table" : on efface tout ce que la personne précédente a laissé (brouillons compris).
   clearAllDrafts();
+  try { localStorage.removeItem("buddy-plan-asked"); } catch (e) {}
   state = null;
   session = null;
   currentTopic = null;
@@ -543,7 +545,7 @@ function renderToday() {
   const tasks = todayTasks();
 
   $("today-list").innerHTML = tasks.length === 0
-    ? `<li class="empty">${t("today.empty", { max: MAX_TASKS })}
+    ? `<li class="empty">${t("today.empty", { max: taskLimitFor(state.profile) })}
          <br><button class="btn btn-primary" data-new-task><i data-lucide="plus"></i> ${t("today.add")}</button></li>`
     : tasks.map((task) => {
         const goal = goalById(task.goal_id);
@@ -1017,6 +1019,8 @@ function renderSettings() {
   for (const b of document.querySelectorAll("[data-style]")) {
     b.classList.toggle("active", b.dataset.style === state.profile.style);
   }
+  // L'offre (Premium / gratuite). En mode démo, tout le monde a tout : on le dit.
+  $("plan-status").textContent = DEMO_MODE ? t("plan.demo") : t(hasPremium(state.profile) ? "plan.premium" : "plan.free");
   setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
   // Les réglages des e-mails (on ne les réécrit pas si la personne est en train de les modifier)
@@ -1102,7 +1106,10 @@ $("save-name").addEventListener("click", async () => {
 });
 for (const b of document.querySelectorAll("[data-style]")) {
   b.addEventListener("click", async () => {
-    await api("PATCH", "/api/profile", { style: b.dataset.style });
+    // Version gratuite (hors mode démo) : Militaire et Bienveillant sont Premium
+    if (!styleAllowed(state.profile, b.dataset.style)) return showPremium("styles");
+    const result = await api("PATCH", "/api/profile", { style: b.dataset.style });
+    if (result.premium) return showPremium(result.premium);
     await refresh();
     toast(t("toast.styleSaved", { style: b.querySelector("strong").textContent }));
   });
@@ -1357,6 +1364,8 @@ $("task-goal-select").addEventListener("change", () => {
 // onDate : une nouvelle tâche pour un jour précis (depuis le calendrier)
 function openTaskDialog(task, goalId = null, onDate = null) {
   editingTask = task;
+  // "Maximum N tâches par jour" : la limite de CETTE personne (5 en gratuit hors mode démo)
+  $("task-dialog").querySelector('[data-i18n="task.hint"]').textContent = t("task.hint", { max: taskLimitFor(state.profile) });
   const form = $("task-form");
   form.reset();
   $("task-goal-select").innerHTML = `<option value="">${t("task.noGoal")}</option>` +
@@ -1429,6 +1438,7 @@ $("task-form").addEventListener("submit", async (event) => {
   const result = editingTask
     ? await api("PATCH", `/api/tasks/${editingTask.id}`, body)
     : await api("POST", "/api/tasks", body);
+  if (result.premium) showPremium(result.premium); // limite gratuite atteinte (jamais en mode démo)
   if (result.error) return ($("task-error").textContent = result.error);
   clearDialogDraft($("task-dialog")); // enregistré : le brouillon peut partir
   $("task-dialog").close();
@@ -1808,6 +1818,7 @@ async function sendToBuddy(text, extra = {}, typed = false) {
     typing.remove();
     if (data.error) {
       showMessage(data.error, "error");
+      if (data.premium) showPremium(data.premium); // limite gratuite atteinte (jamais en mode démo)
       showEmotion(currentEmotion, false);
       giveBack();
     } else {
@@ -2184,6 +2195,57 @@ async function loadQuotes() {
   }
 }
 
+// =============================================================
+// BUDDY PREMIUM
+// L'écran complet s'affiche UNE fois, juste après l'inscription (avant la visite guidée).
+// La version courte (reason = "tasks", "messages", "styles") s'affiche quand une personne gratuite
+// atteint une limite — seulement quand le mode démo est désactivé (DEMO_MODE dans shared.js).
+// Pas encore de vrai paiement : les deux choix mènent à l'app complète, on enregistre juste le choix.
+// =============================================================
+let premiumDone = null; // ce qu'on fait une fois le choix fait (ex : lancer la visite guidée)
+function showPremium(reason = null) {
+  if (reason && DEMO_MODE) return Promise.resolve(); // en mode démo : aucune limite, rien à débloquer
+  const dialog = $("premium-dialog");
+  dialog.classList.toggle("short", !!reason);
+  $("premium-reason").classList.toggle("hidden", !reason);
+  if (reason) $("premium-reason").textContent = t("premium.why." + reason, FREE_LIMITS);
+  $("premium-free").textContent = t(reason ? "premium.later" : "premium.free");
+  drawIcons();
+  return new Promise((resolve) => {
+    premiumDone = resolve;
+    if (!dialog.open) dialog.showModal();
+  });
+}
+async function choosePlan(plan) {
+  const dialog = $("premium-dialog");
+  const short = dialog.classList.contains("short");
+  dialog.close();
+  // Version courte + "Plus tard" : on ne change rien. Sinon on enregistre le choix (et sa date) dans Supabase.
+  if (!short || plan === "premium") {
+    try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
+    const result = await api("POST", "/api/plan", { plan }).catch(() => ({}));
+    if (state) state.profile.plan = result.plan || plan;
+    if (plan === "premium") toast(t("premium.welcome"));
+    if (state) render();
+  }
+  const done = premiumDone;
+  premiumDone = null;
+  done?.(plan);
+}
+$("premium-start").addEventListener("click", () => choosePlan("premium"));
+$("premium-free").addEventListener("click", () => choosePlan("free"));
+$("premium-close").addEventListener("click", () => choosePlan("free")); // la croix = continuer gratuitement
+$("premium-dialog").addEventListener("cancel", (e) => { e.preventDefault(); choosePlan("free"); }); // touche Échap
+$("plan-open").addEventListener("click", () => showPremium());
+
+// Le choix n'a jamais été fait (nouveau compte) ? On affiche l'écran complet, et on attend la réponse.
+// (Le petit mémo dans le navigateur évite de le remontrer si Supabase n'a pas encore la colonne "plan".)
+async function askPlanIfNeeded() {
+  let asked = false;
+  try { asked = localStorage.getItem("buddy-plan-asked") === "1"; } catch (e) {}
+  if (state?.profile && !state.profile.plan && !asked) await showPremium();
+}
+
 // Un nouveau jour commence alors que l'appli est restée ouverte (très courant avec l'appli installée
 // sur le téléphone) : on recharge tout (tâches du jour, frise) et les nouvelles phrases de motivation.
 let shownDay = null;
@@ -2201,6 +2263,8 @@ async function loadMyBuddy(newSession) {
   chat.innerHTML = "";
   showApp();
   await refresh();
+  // Nouveau compte : l'écran Buddy Premium d'abord (la visite guidée suit, comme avant)
+  await askPlanIfNeeded();
 
   // LA LANGUE : un choix fait sur CET appareil (bouton FR/EN) passe en premier ;
   // sinon on reprend la langue enregistrée dans le compte (choisie sur un autre appareil).

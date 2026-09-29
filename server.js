@@ -13,6 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import {
   CATEGORIES, MAX_TASKS, MAX_MESSAGES_PER_DAY, HISTORY_DAYS, BADGES, APP_VERSION,
+  DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, messageLimitFor, styleAllowed,
   dayKey, addDays, computeStats, occursOn, isCurrent, scheduleLabel, dailyLimitError, religionRule, badgeFacts,
   goalProgress, goalWeek, withTimeZone, isoDay, DAY_LONG,
 } from "./public/shared.js";
@@ -142,6 +143,8 @@ async function loadAll(userId, today) {
       timezone: profile?.timezone || null, // ex : "Europe/Paris"
       language: profile?.language || null, // "fr" ou "en"
       source: profile?.source || null,     // d'où vient la personne (ex : "insta-fr"), null = inconnu / lien direct
+      plan: profile?.plan || null,         // "premium" ou "free" (choisi sur l'écran Premium), null = pas encore choisi
+      planChosenAt: profile?.plan_chosen_at || null,
     },
     // Les objectifs "brouillons" (en train d'être définis avec Buddy) sont rangés à part :
     // ils ne comptent nulle part (stats, e-mails, badges…), sauf sur la page Mes objectifs et pour Buddy.
@@ -213,7 +216,7 @@ app.get("/api/state", requireUser, async (req, res) => {
       }
     }
     const { badges, newBadges } = await updateBadges(req.user.id, data, today);
-    res.json({ ...data, badges, newBadges, maxMessages: MAX_MESSAGES_PER_DAY, version: APP_VERSION });
+    res.json({ ...data, badges, newBadges, maxMessages: messageLimitFor(data.profile), version: APP_VERSION });
   } catch (error) {
     fail(res, error, "err.loadState");
   }
@@ -237,12 +240,39 @@ app.delete("/api/account", requireUser, async (req, res) => {
   }
 });
 
+// --- L'offre choisie sur l'écran Premium ("premium" ou "free"), avec la date ---
+// Pas encore de vrai paiement : on enregistre juste le choix (pour les statistiques, et pour brancher
+// les paiements App Store / Google Play plus tard). En mode démo, tout le monde a tout de toute façon.
+app.post("/api/plan", requireUser, async (req, res) => {
+  const plan = req.body.plan === "premium" ? "premium" : "free";
+  try {
+    await saveProfile(req.user.id, { plan, plan_chosen_at: new Date().toISOString() });
+    console.log(`⭐ Offre choisie : ${plan}`);
+    res.json({ ok: true, plan });
+  } catch (error) {
+    console.error("Offre non enregistrée (as-tu lancé supabase-premium.sql ?) :", error.message);
+    res.json({ ok: false, plan }); // on laisse quand même la personne continuer
+  }
+});
+
+// L'offre d'une personne (seulement quand les limites sont actives : en mode démo, inutile d'aller la chercher)
+async function planProfile(userId) {
+  if (DEMO_MODE) return null;
+  return check(await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle());
+}
+
 // --- Profil (prénom, style de coaching) ---
 app.patch("/api/profile", requireUser, async (req, res) => {
   try {
     const changes = {};
     if (typeof req.body.firstName === "string") changes.first_name = req.body.firstName.trim() || null;
-    if (["military", "supportive", "balanced"].includes(req.body.style)) changes.communication_style = req.body.style;
+    if (["military", "supportive", "balanced"].includes(req.body.style)) {
+      // Version gratuite (hors mode démo) : seulement le style "Équilibré"
+      if (!styleAllowed(await planProfile(req.user.id), req.body.style)) {
+        return res.status(403).json({ error: tr(req, "err.premiumStyle"), premium: "styles" });
+      }
+      changes.communication_style = req.body.style;
+    }
     // Le fuseau horaire (envoyé automatiquement par la page) : on vérifie qu'il existe vraiment
     if (typeof req.body.timezone === "string") {
       try {
@@ -425,10 +455,12 @@ async function currentTasks(userId, today) {
 // Une erreur "normale" (la personne a demandé quelque chose d'impossible) : on la lui explique.
 // key = le nom de la phrase dans i18n.js (traduite au moment de répondre, dans la langue de la personne).
 class UserError extends Error {
-  constructor(key, vars = {}) {
+  // premium : la limite gratuite atteinte ("tasks", "messages"…) → la page propose l'écran Premium court
+  constructor(key, vars = {}, premium = null) {
     super(key);
     this.key = key;
     this.vars = vars;
+    this.premium = premium;
   }
   text(lang) { return t(this.key, this.vars, lang); }
 }
@@ -439,14 +471,21 @@ async function ownTask(userId, taskId) {
   return task;
 }
 
+// Refuse une tâche de trop ce jour-là. Pour une personne en version gratuite (hors mode démo),
+// l'erreur propose aussi l'écran Premium (premium: "tasks").
+async function checkDailyLimit(userId, candidate, today) {
+  const profile = await planProfile(userId);
+  const limitError = dailyLimitError(await currentTasks(userId, today), candidate, today, taskLimitFor(profile));
+  if (limitError) throw new UserError(limitError.key, limitError.vars, hasPremium(profile) ? null : "tasks");
+}
+
 async function createTask(userId, { title, time, goalId, days, onDate }, today) {
   title = (title || "").trim().slice(0, 80);
   if (!title) throw new UserError("err.taskTitle");
   const schedule = taskSchedule({ days, onDate }, today);
   if (schedule.error) throw new UserError(schedule.error);
-  // La règle d'or : MAX_TASKS tâches maximum le même jour (voir shared.js).
-  const limitError = dailyLimitError(await currentTasks(userId, today), { id: null, ...schedule }, today);
-  if (limitError) throw new UserError(limitError.key, limitError.vars);
+  // La règle d'or : un nombre maximum de tâches le même jour (10 en Premium, 5 en gratuit hors mode démo).
+  await checkDailyLimit(userId, { id: null, ...schedule }, today);
   return check(await supabase.from("tasks").insert({
     user_id: userId, title, time: taskTime(time), goal_id: await ownGoalId(userId, goalId), ...schedule,
   }).select("*").single());
@@ -461,8 +500,7 @@ async function updateTask(userId, taskId, changes, today) {
   if ("days" in changes || "onDate" in changes) {
     const schedule = taskSchedule(changes, today);
     if (schedule.error) throw new UserError(schedule.error);
-    const limitError = dailyLimitError(await currentTasks(userId, today), { id: Number(taskId), ...schedule }, today);
-    if (limitError) throw new UserError(limitError.key, limitError.vars);
+    await checkDailyLimit(userId, { id: Number(taskId), ...schedule }, today);
     Object.assign(fields, schedule);
   }
   return check(await supabase.from("tasks").update(fields).eq("id", taskId).eq("user_id", userId).select("*").single());
@@ -485,7 +523,7 @@ async function setTaskDone(userId, taskId, done, day) {
 
 // Transforme une erreur en réponse pour la page
 function sendError(res, error) {
-  if (error instanceof UserError) return res.status(400).json({ error: error.text(res.req.lang) });
+  if (error instanceof UserError) return res.status(400).json({ error: error.text(res.req.lang), premium: error.premium });
   fail(res, error);
 }
 
@@ -613,6 +651,8 @@ function buildContext(data, today, topicId, { badgeIds = [], review = false, lan
     `- Début de la conversation : ${messages.length === 0 ? "OUI, c'est votre toute première rencontre" : "non"}`,
     `- Prénom : ${profile.firstName || "pas encore connu"}`,
     `- Style de coaching : ${STYLE_NAMES[profile.style] || "pas encore choisi"}`,
+    // L'offre (seulement quand les limites existent vraiment : pas en mode démo)
+    ...(hasPremium(profile) ? [] : [`- Offre : version GRATUITE — seul le style « équilibré » est disponible (militaire et bienveillant sont Premium), ${FREE_LIMITS.tasksPerDay} tâches par jour maximum. Si la personne demande un autre style, explique gentiment que c'est dans Buddy Premium (7 jours offerts, dans Paramètres) et reste en équilibré (style "unchanged").`]),
     "",
     "## Ses objectifs",
   ];
@@ -655,7 +695,7 @@ function buildContext(data, today, topicId, { badgeIds = [], review = false, lan
 
   const current = tasks.filter((t) => isCurrent(t, today));
   const todays = current.filter((t) => occursOn(t, today));
-  lines.push("", `## Ses tâches d'aujourd'hui (${stats.today.done}/${stats.today.planned} faites, ${MAX_TASKS} maximum par jour)`);
+  lines.push("", `## Ses tâches d'aujourd'hui (${stats.today.done}/${stats.today.planned} faites, ${taskLimitFor(profile)} maximum par jour)`);
   if (todays.length === 0) lines.push("Aucune tâche prévue aujourd'hui.");
   for (const task of todays) {
     const done = logs.some((l) => l.task_id === task.id && l.day === today);
@@ -765,13 +805,17 @@ app.post("/api/chat", requireUser, async (req, res) => {
   try {
     // GARDE-FOU SUR LES COÛTS : un nombre maximum de messages sur les dernières 24 heures, par personne.
     // (On compte sur 24 h plutôt que "depuis minuit" : ça marche pareil quel que soit le fuseau horaire.)
+    // (100 en Premium / mode démo, 50 en version gratuite hors mode démo : voir shared.js)
     if (text) {
       const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count } = await supabase.from("messages").select("id", { count: "exact", head: true })
         .eq("user_id", userId).eq("role", "user").gte("created_at", since24h);
-      if (count >= MAX_MESSAGES_PER_DAY) {
+      const profile = await planProfile(userId);
+      const max = messageLimitFor(profile);
+      if (count >= max) {
         return res.status(429).json({
-          error: tr(req, "err.messageLimit", { max: MAX_MESSAGES_PER_DAY }),
+          error: tr(req, hasPremium(profile) ? "err.messageLimit" : "err.messageLimitFree", { max }),
+          premium: hasPremium(profile) ? null : "messages",
         });
       }
     }
@@ -822,7 +866,8 @@ app.post("/api/chat", requireUser, async (req, res) => {
     // Buddy a peut-être noté un prénom ou un nouveau style.
     const profileChanges = {};
     if (buddy.prenom.trim()) profileChanges.first_name = buddy.prenom.trim();
-    if (buddy.style !== "unchanged") profileChanges.communication_style = buddy.style;
+    // (en version gratuite hors mode démo, seul "Équilibré" est possible : Buddy le sait, voir buildContext)
+    if (buddy.style !== "unchanged" && styleAllowed(data.profile, buddy.style)) profileChanges.communication_style = buddy.style;
     if (Object.keys(profileChanges).length > 0) await saveProfile(userId, profileChanges);
 
     // Buddy a peut-être créé un nouvel objectif…

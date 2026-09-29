@@ -424,6 +424,11 @@
               <button class="style-option" data-style="supportive"><strong data-i18n="style.supportive">🤝 Bienveillant</strong><span data-i18n="style.supportiveDesc">Patient et rassurant.</span></button>
             </div>
           </section>
+          <section class="card" id="plan-settings">
+            <h3 data-i18n="plan.title">Ton offre</h3>
+            <p class="muted small" id="plan-status"></p>
+            <button class="btn btn-ghost" id="plan-open"><i data-lucide="crown"></i> <span data-i18n="plan.open">Découvrir Buddy Premium</span></button>
+          </section>
           <section class="card">
             <h3 data-i18n="settings.theme">Thème</h3>
             <div class="style-options">
@@ -574,6 +579,36 @@
         <button class="btn btn-ghost" value="later" data-i18n="push.askLater">Plus tard</button>
         <button type="button" class="btn btn-primary" id="push-ask-yes"></button>
       </div>
+    </form>
+  </dialog>
+
+  <!-- BUDDY PREMIUM : juste après l'inscription (avant la visite guidée), ou en version courte quand
+       une personne gratuite atteint une limite (seulement quand le mode démo est désactivé : voir shared.js).
+       Pas encore de vrai paiement : les deux choix mènent à l'app complète, on enregistre juste le choix. -->
+  <dialog id="premium-dialog" class="dialog premium">
+    <form method="dialog" class="premium-box">
+      <button type="button" class="premium-close" id="premium-close" data-i18n-title="premium.close"><i data-lucide="x"></i></button>
+      <span class="premium-trial"><i data-lucide="gift"></i> <span data-i18n="premium.trial">7 jours offerts</span></span>
+      <h2 data-i18n="premium.title">Buddy Premium</h2>
+      <p class="premium-sub" data-i18n="premium.sub">Ton coach, sans limites</p>
+      <!-- Version courte : ce que la personne débloquerait (ex : "Tu as atteint tes 5 tâches du jour") -->
+      <p class="premium-reason hidden" id="premium-reason"></p>
+      <ul class="premium-perks">
+        <li><span class="perk-icon"><i data-lucide="chat-circle-dots"></i></span><span data-i18n="premium.perk1">Parle à Buddy sans limite</span></li>
+        <li><span class="perk-icon"><i data-lucide="list-checks"></i></span><span data-i18n="premium.perk2">Tâches sans limite</span></li>
+        <li><span class="perk-icon"><i data-lucide="sliders-horizontal"></i></span><span data-i18n="premium.perk3">Personnalise ton coaching : militaire, équilibré ou bienveillant</span></li>
+        <li><span class="perk-icon"><i data-lucide="bell-ringing"></i></span><span data-i18n="premium.perk4">Rappels et notifications sans limite</span></li>
+        <li><span class="perk-icon"><i data-lucide="device-mobile-slash"></i></span><span data-i18n="premium.perk5">Bloque ton téléphone pendant ton focus</span></li>
+      </ul>
+      <!-- La petite frise qui rassure -->
+      <ol class="premium-steps">
+        <li><strong data-i18n="premium.when1">Aujourd'hui</strong><span data-i18n="premium.step1">Tout est débloqué</span></li>
+        <li><strong data-i18n="premium.when2">Jour 5</strong><span data-i18n="premium.step2">On te prévient</span></li>
+        <li><strong data-i18n="premium.when3">Jour 7</strong><span data-i18n="premium.step3">9,99 €/mois</span></li>
+      </ol>
+      <button type="button" class="btn btn-primary btn-big btn-full" id="premium-start" data-i18n="premium.cta">Commencer mes 7 jours gratuits</button>
+      <p class="premium-note" data-i18n="premium.cancel">Annule quand tu veux, en 2 clics</p>
+      <button type="button" class="premium-free" id="premium-free" data-i18n="premium.free">Continuer gratuitement</button>
     </form>
   </dialog>
 

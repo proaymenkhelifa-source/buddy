@@ -1049,6 +1049,48 @@ textarea { resize: vertical; }
 .push-ask .dialog-actions { justify-content: center; }
 .push-ask .btn { white-space: nowrap; }
 
+/* ---------- BUDDY PREMIUM ----------
+   L'écran de choix après l'inscription (et sa version courte quand une limite gratuite est atteinte) */
+.dialog.premium { width: min(440px, calc(100vw - 24px)); padding: 0; overflow: hidden; }
+.premium-box {
+  position: relative; text-align: center; padding: 30px 26px 22px;
+  background:
+    radial-gradient(circle at 100% 0%, var(--blob) 0 110px, transparent 111px),
+    radial-gradient(circle at 0% 100%, var(--blob-2) 0 120px, transparent 121px),
+    var(--card);
+}
+.dialog.premium form.premium-box { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.premium-close { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent; color: var(--faint); cursor: pointer; display: grid; place-items: center; }
+.premium-close:hover { background: var(--card-strong); color: var(--muted); }
+.premium-close .lucide { font-size: 16px; }
+.premium-trial { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-ink); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em; }
+.premium-trial .lucide { font-size: 15px; }
+.dialog.premium h2 { font-size: 2rem; margin-top: 2px; }
+.premium-sub { color: var(--muted); margin-top: -6px; }
+.premium-reason { width: 100%; padding: 10px 14px; border-radius: var(--radius-md); background: var(--accent-soft); font-weight: 600; font-size: 0.92rem; color: var(--text); }
+/* Les 5 avantages */
+.premium-perks { list-style: none; margin: 6px 0 0; padding: 0; width: 100%; display: grid; gap: 10px; text-align: left; }
+.premium-perks li { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 0.93rem; line-height: 1.35; }
+.perk-icon { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--navy); }
+:root[data-theme="dark"] .perk-icon { color: var(--accent-ink); }
+.perk-icon .lucide { font-size: 18px; }
+/* La petite frise : Aujourd'hui → Jour 5 → Jour 7 */
+.premium-steps { list-style: none; margin: 6px 0 4px; padding: 14px 16px; width: 100%; display: grid; gap: 10px; text-align: left; border-radius: var(--radius-md); background: var(--card-strong); }
+.premium-steps li { position: relative; display: grid; grid-template-columns: 82px 1fr; gap: 8px; padding-left: 20px; font-size: 0.88rem; }
+.premium-steps li::before { content: ""; position: absolute; left: 0; top: 0.4em; width: 9px; height: 9px; border-radius: 50%; background: var(--primary); }
+.premium-steps li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: calc(0.4em + 11px); height: calc(100% + 1px); width: 1.5px; background: color-mix(in srgb, var(--primary) 40%, transparent); }
+.premium-steps li:nth-child(2)::before { background: var(--sky); }
+.premium-steps li:last-child::before { background: var(--navy); }
+:root[data-theme="dark"] .premium-steps li:last-child::before { background: var(--text); }
+.premium-steps strong { font-weight: 700; }
+.premium-steps span { color: var(--muted); }
+.premium-note { font-size: 0.8rem; color: var(--muted); margin-top: -4px; }
+/* "Continuer gratuitement" : un vrai lien bien visible (pas caché) */
+.premium-free { border: none; background: none; padding: 6px 10px; font: inherit; font-weight: 700; font-size: 0.95rem; color: var(--link); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.premium-free:hover { color: var(--text); }
+/* La version courte (limite atteinte) : sans la frise */
+.dialog.premium.short .premium-steps { display: none; }
+
 /* ---------- LE CALENDRIER ---------- */
 /* Le raccourci "Voir mon agenda →" en bas de la carte Aujourd'hui */
 .agenda-link {

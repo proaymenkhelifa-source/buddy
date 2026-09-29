@@ -25,13 +25,43 @@ export const CATEGORIES = {
 // La "version" du code. Le serveur et la page la comparent : si elles sont différentes,
 // c'est que le serveur tourne encore avec un vieux code → la page demande de le redémarrer.
 // (À changer à chaque grosse modification.)
-export const APP_VERSION = "2026-09-28-notifs";
+export const APP_VERSION = "2026-09-30-premium";
 
 export const MAX_TASKS = 10;
 
 // GARDE-FOU SUR LES COÛTS : chaque message à Buddy coûte environ 1 centime (Claude).
-// Maximum de messages qu'une personne peut envoyer à Buddy par jour. À ajuster librement.
-export const MAX_MESSAGES_PER_DAY = 40;
+// Maximum de messages par jour en Premium ("sans limite" pour une personne normale : juste un anti-abus).
+// En mode démo, tout le monde est à ce niveau. À ajuster librement.
+export const MAX_MESSAGES_PER_DAY = 100;
+
+// =============================================================
+// L'OFFRE PREMIUM
+// =============================================================
+// ⭐ L'INTERRUPTEUR DU MODE DÉMO ⭐
+//   true  = phase de test : TOUT LE MONDE a TOUT (Premium ou gratuit), aucune limite, aucun écran "passe Premium".
+//   false = le vrai lancement : les limites de la version gratuite (ci-dessous) s'appliquent,
+//           et l'écran Premium court s'affiche quand une personne gratuite atteint une limite.
+// Pour changer : remplace true par false (ou l'inverse), enregistre, et mets en ligne. C'est tout.
+export const DEMO_MODE = true;
+
+// Les limites de la version GRATUITE (actives seulement quand DEMO_MODE = false).
+// Premium = les limites "normales" ci-dessus (MAX_TASKS, MAX_MESSAGES_PER_DAY), sans limite de rappels.
+export const FREE_LIMITS = {
+  tasksPerDay: 5,         // 5 tâches par jour maximum
+  messagesPerDay: 50,     // 50 messages par jour avec Buddy
+  styles: ["balanced"],   // seulement le coaching "Équilibré"
+  remindersPerDay: 3,     // 3 rappels (e-mails / notifications) par jour maximum
+};
+export const TRIAL_DAYS = 7;
+
+// La personne a-t-elle droit à tout ? (profile.plan : "premium", "free", ou vide si pas encore choisi)
+// Plus tard, avec les vrais paiements (App Store / Google Play), c'est ICI qu'on vérifiera l'abonnement.
+export function hasPremium(profile) {
+  return DEMO_MODE || profile?.plan === "premium";
+}
+export const taskLimitFor = (profile) => (hasPremium(profile) ? MAX_TASKS : FREE_LIMITS.tasksPerDay);
+export const messageLimitFor = (profile) => (hasPremium(profile) ? MAX_MESSAGES_PER_DAY : FREE_LIMITS.messagesPerDay);
+export const styleAllowed = (profile, style) => hasPremium(profile) || FREE_LIMITS.styles.includes(style);
 
 // La règle "religion" donnée à Claude (e-mails, phrases du jour), décidée par le CODE et non par Claude :
 // pas d'objectif dans la catégorie Religion = aucune expression religieuse, jamais.
@@ -136,17 +166,18 @@ export function isCurrent(task, today) {
 
 // Vérifie la règle "MAX_TASKS tâches maximum par jour" avant d'ajouter ou de modifier une tâche.
 // Renvoie l'erreur à afficher ({ key, vars } : le nom de la phrase dans i18n.js), ou null si tout va bien.
-export function dailyLimitError(tasks, candidate, today) {
+// max : la limite de la personne (taskLimitFor : 10 en Premium, 5 en gratuit hors mode démo).
+export function dailyLimitError(tasks, candidate, today, max = MAX_TASKS) {
   const others = tasks.filter((t) => isCurrent(t, today) && t.id !== candidate.id);
   // Les jours à vérifier : la date unique, ou les 7 prochains jours (un de chaque jour de la semaine)
   const daysToCheck = candidate.on_date ? [candidate.on_date] : [0, 1, 2, 3, 4, 5, 6].map((n) => addDays(today, n));
   for (const key of daysToCheck) {
     if (!occursOn(candidate, key)) continue;
     const count = others.filter((t) => occursOn(t, key)).length;
-    if (count >= MAX_TASKS) {
+    if (count >= max) {
       return candidate.on_date
-        ? { key: "err.limitDate", vars: { max: MAX_TASKS } }
-        : { key: "err.limitDay", vars: { max: MAX_TASKS, day: isoDay(key) } };
+        ? { key: "err.limitDate", vars: { max } }
+        : { key: "err.limitDay", vars: { max, day: isoDay(key) } };
     }
   }
   return null;

@@ -6,7 +6,7 @@
 import { Resend } from "resend";
 import {
   CATEGORIES, HISTORY_DAYS, DAY_LONG, dayKey, addDays, isoDay, occursOn, isCurrent, computeStats, religionRule, goalProgress,
-  withTimeZone, timeHHMM,
+  withTimeZone, timeHHMM, hasPremium, FREE_LIMITS,
 } from "./public/shared.js";
 import { t, cleanLang } from "./public/i18n.js";
 import { sendPush, pushReady } from "./push.js";
@@ -210,6 +210,12 @@ async function markSent(supabase, userId, kind, ref, day) {
 // Envoie un e-mail automatique UNE seule fois. S'il n'a pas pu partir (Resend, Claude…),
 // on le raye du carnet : il sera réessayé à la minute suivante (tant qu'on est dans le bon créneau).
 async function sendOnce(supabase, claude, base, kind, ref = "", task = null) {
+  // Version gratuite (hors mode démo) : 3 rappels par jour maximum (e-mails et notifications confondus)
+  if (!hasPremium(base.profile)) {
+    const { count } = await supabase.from("email_log").select("user_id", { count: "exact", head: true })
+      .eq("user_id", base.userId).eq("day", base.today);
+    if (count >= FREE_LIMITS.remindersPerDay) return;
+  }
   if (!(await markSent(supabase, base.userId, kind, ref, base.today))) return; // déjà parti
   try {
     await sendOne(supabase, claude, { ...base, kind, task });

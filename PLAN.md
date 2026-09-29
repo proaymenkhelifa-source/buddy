@@ -198,5 +198,13 @@ Known gotchas:
 - While a new goal is being defined with Buddy (not validated yet), Buddy fills `objectif_en_cours` → the server saves it as a **draft** goal (`goals.draft = true`, SQL `supabase-drafts.sql` to run in Supabase). Drafts are left out of stats, e-mails, badges and quotes (`loadAll` returns `goals` and `drafts` separately); Buddy sees them in its context.
 - "Mes objectifs" shows drafts first, marked "Incomplet", with **Continuer avec Buddy** (reopens the chat on that draft) and **Abandonner** (deletes it). When Buddy validates the goal (`nouvel_objectif`), the draft becomes a real goal (same id).
 
+## Launch prep (owner's 4 changes, 2026-09-30) — one at a time, wait for OK after each
+- [x] **1. Buddy Premium screen**: shown once right after sign-up (before the guided tour), when `profile.plan` is empty. Choice "premium"/"free" + date saved in `profiles.plan` / `profiles.plan_chosen_at` (SQL `supabase-premium.sql`; stats query inside). Both buttons lead to the full app (no real payment yet: App Store / Google Play later). Settings → "Ton offre" reopens it.
+  - **DEMO MODE switch**: `DEMO_MODE` in `public/shared.js` (true = everyone gets everything). Free limits ready in `FREE_LIMITS` (5 tasks/day, 50 messages/day, "balanced" style only, 3 reminders/day), enforced server-side (tasks, chat, style, reminders in emails.js) only when `DEMO_MODE = false`; then the short Premium screen shows on a limit (`premium` field in API errors). Premium caps: `MAX_TASKS` (10), `MAX_MESSAGES_PER_DAY` (raised 40 → 100, anti-abuse).
+  - Phone blocking ("Bloque ton téléphone pendant ton focus") = listed perk only, nothing built yet.
+- [ ] 2. Home page: app screenshots + Free vs Premium section.
+- [ ] 3. Motivating first day (no "0 %", encouraging empty states, Buddy rule for fresh starts).
+- [ ] 4. Legal pages (legal notice, terms incl. Premium, privacy policy) with [PLACEHOLDERS].
+
 ## Marketing & next steps
 See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
