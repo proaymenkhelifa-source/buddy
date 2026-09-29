@@ -65,8 +65,11 @@ function translatePage() {
   const lang = getLang();
   document.documentElement.lang = lang;
   if (!focusTimer) document.title = t("page.title");
-  const vars = { max: MAX_TASKS, word: t("delete.word") };
+  const vars = { max: MAX_TASKS, word: t("delete.word"), ...FREE_LIMITS };
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n, vars);
+  // Les images qui existent en 2 langues (ex : "images/app-desktop-{lang}.jpg")
+  for (const el of document.querySelectorAll("[data-src-lang]")) el.src = el.dataset.srcLang.replace("{lang}", lang);
+  for (const el of document.querySelectorAll("[data-i18n-alt]")) el.alt = t(el.dataset.i18nAlt);
   for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml, vars);
   for (const el of document.querySelectorAll("[data-i18n-ph]")) el.placeholder = t(el.dataset.i18nPh, vars);
   for (const el of document.querySelectorAll("[data-i18n-title]")) {
@@ -290,6 +293,7 @@ function closeAuth() {
 }
 
 $("hero-cta").addEventListener("click", () => openAuth("signup"));
+$("plans-cta").addEventListener("click", () => openAuth("signup")); // le bouton sous "Gratuit ou Premium ?"
 $("nav-login").addEventListener("click", () => openAuth("login"));
 for (const tab of document.querySelectorAll(".tab")) {
   tab.addEventListener("click", () => openAuth(tab.dataset.mode));

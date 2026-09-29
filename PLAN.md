@@ -202,7 +202,7 @@ Known gotchas:
 - [x] **1. Buddy Premium screen**: shown once right after sign-up (before the guided tour), when `profile.plan` is empty. Choice "premium"/"free" + date saved in `profiles.plan` / `profiles.plan_chosen_at` (SQL `supabase-premium.sql`; stats query inside). Both buttons lead to the full app (no real payment yet: App Store / Google Play later). Settings → "Ton offre" reopens it.
   - **DEMO MODE switch**: `DEMO_MODE` in `public/shared.js` (true = everyone gets everything). Free limits ready in `FREE_LIMITS` (5 tasks/day, 50 messages/day, "balanced" style only, 3 reminders/day), enforced server-side (tasks, chat, style, reminders in emails.js) only when `DEMO_MODE = false`; then the short Premium screen shows on a limit (`premium` field in API errors). Premium caps: `MAX_TASKS` (10), `MAX_MESSAGES_PER_DAY` (raised 40 → 100, anti-abuse).
   - Phone blocking ("Bloque ton téléphone pendant ton focus") = listed perk only, nothing built yet.
-- [ ] 2. Home page: app screenshots + Free vs Premium section.
+- [x] **2. Home page**: under the hero, 2 app screenshots (dashboard on computer + chat with Buddy on phone, FR and EN: `public/images/app-desktop-{fr,en}.jpg`, `app-phone-{fr,en}.jpg`, picked by language via `data-src-lang`; replace these 4 files to use your own), then "Gratuit ou Premium ?" (2 cards, side by side / stacked on phone; free numbers come from `FREE_LIMITS`) and a sign-up button. Hero height capped so the next section shows on big screens.
 - [ ] 3. Motivating first day (no "0 %", encouraging empty states, Buddy rule for fresh starts).
 - [ ] 4. Legal pages (legal notice, terms incl. Premium, privacy policy) with [PLACEHOLDERS].
 

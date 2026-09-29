@@ -82,6 +82,49 @@
         <div class="hero-chip two" aria-hidden="true"><i data-lucide="fire"></i><span><span data-i18n="hero.chip2">7 jours de série</span><small data-i18n="hero.chip2Sub">Continue comme ça</small></span></div>
       </div>
     </main>
+
+    <!-- L'app en images : le tableau de bord (ordinateur) et la discussion avec Buddy (téléphone).
+         Les captures existent en français et en anglais : images/app-desktop-fr.jpg, app-phone-en.jpg…
+         Pour mettre tes propres images : remplace ces 4 fichiers (mêmes noms). -->
+    <section class="showcase">
+      <div class="shots">
+        <img class="shot-desktop" data-src-lang="images/app-desktop-{lang}.jpg" src="images/app-desktop-fr.jpg" width="1280" height="800" loading="lazy" data-i18n-alt="shots.desktopAlt" alt="">
+        <img class="shot-phone" data-src-lang="images/app-phone-{lang}.jpg" src="images/app-phone-fr.jpg" width="390" height="780" loading="lazy" data-i18n-alt="shots.phoneAlt" alt="">
+      </div>
+    </section>
+
+    <!-- Gratuit ou Premium ? -->
+    <section class="plans" id="plans">
+      <p class="eyebrow" data-i18n="plans.eyebrow">Les offres</p>
+      <h2 data-i18n="plans.title">Gratuit ou Premium ?</h2>
+      <p class="plans-sub" data-i18n="plans.sub">Commence gratuitement. Passe en Premium quand tu veux aller plus loin.</p>
+      <div class="plan-cards">
+        <article class="plan-card">
+          <h3 data-i18n="plans.freeName">Gratuit</h3>
+          <p class="plan-price"><strong data-i18n="plans.freePrice">0 €</strong></p>
+          <ul class="plan-list">
+            <li><i data-lucide="check"></i><span data-i18n="plans.free1">Objectifs, calendrier et suivi</span></li>
+            <li><i data-lucide="check"></i><span data-i18n="plans.free2">5 tâches par jour</span></li>
+            <li><i data-lucide="check"></i><span data-i18n="plans.free3">50 messages par jour avec Buddy</span></li>
+            <li><i data-lucide="check"></i><span data-i18n="plans.free4">Coaching équilibré</span></li>
+            <li><i data-lucide="check"></i><span data-i18n="plans.free5">3 rappels par jour</span></li>
+          </ul>
+        </article>
+        <article class="plan-card premium">
+          <span class="premium-trial"><i data-lucide="gift"></i> <span data-i18n="premium.trial">7 jours offerts</span></span>
+          <h3 data-i18n="plans.premiumName">Premium</h3>
+          <p class="plan-price"><strong data-i18n="plans.premiumPrice">9,99 €</strong><span data-i18n="plans.perMonth">/mois</span></p>
+          <ul class="plan-list">
+            <li><i data-lucide="chat-circle-dots"></i><span data-i18n="premium.perk1">Parle à Buddy sans limite</span></li>
+            <li><i data-lucide="list-checks"></i><span data-i18n="premium.perk2">Tâches sans limite</span></li>
+            <li><i data-lucide="sliders-horizontal"></i><span data-i18n="premium.perk3">Personnalise ton coaching : militaire, équilibré ou bienveillant</span></li>
+            <li><i data-lucide="bell-ringing"></i><span data-i18n="premium.perk4">Rappels et notifications sans limite</span></li>
+            <li><i data-lucide="device-mobile-slash"></i><span data-i18n="premium.perk5">Bloque ton téléphone pendant ton focus</span></li>
+          </ul>
+        </article>
+      </div>
+      <button class="btn btn-primary btn-big" id="plans-cta"><span data-i18n="plans.cta">Créer mon compte</span> <i data-lucide="arrow-right"></i></button>
+    </section>
   </div>
 
   <!-- =========================================================

@@ -274,7 +274,7 @@ textarea { resize: vertical; }
   max-width: 1240px; margin: 0 auto;
   padding: 30px 24px 60px;
   display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center;
-  min-height: calc(100vh - 80px);
+  min-height: min(720px, calc(100vh - 80px)); /* plafonné : sur un grand écran, on devine la suite (captures, offres) */
 }
 .hero h1 { font-size: clamp(2.5rem, 5vw, 3.75rem); line-height: 1.12; }
 .hero h1 .accent { color: var(--primary); }
@@ -307,6 +307,50 @@ textarea { resize: vertical; }
 .hero-chip.one { top: 12%; left: 7%; }
 .hero-chip.two { bottom: 14%; right: 6%; animation-delay: -3s; }
 @keyframes flotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* L'app en images (sous le titre) : le tableau de bord, avec le téléphone posé devant */
+.showcase { max-width: 1100px; margin: 0 auto; padding: 10px 24px 80px; }
+.shots { position: relative; padding-right: 9%; }
+.shot-desktop {
+  display: block; width: 100%; height: auto; border-radius: 20px;
+  border: 1px solid var(--border); box-shadow: var(--shadow-lift);
+}
+.shot-phone {
+  position: absolute; right: 0; bottom: -40px; width: 24%; height: auto;
+  border-radius: 30px; border: 7px solid var(--navy);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
+}
+/* Gratuit ou Premium ? */
+.plans { max-width: 960px; margin: 0 auto; padding: 40px 24px 90px; text-align: center; }
+.plans h2 { font-size: clamp(2rem, 4vw, 2.6rem); }
+.plans-sub { color: var(--muted); margin: 10px auto 34px; max-width: 520px; }
+.plan-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left; margin-bottom: 34px; }
+.plan-card {
+  position: relative; display: flex; flex-direction: column; gap: 10px;
+  padding: 28px 26px; border-radius: 24px; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.plan-card h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; }
+.plan-price { display: flex; align-items: baseline; gap: 4px; margin-bottom: 8px; }
+.plan-price strong { font-family: var(--font-display); font-weight: 400; font-size: 2.2rem; line-height: 1; }
+.plan-price span { color: var(--muted); font-weight: 600; }
+.plan-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.plan-list li { display: flex; align-items: flex-start; gap: 10px; font-weight: 600; font-size: 0.95rem; line-height: 1.4; }
+.plan-list .lucide { font-size: 18px; margin-top: 1px; color: var(--accent-ink); }
+/* La carte Premium, mise en avant */
+.plan-card.premium {
+  border: 2px solid var(--primary); box-shadow: var(--shadow-lift);
+  background:
+    radial-gradient(circle at 100% 0%, var(--blob) 0 120px, transparent 121px),
+    var(--card);
+}
+.plan-card.premium .premium-trial { align-self: flex-start; }
+.plan-card.premium .plan-list .lucide { color: var(--navy); }
+:root[data-theme="dark"] .plan-card.premium .plan-list .lucide { color: var(--accent-ink); }
+@media (max-width: 700px) {
+  .plan-cards { grid-template-columns: 1fr; }  /* l'une sous l'autre sur téléphone */
+  .showcase { padding-bottom: 60px; }
+  .shot-phone { width: 30%; border-width: 5px; border-radius: 22px; bottom: -30px; }
+}
 
 /* La page de connexion / inscription : plein écran, carte centrée */
 .auth-screen {
@@ -768,7 +812,7 @@ textarea { resize: vertical; }
 /* L'avatar de Buddy : la mascotte en entier, dans un rond menthe */
 .drawer-avatar { position: relative; width: 52px; height: 52px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); flex-shrink: 0; }
 .drawer-avatar img { position: absolute; left: 50%; bottom: -8%; height: 118%; width: auto; max-width: none; transform: translateX(-50%); }
-.style-badge { font-family: var(--font-ui); font-size: 0.72rem; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border-radius: 99px; padding: 3px 9px; margin-left: 6px; vertical-align: middle; }
+.style-badge { white-space: nowrap; font-family: var(--font-ui); font-size: 0.72rem; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border-radius: 99px; padding: 3px 9px; margin-left: 6px; vertical-align: middle; }
 .drawer-status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 0.85rem; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 3px rgba(46, 196, 166, 0.2); }
 .goal-chip {
