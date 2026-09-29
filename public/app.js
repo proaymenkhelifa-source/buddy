@@ -580,6 +580,7 @@ function renderToday() {
 // pour que le mouvement soit animé (la courbe "glisse" d'une étape à l'autre).
 let tlKey = "";   // la liste dessinée (pour savoir s'il faut tout redessiner)
 let tlDone = -1;  // combien de tâches étaient faites au dernier dessin (-1 = premier dessin : pas d'animation)
+let tlWonText = null; // le mot de Buddy quand tout est fait (tiré au hasard : un différent à chaque fois)
 
 function renderTimeline() {
   const box = $("timeline");
@@ -589,6 +590,7 @@ function renderTimeline() {
   if (key !== tlKey) {
     tlKey = key;
     tlDone = -1;
+    tlWonText = null;
     box.innerHTML = tasks.length === 0
       ? `<div class="tl-empty"><img src="buddy/relax.webp" alt=""><p>${t("timeline.empty")}</p>
            <button class="btn btn-primary" data-new-task><i data-lucide="plus"></i> ${t("today.add")}</button></div>`
@@ -627,7 +629,12 @@ function renderTimeline() {
   const won = done === nodes.length;
   end.classList.toggle("won", won);
   end.querySelector("img").src = "buddy/" + (won ? "bravo" : "relax") + ".webp";
-  end.querySelector(".tl-label").textContent = t(won ? "timeline.won" : "timeline.end");
+  if (won && !tlWonText) {
+    const words = t("timeline.won").split("|");
+    tlWonText = words[Math.floor(Math.random() * words.length)];
+  }
+  if (!won) tlWonText = null; // une tâche décochée : au prochain "tout fait", un nouveau mot
+  end.querySelector(".tl-label").textContent = won ? tlWonText : t("timeline.end");
 
   const before = tlDone;
   tlDone = done;
@@ -2119,10 +2126,25 @@ async function syncPush() {
 // =============================================================
 // Les 2 phrases de motivation du jour (écrites par Buddy, différentes chaque jour)
 async function loadQuotes() {
+  shownDay = today();
   const quotes = await api("GET", "/api/quote?today=" + today());
   if (quotes.short) $("quote-short").textContent = quotes.short;
-  if (quotes.long) $("quote-long").textContent = quotes.long;
+  if (quotes.long) {
+    $("quote-long").textContent = quotes.long;
+    $("quote-long").classList.toggle("long", quotes.long.length > 140); // une longue phrase : un peu plus petite
+  }
 }
+
+// Un nouveau jour commence alors que l'appli est restée ouverte (très courant avec l'appli installée
+// sur le téléphone) : on recharge tout (tâches du jour, frise) et les nouvelles phrases de motivation.
+let shownDay = null;
+function checkNewDay() {
+  if (!session || !state || !shownDay || shownDay === today()) return;
+  refresh().catch((e) => console.error("Nouveau jour :", e));
+  loadQuotes().catch((e) => console.error("Phrases du jour :", e));
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkNewDay(); });
+setInterval(checkNewDay, 60 * 1000); // on vérifie aussi toutes les minutes (le passage à minuit)
 
 async function loadMyBuddy(newSession) {
   session = newSession;

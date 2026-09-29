@@ -479,7 +479,6 @@ textarea { resize: vertical; }
 .hero-eyebrow { display: inline-block; margin: 0; padding: 5px 12px; border-radius: 99px; background: var(--card); color: var(--accent-ink); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
 .banner-copy h1 { font-size: clamp(2.2rem, 3.6vw, 3rem); line-height: 1.15; margin: 14px 0 10px; }
 .banner-copy p { font-size: 1.05rem; line-height: 1.5; color: var(--text-2); margin-bottom: 24px; }
-.wave { display: inline-block; animation: wave 2.4s ease-in-out 1; transform-origin: 70% 70%; font-size: 0.8em; }
 #greeting-name { white-space: nowrap; }
 
 .banner-buddy { grid-area: buddy; position: relative; z-index: 1; height: 250px; align-self: end; }
@@ -650,9 +649,8 @@ textarea { resize: vertical; }
     var(--accent-soft);
   border-color: transparent; display: flex; flex-direction: column; justify-content: center; gap: 24px;
 }
-.quote-card .quote-mark { position: absolute; top: var(--s5); right: var(--s5); }
-.quote-mark { position: relative; z-index: 1; }
-.quote-mark.logo-img { width: 36px; height: 36px; border-radius: 10px; }
+/* Une phrase longue : un peu plus petite, pour rester lisible et aérée */
+.quote-card blockquote.long { font-size: 1.2rem; line-height: 1.4; }
 .quote-card blockquote {
   position: relative; z-index: 1; margin: 0;
   font-family: var(--font-display); color: var(--text); font-size: 1.45rem; line-height: 1.35;

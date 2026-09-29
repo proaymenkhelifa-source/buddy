@@ -56,7 +56,8 @@ const DICT = {
     "timeline.aria": "Tes tâches du jour",
     "timeline.empty": "Rien de prévu aujourd'hui. Ajoute une tâche et on avance ensemble.",
     "timeline.end": "Fin de journée",
-    "timeline.won": "Journée bouclée !",
+    // Plusieurs mots possibles, séparés par | : Buddy en tire un au hasard à chaque fois
+    "timeline.won": "Journée réussie !|Bien joué !|Mission accomplie|Tout est coché !|Belle journée !|Objectif atteint|Du solide !",
     "timeline.done": "faite",
     "timeline.todo": "à faire",
 
@@ -121,7 +122,7 @@ const DICT = {
     "home.hello": "Salut",
     "home.talk": "Parler à Buddy",
     "greet.noTasks": "Choisis tes actions du jour.<br>Peu, mais concrètes.",
-    "greet.allDone": "Journée bouclée ✅<br>Reviens demain, on continue.",
+    "greet.allDone": "Journée bouclée.<br>Reviens demain, on continue.",
     "greet.left": ({ n }) => `Il te reste ${n} tâche${s(n)} aujourd'hui.<br>On continue ?`,
     "resume.aria": "Notre dernière discussion",
     "resume.startTitle": "👋 On commence ?",
@@ -534,7 +535,7 @@ const DICT = {
     "timeline.aria": "Your tasks today",
     "timeline.empty": "Nothing planned today. Add a task and let's get moving.",
     "timeline.end": "End of day",
-    "timeline.won": "Day complete!",
+    "timeline.won": "Day complete!|Well done!|Mission accomplished|All checked!|Great day!|Nailed it!|Solid work!",
     "timeline.done": "done",
     "timeline.todo": "to do",
 
@@ -596,7 +597,7 @@ const DICT = {
     "home.hello": "Hi",
     "home.talk": "Talk to Buddy",
     "greet.noTasks": "Pick today's actions.<br>Few, but concrete.",
-    "greet.allDone": "Day complete ✅<br>Come back tomorrow, we keep going.",
+    "greet.allDone": "Day complete.<br>Come back tomorrow, we keep going.",
     "greet.left": ({ n }) => `${n} task${s(n)} left today.<br>Shall we keep going?`,
     "resume.aria": "Our last conversation",
     "resume.startTitle": "👋 Shall we start?",

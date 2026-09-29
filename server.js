@@ -846,7 +846,7 @@ const QUOTE_FORM = {
   type: "object",
   properties: {
     courte: { type: "string", description: "Phrase très courte (6 à 10 mots) pour le menu" },
-    longue: { type: "string", description: "Phrase de motivation (15 à 30 mots) pour la grande carte" },
+    longue: { type: "string", description: "Phrase de motivation (12 à 25 mots, 2 phrases maximum) pour la grande carte" },
   },
   required: ["courte", "longue"],
   additionalProperties: false,
@@ -877,6 +877,7 @@ Adapte-les aux objectifs de la personne et à leur domaine (sport, études, fina
 Style de coaching choisi : ${STYLE_NAMES[profile?.communication_style] || "non précisé"}.
 Règles :
 - Des phrases originales, concrètes et fortes, pas de clichés. Chaque jour doit être différent des phrases d'hier.
+- COURTES : la courte fait 10 mots maximum, la longue 25 mots maximum (2 phrases au plus). Une idée forte, pas un paragraphe.
 - Pas de nom d'auteur inventé. Tu peux citer une citation célèbre UNIQUEMENT si tu es certain de l'auteur et du texte exact.
 ${religionRule(goals)}
 - La courte ne met pas de guillemets. La longue est entre ${en ? "“ ”" : "« »"}.`,
