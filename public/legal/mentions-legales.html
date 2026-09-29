@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentions légales – Buddy</title>
+  <link rel="icon" type="image/png" href="/icons/favicon-64.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Calistoga&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    try { document.documentElement.dataset.theme = localStorage.getItem("buddy-theme-choice") === "dark" ? "dark" : "light"; } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- ⚠️ Les passages surlignés en jaune [ENTRE CROCHETS] sont à compléter avec tes informations. -->
+  <nav class="nav">
+    <a class="logo" href="/"><img class="logo-img" src="/icons/logo.png" alt="" width="36" height="36">Buddy</a>
+    <div class="nav-right">
+      <button class="icon-btn lang-toggle" id="legal-lang">EN</button>
+      <a class="btn btn-ghost" href="/">← Buddy</a>
+    </div>
+  </nav>
+
+  <main class="legal-page">
+    <!-- ========================= FRANÇAIS ========================= -->
+    <article data-lang="fr">
+      <h1>Mentions légales</h1>
+      <p class="updated">Dernière mise à jour : 29 septembre 2026</p>
+
+      <h2>Éditeur du site et de l'application</h2>
+      <p>Buddy (buddycoach.app) est édité par :</p>
+      <ul>
+        <li>Nom : <mark class="todo">[TON NOM ET PRÉNOM]</mark></li>
+        <li>Statut : <mark class="todo">[TON STATUT, ex : entrepreneur individuel / micro-entrepreneur]</mark></li>
+        <li>Numéro SIRET : <mark class="todo">[TON NUMÉRO SIRET]</mark></li>
+        <li>Adresse : <mark class="todo">[TON ADRESSE POSTALE]</mark></li>
+        <li>E-mail : <mark class="todo">[TON E-MAIL DE CONTACT]</mark></li>
+      </ul>
+      <p>Directeur de la publication : <mark class="todo">[TON NOM ET PRÉNOM]</mark>.</p>
+
+      <h2>Hébergement</h2>
+      <p>Le site et l'application sont hébergés par Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis (vercel.com).</p>
+      <p>Les données des comptes (profil, objectifs, tâches, conversations) sont stockées chez Supabase Inc. (supabase.com), dans la région <mark class="todo">[RÉGION DE TON PROJET SUPABASE, ex : Union européenne (Francfort)]</mark>.</p>
+
+      <h2>Propriété intellectuelle</h2>
+      <p>Le nom Buddy, le logo, la mascotte, les illustrations, les textes et le code de l'application sont protégés. Toute reproduction ou réutilisation, totale ou partielle, sans autorisation écrite de l'éditeur est interdite.</p>
+
+      <h2>Intelligence artificielle</h2>
+      <p>Les réponses de Buddy, les phrases de motivation et les rappels sont rédigés automatiquement par une intelligence artificielle (Claude, de la société Anthropic). Ils peuvent contenir des erreurs et ne remplacent pas l'avis d'un professionnel (médecin, psychologue, conseiller financier…).</p>
+
+      <h2>Contact</h2>
+      <p>Pour toute question : <mark class="todo">[TON E-MAIL DE CONTACT]</mark>.</p>
+      <p>Voir aussi : <a href="/legal/conditions.html">Conditions d'utilisation</a> · <a href="/legal/confidentialite.html">Politique de confidentialité</a>.</p>
+    </article>
+
+    <!-- ========================= ENGLISH ========================= -->
+    <article data-lang="en" hidden>
+      <h1>Legal notice</h1>
+      <p class="updated">Last updated: September 29, 2026</p>
+
+      <h2>Publisher of the website and app</h2>
+      <p>Buddy (buddycoach.app) is published by:</p>
+      <ul>
+        <li>Name: <mark class="todo">[YOUR FULL NAME]</mark></li>
+        <li>Legal status: <mark class="todo">[YOUR STATUS, e.g. sole trader / micro-entrepreneur]</mark></li>
+        <li>SIRET number: <mark class="todo">[YOUR SIRET NUMBER]</mark></li>
+        <li>Address: <mark class="todo">[YOUR POSTAL ADDRESS]</mark></li>
+        <li>E-mail: <mark class="todo">[YOUR CONTACT E-MAIL]</mark></li>
+      </ul>
+      <p>Publication director: <mark class="todo">[YOUR FULL NAME]</mark>.</p>
+
+      <h2>Hosting</h2>
+      <p>The website and app are hosted by Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, USA (vercel.com).</p>
+      <p>Account data (profile, goals, tasks, conversations) is stored with Supabase Inc. (supabase.com), in the <mark class="todo">[YOUR SUPABASE PROJECT REGION, e.g. European Union (Frankfurt)]</mark> region.</p>
+
+      <h2>Intellectual property</h2>
+      <p>The Buddy name, logo, mascot, illustrations, texts and code are protected. Any reproduction or reuse, in whole or in part, without the publisher's written permission is prohibited.</p>
+
+      <h2>Artificial intelligence</h2>
+      <p>Buddy's replies, daily motivation quotes and reminders are written automatically by an artificial intelligence (Claude, by Anthropic). They may contain mistakes and do not replace the advice of a professional (doctor, psychologist, financial adviser…).</p>
+
+      <h2>Contact</h2>
+      <p>For any question: <mark class="todo">[YOUR CONTACT E-MAIL]</mark>.</p>
+      <p>See also: <a href="/legal/conditions.html">Terms of use</a> · <a href="/legal/confidentialite.html">Privacy policy</a>.</p>
+    </article>
+  </main>
+  <script src="/legal/legal.js"></script>
+</body>
+</html>

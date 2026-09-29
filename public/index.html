@@ -130,6 +130,16 @@
         </article>
       </div>
     </section>
+
+    <!-- Le bas de la page : les pages légales -->
+    <footer class="site-footer">
+      <span>© 2026 Buddy</span>
+      <nav>
+        <a href="/legal/mentions-legales.html" data-i18n="legal.notice">Mentions légales</a>
+        <a href="/legal/conditions.html" data-i18n="legal.terms">Conditions d'utilisation</a>
+        <a href="/legal/confidentialite.html" data-i18n="legal.privacy">Politique de confidentialité</a>
+      </nav>
+    </footer>
   </div>
 
   <!-- =========================================================
@@ -151,6 +161,8 @@
       <input id="password2" class="hidden" type="password" placeholder="Confirme le mot de passe" data-i18n-ph="auth.password2Ph" autocomplete="new-password">
       <button type="button" class="auth-forgot hidden" id="auth-forgot" data-i18n="auth.forgot">Mot de passe oublié ?</button>
       <button class="btn btn-primary btn-full" id="auth-submit">Créer mon compte</button>
+      <!-- Inscription seulement : les conditions et la politique de confidentialité -->
+      <p class="muted small auth-legal hidden" id="auth-legal" data-i18n-html="legal.accept"></p>
       <p id="auth-info" class="auth-info"></p>
       <p class="muted small auth-switch" id="auth-switch"></p>
     </div>
@@ -539,6 +551,14 @@
             <h3 data-i18n="settings.account">Compte</h3>
             <p class="muted small" id="settings-email"></p>
             <button class="btn btn-ghost" id="logout-button-2"><i data-lucide="log-out"></i> <span data-i18n="menu.logout">Se déconnecter</span></button>
+          </section>
+          <section class="card">
+            <h3 data-i18n="legal.title">Informations légales</h3>
+            <div class="legal-links">
+              <a class="chip" href="/legal/mentions-legales.html"><i data-lucide="file-text"></i> <span data-i18n="legal.notice">Mentions légales</span></a>
+              <a class="chip" href="/legal/conditions.html"><i data-lucide="scroll"></i> <span data-i18n="legal.terms">Conditions d'utilisation</span></a>
+              <a class="chip" href="/legal/confidentialite.html"><i data-lucide="shield-check"></i> <span data-i18n="legal.privacy">Politique de confidentialité</span></a>
+            </div>
           </section>
           <section class="card danger-zone">
             <h3 data-i18n="settings.deleteTitle">Supprimer mon compte</h3>

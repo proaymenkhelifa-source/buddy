@@ -265,6 +265,7 @@ function openAuth(mode, fresh = true) {
   $("auth-submit").textContent = t(screen.submit);
   // Ce qu'on affiche selon l'écran
   document.querySelector(".auth-card .tabs").classList.toggle("hidden", mode === "forgot" || mode === "reset");
+  $("auth-legal").classList.toggle("hidden", mode !== "signup"); // "En créant ton compte, tu acceptes…"
   $("email").classList.toggle("hidden", mode === "reset");
   $("password").classList.toggle("hidden", mode === "forgot");
   $("password2").classList.toggle("hidden", mode !== "reset");
