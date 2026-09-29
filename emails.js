@@ -153,7 +153,7 @@ export function emailHtml(kind, message, lang = "fr") {
 async function gatherInfo(supabase, userId, today, timezone) {
   const since = addDays(today, -(HISTORY_DAYS + 5));
   const [goalsRes, tasksRes, logsRes] = await Promise.all([
-    supabase.from("goals").select("id, text, category, progress, reason, deadline, created_at").eq("user_id", userId),
+    supabase.from("goals").select("*").eq("user_id", userId), // "*" : marche aussi avant/après l'ajout de la colonne "draft"
     supabase.from("tasks").select("*").eq("user_id", userId).or(`archived_at.is.null,archived_at.gte.${since}`),
     supabase.from("task_logs").select("task_id, day").eq("user_id", userId).gte("day", since),
   ]);
@@ -166,7 +166,9 @@ async function gatherInfo(supabase, userId, today, timezone) {
       .map((t) => ({ ...t, done: logs.some((l) => l.task_id === t.id && l.day === today) }))
       .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
     // Le % de chaque objectif, calculé comme dans l'application (automatique s'il a des tâches liées)
-    const goals = goalsRes.data.map((g) => ({ ...g, progress: goalProgress(tasks, logs, today, g).value }));
+    const goals = goalsRes.data
+      .filter((g) => !g.draft) // les brouillons (objectifs pas encore définis) ne comptent pas
+      .map((g) => ({ ...g, progress: goalProgress(tasks, logs, today, g).value }));
     return { goals, todays, stats: computeStats(tasks, logs, today) };
   });
 }

@@ -838,7 +838,14 @@ textarea { resize: vertical; }
 .goal-tasks .lucide { font-size: 16px; color: var(--faint); }
 .goal-tasks li.done .lucide { color: var(--primary); }
 .goal-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 4px; }
-.goal-actions .btn { padding: 9px 14px; font-size: 0.9rem; }
+/* Un objectif "brouillon" (pas fini de définir avec Buddy) : bordure en pointillés, étiquette "Incomplet" */
+.goal-card.draft { border: 1.5px dashed var(--border-strong); background: color-mix(in srgb, var(--card) 70%, var(--bg)); box-shadow: none; }
+.goal-card.draft::before { display: none; }
+.draft-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: rgba(245, 158, 11, 0.12); color: #b45309; }
+:root[data-theme="dark"] .draft-badge { color: #fbbf24; }
+.draft-badge .lucide { font-size: 14px; }
+.goal-actions { flex-wrap: wrap; }
+.goal-actions .btn { padding: 9px 14px; font-size: 0.9rem; white-space: nowrap; }
 
 /* Suivi */
 .stat-tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 22px; }

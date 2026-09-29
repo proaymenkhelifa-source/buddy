@@ -117,7 +117,7 @@ function todayFrom(req) {
 // =============================================================
 async function loadAll(userId, today) {
   const since = addDays(today, -(HISTORY_DAYS + 5)); // l'historique utile pour le suivi, le streak et les badges
-  const [profile, goals, tasks, logs, messages] = await Promise.all([
+  const [profile, allGoals, tasks, logs, messages] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle().then(check),
     supabase.from("goals").select("*").eq("user_id", userId).order("id").then(check),
     supabase.from("tasks").select("*").eq("user_id", userId)
@@ -143,7 +143,10 @@ async function loadAll(userId, today) {
       language: profile?.language || null, // "fr" ou "en"
       source: profile?.source || null,     // d'où vient la personne (ex : "insta-fr"), null = inconnu / lien direct
     },
-    goals,
+    // Les objectifs "brouillons" (en train d'être définis avec Buddy) sont rangés à part :
+    // ils ne comptent nulle part (stats, e-mails, badges…), sauf sur la page Mes objectifs et pour Buddy.
+    goals: allGoals.filter((g) => !g.draft),
+    drafts: allGoals.filter((g) => g.draft),
     tasks,
     logs,
     messages,
@@ -553,6 +556,16 @@ const BUDDY_FORM = {
       required: ["titre", "categorie", "raison"],
       additionalProperties: false,
     },
+    // Un objectif qu'on est EN TRAIN de définir (pas encore validé) : il apparaît en "brouillon" sur la page Mes objectifs
+    objectif_en_cours: {
+      type: "object",
+      properties: {
+        titre: { type: "string", description: "Titre provisoire de l'objectif en cours de définition, ou vide" },
+        categorie: { type: "string", enum: ["aucune", ...Object.keys(CATEGORIES)] },
+      },
+      required: ["titre", "categorie"],
+      additionalProperties: false,
+    },
     plan: { type: "string", description: "Plan validé pour l'objectif, ou vide" },
     difficulte: { type: "string", description: "Nouvelle difficulté à retenir, ou vide" },
     // Ce que Buddy FAIT dans l'application (vide la plupart du temps)
@@ -575,7 +588,7 @@ const BUDDY_FORM = {
       },
     },
   },
-  required: ["analyse", "emotion", "theme", "message", "prenom", "style", "objectif_id", "nouvel_objectif", "plan", "difficulte", "actions"],
+  required: ["analyse", "emotion", "theme", "message", "prenom", "style", "objectif_id", "nouvel_objectif", "objectif_en_cours", "plan", "difficulte", "actions"],
   additionalProperties: false,
 };
 
@@ -615,6 +628,18 @@ function buildContext(data, today, topicId, { badgeIds = [], review = false, lan
     if (g.reason) lines.push(`  Pourquoi : ${g.reason}`);
     if (g.plan) lines.push(`  Plan validé : ${g.plan}`);
     if (g.difficulties) lines.push(`  Difficultés déjà rencontrées : ${g.difficulties.replace(/\n/g, " / ")}`);
+  }
+
+  // Les objectifs qu'on avait commencé à définir ensemble sans finir (brouillons)
+  const drafts = data.drafts || [];
+  if (drafts.length) {
+    lines.push("", "## Objectifs en cours de définition (brouillons, pas encore validés)");
+    for (const d of drafts) {
+      const cat = CATEGORIES[d.category] || CATEGORIES.autre;
+      lines.push(`- Brouillon n°${d.id} [${cat.label}] « ${d.text} »${topicId === d.id ? " ← la personne veut le reprendre MAINTENANT" : ""}`);
+      if (d.plan) lines.push(`  Plan en discussion : ${d.plan}`);
+      if (d.difficulties) lines.push(`  Difficultés évoquées : ${d.difficulties.replace(/\n/g, " / ")}`);
+    }
   }
 
   // Décrit une tâche : titre, quand, heure, objectif, et ce qui s'est passé ces 7 derniers jours
@@ -802,17 +827,42 @@ app.post("/api/chat", requireUser, async (req, res) => {
 
     // Buddy a peut-être créé un nouvel objectif…
     let goalId = data.goals.some((g) => g.id === buddy.objectif_id) ? buddy.objectif_id : topicId;
+    // … le brouillon dont on parle en ce moment (s'il y en a un)
+    const draft = data.drafts.find((d) => d.id === topicId) || data.drafts.find((d) => d.id === buddy.objectif_id);
     const newGoal = buddy.nouvel_objectif;
+    const pending = buddy.objectif_en_cours;
     if (newGoal.titre.trim() && newGoal.categorie in CATEGORIES) {
-      const created = check(await supabase.from("goals")
-        .insert({ user_id: userId, text: newGoal.titre.trim(), category: newGoal.categorie, reason: newGoal.raison.trim() || null })
-        .select("id").single());
-      goalId = created.id;
+      const fields = { text: newGoal.titre.trim(), category: newGoal.categorie, reason: newGoal.raison.trim() || null };
+      if (draft) {
+        // Le brouillon devient un vrai objectif (même numéro : son plan et ses difficultés sont gardés)
+        check(await supabase.from("goals").update({ ...fields, draft: false }).eq("id", draft.id).eq("user_id", userId));
+        goalId = draft.id;
+      } else {
+        const created = check(await supabase.from("goals").insert({ user_id: userId, ...fields }).select("id").single());
+        goalId = created.id;
+      }
       console.log(`🎯 Nouvel objectif créé par Buddy : ${newGoal.titre}`);
+    } else if (pending.titre.trim()) {
+      // Un objectif en cours de définition : on le range en brouillon (visible sur la page Mes objectifs,
+      // avec "Continuer" / "Abandonner"). Rangé à part : si la colonne "draft" n'existe pas encore
+      // dans Supabase (supabase-drafts.sql pas lancé), la discussion marche quand même.
+      const fields = { text: pending.titre.trim().slice(0, 120), category: pending.categorie in CATEGORIES ? pending.categorie : "autre" };
+      try {
+        if (draft) {
+          check(await supabase.from("goals").update(fields).eq("id", draft.id).eq("user_id", userId));
+          goalId = draft.id;
+        } else if (!data.goals.some((g) => g.id === goalId)) {
+          const created = check(await supabase.from("goals").insert({ user_id: userId, ...fields, draft: true }).select("id").single());
+          goalId = created.id;
+          console.log(`📝 Objectif en brouillon : ${fields.text}`);
+        }
+      } catch (error) {
+        console.error("Brouillon d'objectif non enregistré (as-tu lancé supabase-drafts.sql ?) :", error.message);
+      }
     }
 
     // … ou noté un plan / une difficulté pour l'objectif dont on parle.
-    const goal = goalId && (data.goals.find((g) => g.id === goalId) || { id: goalId, difficulties: null });
+    const goal = goalId && (data.goals.find((g) => g.id === goalId) || data.drafts.find((g) => g.id === goalId) || { id: goalId, difficulties: null });
     if (goal && buddy.plan.trim()) {
       check(await supabase.from("goals").update({ plan: buddy.plan.trim() }).eq("id", goal.id).eq("user_id", userId));
     }
@@ -864,7 +914,7 @@ app.get("/api/quote", requireUser, async (req, res) => {
       return res.json({ short: profile.quote_short, long: profile.quote_long });
     }
 
-    const goals = check(await supabase.from("goals").select("text, category").eq("user_id", userId));
+    const goals = check(await supabase.from("goals").select("*").eq("user_id", userId)).filter((g) => !g.draft);
     const goalsText = goals.length
       ? goals.map((g) => `- [${(CATEGORIES[g.category] || CATEGORIES.autre).label}] ${g.text}`).join("\n")
       : "Pas encore d'objectif : parle de discipline, de progression et de passage à l'action en général.";

@@ -452,6 +452,7 @@ async function refresh() {
     toast(t("toast.serverOld"), "error");
   }
   data.badges = data.badges || [];
+  data.drafts = data.drafts || []; // les objectifs pas encore finis de définir avec Buddy
   state = data;
   render();
   if (data.newBadges?.length) celebrateBadges(data.newBadges); // de nouveaux badges viennent d'être gagnés
@@ -769,14 +770,37 @@ function renderCategories() {
 
 // --- Page Mes objectifs ---
 function renderGoalsPage() {
-  const chips = [["toutes", t("filter.all"), state.goals.length]].concat(
-    Object.entries(CATEGORIES).map(([key, cat]) => [key, `${cat.emoji} ${cat.label}`, state.goals.filter((g) => g.category === key).length])
+  // Les compteurs des filtres comptent aussi les brouillons (ils sont sur cette page)
+  const all = state.goals.concat(state.drafts);
+  const chips = [["toutes", t("filter.all"), all.length]].concat(
+    Object.entries(CATEGORIES).map(([key, cat]) => [key, `${cat.emoji} ${cat.label}`, all.filter((g) => g.category === key).length])
   );
   $("goal-filters").innerHTML = chips
     .map(([key, label, count]) => `<button class="chip ${goalFilter === key ? "active" : ""}" data-filter="${key}">${label} <span class="muted">${count}</span></button>`)
     .join("");
 
   const goals = state.goals.filter((g) => goalFilter === "toutes" || g.category === goalFilter);
+  // Les brouillons (objectifs pas finis de définir avec Buddy) : en haut, marqués "Incomplet"
+  const drafts = state.drafts.filter((g) => goalFilter === "toutes" || g.category === goalFilter);
+  const draftCards = drafts.map((g) => {
+    const cat = catOf(g);
+    return `<article class="card goal-card draft" style="--c:${cat.color}">
+      <div class="goal-card-head">
+        <span class="cat-pill"><i data-lucide="${cat.icon}"></i> ${cat.label}</span>
+        <span class="draft-badge"><i data-lucide="hourglass-medium"></i> ${t("draft.badge")}</span>
+      </div>
+      <h3>${esc(g.text)}</h3>
+      <p class="reason">${t("draft.hint")}</p>
+      <div class="goal-actions">
+        <button class="btn btn-primary" data-continue-draft="${g.id}"><i data-lucide="chat-circle"></i> ${t("draft.continue")}</button>
+        <button class="btn btn-ghost" data-drop-draft="${g.id}"><i data-lucide="x"></i> ${t("draft.drop")}</button>
+      </div>
+    </article>`;
+  }).join("");
+  if (goals.length === 0 && drafts.length) {
+    $("goal-grid").innerHTML = draftCards;
+    return;
+  }
   if (goals.length === 0) {
     const cat = CATEGORIES[goalFilter];
     $("goal-grid").innerHTML = `<div class="card empty">
@@ -788,7 +812,7 @@ function renderGoalsPage() {
     return;
   }
 
-  $("goal-grid").innerHTML = goals.map((g) => {
+  $("goal-grid").innerHTML = draftCards + goals.map((g) => {
     const cat = catOf(g);
     const tasks = activeTasks().filter((t) => t.goal_id === g.id);
     return `<article class="card goal-card" style="--c:${cat.color}">
@@ -1090,9 +1114,11 @@ for (const b of document.querySelectorAll("[data-style]")) {
 // on regarde simplement quel bouton a été cliqué grâce à ses attributs data-…
 // =============================================================
 document.addEventListener("click", async (event) => {
-  const el = event.target.closest("[data-check], [data-edit-task], [data-new-task], [data-edit-goal], [data-new-goal], [data-cat], [data-filter], [data-talk-goal], [data-talk-category], [data-review]");
+  const el = event.target.closest("[data-check], [data-edit-task], [data-new-task], [data-edit-goal], [data-new-goal], [data-cat], [data-filter], [data-talk-goal], [data-talk-category], [data-review], [data-continue-draft], [data-drop-draft]");
   if (!el || !state) return;
 
+  if (el.dataset.continueDraft) return continueDraft(Number(el.dataset.continueDraft));
+  if (el.dataset.dropDraft) return dropDraft(Number(el.dataset.dropDraft));
   if ("review" in el.dataset) return startReview();
   if (el.dataset.check) return toggleTask(Number(el.dataset.check));
   if (el.dataset.editTask) return openTaskDialog(state.tasks.find((t) => t.id === Number(el.dataset.editTask)));
@@ -1109,6 +1135,29 @@ document.addEventListener("click", async (event) => {
   }
 });
 $("add-task").addEventListener("click", () => openTaskDialog(null));
+
+// Les objectifs "brouillons" : on reprend la discussion avec Buddy là où on s'était arrêtés…
+const draftById = (id) => state?.drafts.find((g) => g.id === id);
+function continueDraft(id) {
+  const draft = draftById(id);
+  if (!draft) return;
+  removeChoices();
+  currentTopic = draft.id; // Buddy sait qu'on parle de CE brouillon
+  setChatTheme(null);
+  renderTopic();
+  openChat(true);
+  sendToBuddy(t("say.continueDraft", { goal: draft.text }));
+}
+// … ou on l'abandonne (il est supprimé)
+async function dropDraft(id) {
+  const draft = draftById(id);
+  if (!draft || !confirm(t("draft.confirmDrop", { goal: draft.text }))) return;
+  const result = await api("DELETE", `/api/goals/${id}`);
+  if (result.error) return toast(result.error, "error");
+  if (currentTopic === id) { currentTopic = null; renderTopic(); }
+  await refresh();
+  toast(t("toast.draftDropped"));
+}
 
 // Cocher / décocher une tâche
 async function toggleTask(taskId) {
@@ -1699,7 +1748,7 @@ $("new-topic").addEventListener("click", () => {
 });
 
 function renderTopic() {
-  const goal = currentTopic && state && goalById(currentTopic);
+  const goal = currentTopic && state && (goalById(currentTopic) || draftById(currentTopic));
   $("topic-chip").classList.toggle("hidden", !goal);
   if (goal) $("topic-text").textContent = `${catOf(goal).emoji} ${goal.text}`;
   // Le sujet (ou le style de coaching) a changé → Buddy change de tenue si besoin

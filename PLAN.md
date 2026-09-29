@@ -194,5 +194,9 @@ Known gotchas:
 - Banner: new **day timeline** (`renderTimeline` / `drawTimelinePath`): today's tasks by time, category icon + shortened title, the curve slides to the next task at each check, ends on Buddy who congratulates when everything is done.
 - Category cards use the new illustrations (`public/images/<cat>.jpg`, "Autre" = mint + sparkle icon); new app icons from `design/logo .png`.
 
+## Draft goals (2026-09-30)
+- While a new goal is being defined with Buddy (not validated yet), Buddy fills `objectif_en_cours` → the server saves it as a **draft** goal (`goals.draft = true`, SQL `supabase-drafts.sql` to run in Supabase). Drafts are left out of stats, e-mails, badges and quotes (`loadAll` returns `goals` and `drafts` separately); Buddy sees them in its context.
+- "Mes objectifs" shows drafts first, marked "Incomplet", with **Continuer avec Buddy** (reopens the chat on that draft) and **Abandonner** (deletes it). When Buddy validates the goal (`nouvel_objectif`), the draft becomes a real goal (same id).
+
 ## Marketing & next steps
 See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

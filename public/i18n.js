@@ -143,6 +143,11 @@ const DICT = {
 
     "goals.title": "Mes objectifs",
     "goals.new": "Nouvel objectif",
+    "draft.badge": "Incomplet",
+    "draft.hint": "Tu as commencé à le définir avec Buddy, sans aller jusqu'au bout.",
+    "draft.continue": "Continuer avec Buddy",
+    "draft.drop": "Abandonner",
+    "draft.confirmDrop": "Abandonner l'objectif « {goal} » ?",
     "goals.empty": "Pas encore d'objectif.",
     "goals.create": "Créer un objectif",
     "goal.week": ({ done, planned }) => `Cette semaine : ${done}/${planned} tâche${s(planned)} faite${s(done)}`,
@@ -394,6 +399,7 @@ const DICT = {
     "toast.goalUpdated": "Objectif mis à jour",
     "toast.goalSaved": "Objectif enregistré",
     "toast.goalDeleted": "Objectif supprimé",
+    "toast.draftDropped": "Objectif abandonné",
     "toast.taskUpdated": "Tâche mise à jour",
     "toast.taskAdded": "Tâche ajoutée ({when})",
     "toast.taskDeleted": "Tâche supprimée",
@@ -431,6 +437,7 @@ const DICT = {
     // Les phrases envoyées à Buddy quand on clique sur un bouton
     "say.goalIn": "Je voudrais me fixer un objectif en {cat}.",
     "say.newGoal": "Je voudrais me fixer un nouvel objectif.",
+    "say.continueDraft": "On reprend mon objectif « {goal} » ? On n'avait pas fini de le définir.",
     "say.review": "Faisons le bilan de ma semaine.",
     "say.talkGoal": "On parle de mon objectif « {goal} ».",
 
@@ -618,6 +625,11 @@ const DICT = {
 
     "goals.title": "My goals",
     "goals.new": "New goal",
+    "draft.badge": "Incomplete",
+    "draft.hint": "You started setting it up with Buddy but didn't finish.",
+    "draft.continue": "Continue with Buddy",
+    "draft.drop": "Give up",
+    "draft.confirmDrop": "Give up the goal “{goal}”?",
     "goals.empty": "No goals yet.",
     "goals.create": "Create a goal",
     "goal.week": ({ done, planned }) => `This week: ${done}/${planned} task${s(planned)} done`,
@@ -858,6 +870,7 @@ const DICT = {
     "toast.goalUpdated": "Goal updated",
     "toast.goalSaved": "Goal saved",
     "toast.goalDeleted": "Goal deleted",
+    "toast.draftDropped": "Goal dropped",
     "toast.taskUpdated": "Task updated",
     "toast.taskAdded": "Task added ({when})",
     "toast.taskDeleted": "Task deleted",
@@ -893,6 +906,7 @@ const DICT = {
     "topics.new": "➕ New goal",
     "say.goalIn": "I'd like to set a goal in {cat}.",
     "say.newGoal": "I'd like to set a new goal.",
+    "say.continueDraft": "Can we pick up my goal “{goal}”? We hadn't finished setting it up.",
     "say.review": "Let's review my week.",
     "say.talkGoal": "Let's talk about my goal “{goal}”.",
 

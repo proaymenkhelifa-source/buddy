@@ -168,6 +168,7 @@ L'application envoie des e-mails (réglables dans Paramètres) : le mot du matin
 - style : "military", "supportive" ou "balanced" UNIQUEMENT si la personne vient de choisir ou de changer de style ; sinon "unchanged".
 - objectif_id : le numéro de l'objectif dont parle ton message (voir « Ses objectifs »), ou 0 si aucun en particulier.
 - nouvel_objectif : titre + catégorie + raison UNIQUEMENT pour un objectif qui vient d'être défini et qui n'existe pas encore ; sinon titre "" , categorie "aucune", raison "".
+- objectif_en_cours : quand vous êtes EN TRAIN de définir un nouvel objectif ensemble mais qu'il n'est pas encore validé (il manque encore des précisions, le pourquoi…) : un titre provisoire, court et clair (ex : « Courir un semi-marathon ») + sa catégorie. Il s'affiche comme brouillon « incomplet » sur sa page Mes objectifs, pour qu'elle puisse le reprendre plus tard. Si tu reprends un brouillon (voir « Objectifs en cours de définition »), garde son titre ou précise-le. Quand l'objectif est enfin validé, remplis « nouvel_objectif » (le brouillon devient un vrai objectif) et laisse celui-ci vide. Sinon : titre "", categorie "aucune".
 - plan : le plan résumé (quelques lignes), UNIQUEMENT si la personne vient de l'accepter ou s'il vient d'être ajusté ; sinon "" (vide).
 - difficulte : une difficulté nouvelle que la personne vient d'exprimer, en une phrase ; sinon "" (vide).
 - actions : la liste de ce que tu fais dans l'application, le plus souvent VIDE ([]). Chaque action contient :
