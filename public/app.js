@@ -387,6 +387,7 @@ async function logout() {
   state = null;
   session = null;
   currentTopic = null;
+  setChatTheme(null);
   topicsOffered = false;
   for (const id of ["email", "password", "message"]) $(id).value = "";
   closeChat();
@@ -1243,22 +1244,44 @@ const CLOSEST = {
 // Les moments sensibles : Buddy "enlève le costume" et reprend sa tenue normale pour parler sérieusement
 const SENSITIVE = ["compassion", "inquiet", "encourage"];
 
-// La tenue qui a du sens MAINTENANT (null = tenue normale), décidée par l'application, jamais devinée :
-//   1. on parle d'un objectif précis → la tenue de sa catégorie (Sport → sport, Études → étudiant, Voyages → voyageur,
-//      Religion → qamis SEULEMENT si l'objectif parle clairement de l'islam, Finances → costume quand il existera) ;
-//   2. sinon, style de coaching "militaire" → tenue militaire ;
-//   3. sinon → tenue normale.
+// La tenue qui a du sens MAINTENANT (null = tenue normale) :
+//   1. le THÈME de la conversation, choisi par Buddy à chaque réponse (Sport → sport, Études → étudiant,
+//      Voyages → voyageur, Islam → qamis, Finances → costume quand il existera). Quand on change de sujet,
+//      Buddy répond "aucun" et reprend sa tenue normale ;
+//   2. avant sa première réponse sur un objectif choisi (bouton "parler de…") → la tenue de la catégorie de l'objectif ;
+//   3. sinon, style de coaching "militaire" → tenue militaire ;
+//   4. sinon → tenue normale.
 const ISLAM_WORDS = /islam|musulman|muslim|pri[èe]re|salat|salah|coran|quran|qur'?an|ramadan|mosqu|allah|hadith|dhikr|sunna|jumu|fajr|du'?a\b|douaa?|invocation|tarawih|hajj|omra|umrah|zakat|sourate|surah/i;
 const CATEGORY_OUTFIT = { sport: "sport", etudes: "etudiant", voyages: "voyageur", finances: "costume" };
+const THEME_OUTFIT = { sport: "sport", etudes: "etudiant", voyages: "voyageur", islam: "qamis", finances: "costume" };
+const THEME_TIMEOUT = 10 * 60 * 1000; // sans nouveau message pendant 10 min, il se rhabille normalement tout seul
+
+let chatTheme = null; // le thème de la conversation (null = pas encore connu)
+let themeTimer = null;
+
+function setChatTheme(theme) {
+  chatTheme = theme || null;
+  clearTimeout(themeTimer);
+  if (chatTheme && chatTheme !== "aucun") {
+    themeTimer = setTimeout(() => {
+      chatTheme = "aucun";
+      if (state) showEmotion(currentEmotion, false);
+    }, THEME_TIMEOUT);
+  }
+}
 
 function currentOutfit() {
   if (!state) return null;
-  const goal = currentTopic && goalById(currentTopic);
-  if (goal) {
-    if (goal.category === "religion") return ISLAM_WORDS.test(`${goal.text} ${goal.reason || ""}`) ? "qamis" : null;
-    const outfit = CATEGORY_OUTFIT[goal.category];
-    if (outfit) return OUTFITS[outfit] ? outfit : null;
+  let outfit = null;
+  if (chatTheme) {
+    outfit = THEME_OUTFIT[chatTheme];
+  } else {
+    const goal = currentTopic && goalById(currentTopic);
+    if (goal) outfit = goal.category === "religion"
+      ? (ISLAM_WORDS.test(`${goal.text} ${goal.reason || ""}`) ? "qamis" : null)
+      : CATEGORY_OUTFIT[goal.category];
   }
+  if (outfit && OUTFITS[outfit]) return outfit;
   return state.profile.style === "military" ? "militaire" : null;
 }
 
@@ -1472,6 +1495,7 @@ function talkAbout(goal) {
   if (!goal) return;
   removeChoices();
   currentTopic = goal.id;
+  setChatTheme(null); // la tenue de l'objectif, tout de suite, en attendant la réponse de Buddy
   renderTopic();
   openChat(true);
   sendToBuddy(t("say.talkGoal", { goal: goal.text }));
@@ -1549,8 +1573,9 @@ async function sendToBuddy(text, extra = {}, typed = false) {
     } else {
       if (typed && !$("message").value) clearDraft("chat"); // bien reçu : le brouillon peut partir
       showMessage(data.reply, "buddy");
-      // L'objectif dont on parle (d'abord : c'est lui qui décide de la tenue de Buddy)
+      // L'objectif et le thème dont on parle (d'abord : ce sont eux qui décident de la tenue de Buddy)
       if (data.goalId) currentTopic = data.goalId;
+      setChatTheme(data.theme);
       showEmotion(data.emotion); // Buddy prend l'expression qu'il a choisie
       // Buddy a peut-être créé un objectif, noté un plan, un prénom… ou AGI (tâches) : on recharge tout
       refresh()

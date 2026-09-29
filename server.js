@@ -537,6 +537,8 @@ const BUDDY_FORM = {
       enum: ["neutral", "happy", "celebrating", "understanding", "strict", "motivational",
         "hello", "empathy", "encouraging", "worried", "proud", "impressed", "laughing"],
     },
+    // Le thème dont on parle EN CE MOMENT : l'application habille Buddy en conséquence (et le rhabille normalement après)
+    theme: { type: "string", enum: ["aucun", "sport", "etudes", "islam", "religion", "finances", "voyages"] },
     message: { type: "string", description: "La réponse de Buddy, affichée à la personne" },
     prenom: { type: "string", description: "Prénom tout juste donné par la personne, ou vide" },
     style: { type: "string", enum: ["unchanged", "military", "supportive", "balanced"] },
@@ -573,7 +575,7 @@ const BUDDY_FORM = {
       },
     },
   },
-  required: ["analyse", "emotion", "message", "prenom", "style", "objectif_id", "nouvel_objectif", "plan", "difficulte", "actions"],
+  required: ["analyse", "emotion", "theme", "message", "prenom", "style", "objectif_id", "nouvel_objectif", "plan", "difficulte", "actions"],
   additionalProperties: false,
 };
 
@@ -790,7 +792,7 @@ app.post("/api/chat", requireUser, async (req, res) => {
 
     // La fiche remplie arrive sous forme de texte JSON : on la "déplie".
     const buddy = JSON.parse(response.content.find((block) => block.type === "text").text);
-    console.log(`🧠 Buddy pense : ${buddy.analyse}  →  émotion : ${buddy.emotion}`);
+    console.log(`🧠 Buddy pense : ${buddy.analyse}  →  émotion : ${buddy.emotion}, thème : ${buddy.theme}`);
 
     // Buddy a peut-être noté un prénom ou un nouveau style.
     const profileChanges = {};
@@ -830,7 +832,7 @@ app.post("/api/chat", requireUser, async (req, res) => {
     rows.push({ role: "assistant", content: reply, emotion: buddy.emotion, user_id: userId });
     check(await supabase.from("messages").insert(rows));
 
-    res.json({ reply, emotion: buddy.emotion, goalId: goalId || null, userText: text, acted: results.length > 0 });
+    res.json({ reply, emotion: buddy.emotion, theme: buddy.theme, goalId: goalId || null, userText: text, acted: results.length > 0 });
   } catch (error) {
     fail(res, error, claudeErrorMessage(error) || "err.buddyFailed");
   }
