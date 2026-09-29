@@ -7,28 +7,28 @@
   <!-- L'icône de Buddy (onglet du navigateur, et écran d'accueil du téléphone) -->
   <link rel="icon" type="image/png" href="icons/logo.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/buddy-apple-180.png">
-  <meta name="theme-color" content="#07090f">
+  <meta name="theme-color" content="#f8fafc">
   <!-- Buddy "s'installe" comme une appli (écran d'accueil du téléphone) : c'est ce qui permet les notifications -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Buddy">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-  <!-- La police d'écriture (gratuite, de Google Fonts) -->
+  <!-- Les polices d'écriture (gratuites, de Google Fonts) : Calistoga pour les grands titres, Plus Jakarta Sans pour le reste -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Calistoga&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Le "maquillage" de la page est dans style.css -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- Applique le thème choisi (clair/sombre) AVANT d'afficher la page, pour éviter un "flash" -->
+  <!-- Applique le thème (clair par défaut, sombre seulement si la personne l'a CHOISI) AVANT d'afficher la page,
+       pour éviter un "flash". Nouvelle clé "buddy-theme-choice" : l'ancienne gardait "sombre" pour tout le monde. -->
   <script>
     try {
-      const t = localStorage.getItem("buddy-theme");
-      if (t) document.documentElement.dataset.theme = t;
-    } catch (e) {}
+      document.documentElement.dataset.theme = localStorage.getItem("buddy-theme-choice") === "dark" ? "dark" : "light";
+    } catch (e) { document.documentElement.dataset.theme = "light"; }
   </script>
 </head>
 <body>
@@ -282,7 +282,7 @@
                 <svg viewBox="0 0 120 120">
                   <defs>
                     <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stop-color="#4ade80"/><stop offset="100%" stop-color="#60a5fa"/>
+                      <stop offset="0%" stop-color="#2ec4a6"/><stop offset="100%" stop-color="#60a5fa"/>
                     </linearGradient>
                   </defs>
                   <circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg" cx="60" cy="60" r="52"/>

@@ -149,20 +149,22 @@ let state = null;
 let session = null;
 
 // =============================================================
-// LE THÈME (sombre / clair)
+// LE THÈME (clair par défaut / sombre)
 // =============================================================
-function setTheme(theme) {
+// remember = true seulement quand la personne CHOISIT (bouton) : sinon on ne retient rien,
+// et le thème clair (celui de la marque) reste la règle.
+function setTheme(theme, remember = false) {
   document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem("buddy-theme", theme); } catch (e) {}
+  if (remember) try { localStorage.setItem("buddy-theme-choice", theme); } catch (e) {}
   for (const b of document.querySelectorAll("[data-theme-choice]")) {
     b.classList.toggle("active", b.dataset.themeChoice === theme);
   }
 }
 for (const button of document.querySelectorAll(".theme-toggle")) {
-  button.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light"));
+  button.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true));
 }
 for (const button of document.querySelectorAll("[data-theme-choice]")) {
-  button.addEventListener("click", () => setTheme(button.dataset.themeChoice));
+  button.addEventListener("click", () => setTheme(button.dataset.themeChoice, true));
 }
 
 // =============================================================
@@ -829,7 +831,7 @@ function renderSettings() {
   for (const b of document.querySelectorAll("[data-style]")) {
     b.classList.toggle("active", b.dataset.style === state.profile.style);
   }
-  setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
   // Les réglages des e-mails (on ne les réécrit pas si la personne est en train de les modifier)
   if (!$("page-parametres").contains(document.activeElement)) {
