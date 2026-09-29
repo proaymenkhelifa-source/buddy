@@ -587,6 +587,7 @@ function renderProfile() {
   // La petite phrase sous "Salut …" dépend de la journée
   const { planned, done } = stats.today;
   $("greeting-sub").innerHTML =
+    state.tasks.length === 0 ? t("greet.firstDay") : // tout nouveau compte : une invitation à écrire son premier défi
     planned === 0 ? t("greet.noTasks") :
     done === planned ? t("greet.allDone") :
     t("greet.left", { n: planned - done });
@@ -777,7 +778,9 @@ function goalLine(g) {
   const p = progressOf(g);
   return `<li class="clickable" style="--c:${cat.color}" data-edit-goal="${g.id}">
     <span class="goal-icon"><i data-lucide="${cat.icon}"></i></span>
-    <span>${esc(g.text)}<small class="goal-week">${goalWeekText(g)}</small></span><strong title="${t(p.auto ? "goal.autoTip" : "goal.manualTip")}">${p.value}%</strong>
+    <span>${esc(g.text)}<small class="goal-week">${goalWeekText(g)}</small></span>${p.value
+      ? `<strong title="${t(p.auto ? "goal.autoTip" : "goal.manualTip")}">${p.value}%</strong>`
+      : `<strong class="goal-start">${t("goal.start")}</strong>` /* 0 % : "À lancer", pas un zéro qui décourage */}
     <div class="bar"><div style="width:${p.value}%"></div></div>
   </li>`;
 }
@@ -793,11 +796,21 @@ function renderGoalsSummary() {
 function renderWeek() {
   const w = stats.week;
   $("week-ring").style.setProperty("--p", w.rate);
+  // Rien de coché cette semaine : jamais "0 % de réussite", une invitation à commencer
+  if (w.done === 0) {
+    $("week-rate").textContent = "💪";
+    $("week-ring-label").textContent = t("week.go");
+    const key = state.tasks.length === 0 ? "first" : state.logs.length === 0 ? "firstWeek" : "fresh";
+    $("week-stats").innerHTML = `<li class="week-hello"><strong>${t("week." + key + "Title")}</strong><span>${t("week." + key + "Text")}</span></li>`;
+    return;
+  }
   $("week-rate").textContent = w.rate + "%";
+  $("week-ring-label").textContent = t("week.success");
   $("week-stats").innerHTML = `
     <li style="--c: var(--green)"><strong>${w.done}/${w.planned}</strong> ${t("week.tasksDone")}</li>
     <li style="--c: var(--blue)"><strong>${w.activeDays}/${w.daysSoFar}</strong> ${t("week.activeDays")}</li>
-    <li style="--c: var(--accent)"><strong>${stats.streak} 🔥</strong> ${t("week.streak")}</li>
+    ${stats.streak ? `<li style="--c: var(--accent)"><strong>${stats.streak} 🔥</strong> ${t("week.streak")}</li>`
+      : `<li style="--c: var(--accent)">${t("week.streakZero")}</li>`}
     <li style="--c: var(--violet)"><strong>🛡️</strong> ${jokerText()}</li>`;
 }
 
@@ -884,7 +897,9 @@ function renderGoalsPage() {
       </div>
       ${(() => {
         const p = progressOf(g);
-        return `<div><div class="bar"><div style="width:${p.value}%"></div></div><p class="muted small">${t(p.auto ? "goal.autoText" : "goal.manualText", p)}</p></div>`;
+        // 0 % : une invitation à lancer l'objectif plutôt qu'un zéro
+        const text = p.value ? t(p.auto ? "goal.autoText" : "goal.manualText", p) : t(p.auto ? "goal.zeroAuto" : "goal.zeroManual");
+        return `<div><div class="bar"><div style="width:${p.value}%"></div></div><p class="muted small">${text}</p></div>`;
       })()}
       ${tasks.length ? `<ul class="goal-tasks">${tasks.map((task) =>
         `<li class="${isDoneToday(task) ? "done" : ""}"><button class="task-link" data-edit-task="${task.id}" title="${t("task.edit")}">
@@ -994,14 +1009,21 @@ $("cal-add").addEventListener("click", () => openTaskDialog(null, null, calDay >
 // --- Page Suivi ---
 function renderSuivi() {
   const w = stats.week;
-  $("stat-tiles").innerHTML = [
-    [`${w.done}/${w.planned}`, t("tile.tasksWeek")],
-    [`${w.rate}%`, t("tile.success")],
-    [`${w.activeDays}/${w.daysSoFar}`, t("tile.activeDays")],
-    [`${stats.streak} 🔥`, t("tile.streak")],
-    [`${stats.best}`, t("tile.best")],
-    [t(stats.jokerUsedOn ? "tile.jokerUsed" : "tile.jokerFree"), `🛡️ ${t("tile.joker")}${stats.jokerUsedOn ? ", " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : ""}`],
-  ].map(([value, label]) => `<div class="card stat-tile"><strong>${value}</strong><span>${label}</span></div>`).join("");
+  // Rien encore de coché (nouveau compte) : pas une rangée de zéros, une invitation à commencer
+  $("stat-tiles").innerHTML = state.logs.length === 0
+    ? `<div class="card stat-start">
+        <div><strong>${t("suivi.firstTitle")}</strong><p class="muted">${t("suivi.firstText")}</p></div>
+        <button class="btn btn-primary" data-new-task><i data-lucide="plus"></i> ${t("today.add")}</button>
+      </div>`
+    : [
+      [`${w.done}/${w.planned}`, t("tile.tasksWeek")],
+      // 0 % cette semaine (lundi matin, par exemple) : "ta semaine démarre" plutôt que 0 %
+      w.done ? [`${w.rate}%`, t("tile.success")] : ["💪", t("tile.fresh")],
+      [`${w.activeDays}/${w.daysSoFar}`, t("tile.activeDays")],
+      stats.streak ? [`${stats.streak} 🔥`, t("tile.streak")] : ["🚀", t("tile.streakZero")],
+      [`${stats.best}`, t("tile.best")],
+      [t(stats.jokerUsedOn ? "tile.jokerUsed" : "tile.jokerFree"), `🛡️ ${t("tile.joker")}${stats.jokerUsedOn ? ", " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : ""}`],
+    ].map(([value, label]) => `<div class="card stat-tile"><strong>${value}</strong><span>${label}</span></div>`).join("");
 
   // Les 7 derniers jours, tâche par tâche
   const last7 = [];

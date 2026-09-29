@@ -727,6 +727,7 @@ textarea { resize: vertical; }
 .goals { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
 .goals li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: var(--s3); row-gap: 8px; padding: 8px; margin: 0 -8px; border-radius: var(--radius-md); transition: background 0.2s; }
 .goals li.clickable { cursor: pointer; }
+.goals li.empty { display: block; }
 .goals li.clickable:hover { background: var(--card-strong); }
 .goal-icon { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--c) 14%, var(--card)); color: var(--navy); transition: transform 0.25s var(--ease-soft); }
 :root[data-theme="dark"] .goal-icon { color: var(--text); }
@@ -759,6 +760,16 @@ textarea { resize: vertical; }
 .week-stats li { position: relative; padding-left: 20px; line-height: 1.35; }
 .week-stats li::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
 .week-stats strong { margin-right: 4px; font-variant-numeric: tabular-nums; color: var(--text); }
+/* Rien de coché cette semaine : un message qui donne envie de commencer (pas de 0 %) */
+.week-stats li.week-hello { padding-left: 0; display: grid; gap: 4px; }
+.week-stats li.week-hello::before { display: none; }
+.week-hello strong { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; line-height: 1.25; }
+.week-hello span { color: var(--muted); font-size: 0.88rem; }
+/* Un objectif à 0 % : "À lancer" en menthe, plutôt qu'un zéro */
+.goals strong.goal-start { font-size: 0.78rem; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+/* Page Suivi, nouveau compte : une invitation à la place des statistiques vides */
+.stat-start { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--accent-soft); border-color: transparent; }
+.stat-start strong { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; margin-bottom: 4px; }
 .link-hint { display: flex; align-items: center; gap: 2px; color: var(--link); font-size: 0.85rem; font-weight: 700; }
 .link-hint .lucide { font-size: 14px; transition: transform 0.2s var(--ease); }
 .week-card:hover .link-hint .lucide { transform: translateX(3px); }
