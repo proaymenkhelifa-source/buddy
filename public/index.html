@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buddy – Ton coach personnel</title>
   <!-- L'icône de Buddy (onglet du navigateur, et écran d'accueil du téléphone) -->
-  <link rel="icon" type="image/png" href="icons/logo.png">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/buddy-apple-180.png">
   <meta name="theme-color" content="#f8fafc">
   <!-- Buddy "s'installe" comme une appli (écran d'accueil du téléphone) : c'est ce qui permet les notifications -->
@@ -19,6 +19,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Calistoga&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Les icônes (bibliothèque gratuite "Phosphor", style plein et arrondi) -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
 
   <!-- Le "maquillage" de la page est dans style.css -->
   <link rel="stylesheet" href="style.css">
@@ -41,7 +45,7 @@
     Le français écrit ici ne sert que pendant le chargement.
   -->
 
-  <!-- Le logo (le "B" doré + "Buddy"), réutilisé à plusieurs endroits -->
+  <!-- Le logo (le "B" menthe + "Buddy"), réutilisé à plusieurs endroits -->
   <template id="logo-template">
     <img class="logo-img" src="icons/logo.png" alt="" width="36" height="36">Buddy
   </template>
@@ -71,18 +75,11 @@
         <button class="btn btn-primary btn-big" id="hero-cta"><span data-i18n="hero.cta">C'est parti</span> <i data-lucide="arrow-right"></i></button>
       </div>
 
-      <!-- La scène : Buddy devant une grande fenêtre, le soir -->
+      <!-- Le grand visuel : Buddy qui fait coucou, et deux petits "widgets" de l'appli -->
       <div class="scene scene-hero">
-        <div class="scene-sky"></div>
-        <div class="scene-sun"></div>
-        <svg class="scene-city" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true">
-          <path class="mountains" d="M0 130 L80 70 L150 115 L240 50 L330 110 L420 60 L520 120 L600 80 L600 200 L0 200 Z"/>
-          <path class="skyline" d="M0 200 V150 H30 V120 H55 V150 H70 V100 H95 V140 H120 V90 H135 V75 H150 V90 H160 V145 H190 V115 H215 V150 H240 V95 H270 V140 H290 V110 H320 V150 H345 V85 H360 V70 H375 V85 H385 V140 H410 V120 H440 V150 H470 V105 H495 V145 H520 V125 H550 V150 H575 V115 H600 V200 Z"/>
-        </svg>
-        <div class="scene-photo" style="--photo: url(images/hero.jpg)"></div>
-        <div class="scene-window"></div>
         <img class="buddy-img" src="buddy/salut.webp" alt="Buddy">
-        <div class="scene-desk"><div class="laptop"></div></div>
+        <div class="hero-chip one" aria-hidden="true"><i data-lucide="check-circle"></i><span><span data-i18n="hero.chip1">3/4 tâches faites</span><small data-i18n="hero.chip1Sub">Aujourd'hui</small></span></div>
+        <div class="hero-chip two" aria-hidden="true"><i data-lucide="fire"></i><span><span data-i18n="hero.chip2">7 jours de série</span><small data-i18n="hero.chip2Sub">Continue comme ça</small></span></div>
       </div>
     </main>
   </div>
@@ -94,7 +91,6 @@
     <button class="btn btn-ghost auth-back" id="auth-back"><i data-lucide="arrow-left"></i> <span data-i18n="auth.back">Retour</span></button>
     <div class="card auth-card" id="auth-card">
       <a class="logo auth-logo" href="#"></a>
-      <div class="auth-avatar"><img src="buddy/salut.webp" alt=""></div>
       <h1 id="auth-title">Crée ton compte</h1>
       <p class="muted" id="auth-subtitle">Buddy t'attend pour t'aider à atteindre tes objectifs.</p>
       <div class="tabs">
@@ -113,11 +109,11 @@
 
     <!-- Juste après l'inscription : "Bravo, va voir tes e-mails !" (remplace le formulaire) -->
     <div class="card auth-card auth-done hidden" id="auth-done">
-      <div class="auth-avatar auth-avatar-big"><img src="buddy/bravo.webp" alt=""></div>
+      <div class="done-mark"><i data-lucide="check-circle"></i></div>
       <h1 data-i18n="auth.doneTitle">Bienvenue dans l'équipe ! 🎉</h1>
       <p class="muted" data-i18n="auth.doneText">Ton compte est prêt. Plus qu'une petite étape et Buddy est à toi :</p>
       <div class="mail-step">
-        <span class="mail-icon">📬</span>
+        <span class="mail-icon"><i data-lucide="envelope-simple-open"></i></span>
         <p><span data-i18n="auth.doneMail">Ouvre l'e-mail qu'on vient d'envoyer à</span><br><strong id="auth-done-email"></strong></p>
       </div>
       <p class="muted small" data-i18n="auth.doneHint">Clique sur le bouton dans l'e-mail pour activer ton compte. Rien reçu ? Jette un œil dans les spams ou l'onglet « Promotions ».</p>
@@ -142,10 +138,7 @@
         <a class="side-link" href="#parametres" data-page="parametres"><i data-lucide="settings"></i><span data-i18n="nav.settings">Paramètres</span></a>
       </nav>
       <div class="side-quote">
-        <svg class="side-mountain" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0 120 L0 80 L40 55 L70 75 L110 25 L150 70 L200 45 L200 120 Z"/>
-        </svg>
-        <i data-lucide="timer-reset"></i>
+        <i data-lucide="quotes"></i>
         <p id="quote-short" data-i18n="quote.short">Discipline aujourd'hui, résultats demain.</p>
       </div>
     </aside>
@@ -172,17 +165,8 @@
       <!-- ===================== PAGE : ACCUEIL ===================== -->
       <main id="page-accueil" class="page hidden">
 
-        <!-- LA GRANDE BANNIÈRE : Buddy dans sa pièce -->
+        <!-- LA GRANDE BANNIÈRE : le bonjour, Buddy, "On reprend…", et la frise des tâches du jour -->
         <section class="banner">
-          <div class="scene-sky"></div>
-          <div class="scene-sun"></div>
-          <svg class="scene-city" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true">
-            <path class="mountains" d="M0 130 L80 70 L150 115 L240 50 L330 110 L420 60 L520 120 L600 80 L600 200 L0 200 Z"/>
-            <path class="skyline" d="M0 200 V150 H30 V120 H55 V150 H70 V100 H95 V140 H120 V90 H135 V75 H150 V90 H160 V145 H190 V115 H215 V150 H240 V95 H270 V140 H290 V110 H320 V150 H345 V85 H360 V70 H375 V85 H385 V140 H410 V120 H440 V150 H470 V105 H495 V145 H520 V125 H550 V150 H575 V115 H600 V200 Z"/>
-          </svg>
-          <div class="scene-photo" style="--photo: url(images/hero.jpg)"></div>
-          <div class="banner-shade"></div>
-
           <div class="banner-copy">
             <span class="hero-eyebrow" data-i18n="home.pill">Bienvenue</span>
             <h1><span data-i18n="home.hello">Salut</span> <span id="greeting-name"></span> <span class="wave">👋</span></h1>
@@ -191,7 +175,7 @@
           </div>
 
           <div class="banner-buddy">
-            <img class="buddy-img" id="buddy-img" src="buddy/motivation.webp" alt="Buddy">
+            <img class="buddy-img" id="buddy-img" src="buddy/repos.webp" alt="Buddy">
             <span class="tenue-poof" id="tenue-poof" aria-hidden="true"></span>
           </div>
 
@@ -205,12 +189,15 @@
               <button class="resume-btn" id="resume-btn"></button>
             </div>
           </aside>
-          <div class="banner-desk"><div class="laptop"></div><div class="mug"></div></div>
+
+          <!-- LA FRISE DU JOUR : chaque tâche cochée fait avancer la courbe vers la suivante,
+               et au bout, Buddy félicite. Dessinée par renderTimeline() dans app.js. -->
+          <div class="timeline" id="timeline" role="group" data-i18n-aria="timeline.aria"></div>
         </section>
 
         <!-- "Active les notifications" (affiché tant qu'elles ne sont pas activées sur cet appareil) -->
         <div class="push-banner hidden" id="push-banner">
-          <span class="push-banner-icon">🔔</span>
+          <span class="push-banner-icon"><i data-lucide="bell-ringing"></i></span>
           <p id="push-banner-text"></p>
           <button class="btn btn-primary" id="push-banner-btn"></button>
           <button class="btn btn-ghost hidden" id="push-banner-install" data-push="install" data-i18n="push.installShort">📲 Installer l'appli</button>
@@ -245,13 +232,6 @@
 
           <!-- CITATION -->
           <section class="card quote-card">
-            <svg class="quote-landscape" viewBox="0 0 600 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-              <path class="far" d="M0 210 L90 150 L170 190 L260 120 L350 180 L440 130 L520 170 L600 140 L600 300 L0 300 Z"/>
-              <path class="near" d="M0 300 L0 240 L120 200 L210 230 L300 170 L360 200 L600 250 L600 300 Z"/>
-              <path class="hiker" d="M296 170 v-14 m0 0 l-5 8 m5 -8 l5 8 m-5 -8 v-10 m0 3 l-6 6 m6 -6 l6 -6"/>
-              <circle class="hiker-head" cx="296" cy="140" r="3.5"/>
-            </svg>
-            <div class="photo" style="--photo: url(images/quote.jpg)"></div>
             <img class="logo-img quote-mark" src="icons/logo.png" alt="" width="32" height="32">
             <blockquote id="quote-long" data-i18n="quote.long">« La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus. »</blockquote>
           </section>
@@ -588,7 +568,7 @@
   <!-- "Je te préviens 5 minutes avant ?" (juste après avoir créé une tâche avec une heure) -->
   <dialog id="push-ask" class="dialog push-ask">
     <form method="dialog">
-      <div class="push-ask-avatar"><img src="buddy/content.webp" alt=""></div>
+      <div class="push-ask-icon"><i data-lucide="bell-ringing"></i></div>
       <h2 id="push-ask-title"></h2>
       <p class="muted" id="push-ask-text"></p>
       <div class="dialog-actions">
@@ -687,8 +667,6 @@
   <!-- Le petit message de confirmation en bas de l'écran -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- Les icônes (bibliothèque gratuite "Lucide") -->
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
   <!-- Le "cerveau" de la page est dans app.js -->
   <script type="module" src="app.js"></script>
 </body>

@@ -21,7 +21,29 @@ const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&am
 for (const logo of document.querySelectorAll(".logo")) {
   logo.append($("logo-template").content.cloneNode(true));
 }
-const drawIcons = () => window.lucide?.createIcons(); // dessine les icônes <i data-lucide="...">
+// Les icônes : chaque <i data-lucide="nom"> devient une icône Phosphor (style plein et arrondi de la marque).
+// Les noms viennent de l'ancienne bibliothèque (Lucide) : on les traduit ici ; un nom absent = même nom chez Phosphor.
+const ICONS = {
+  "circle-check-big": "check-circle", "circle-check": "check-circle", circle: "circle-dashed",
+  "calendar-days": "calendar-dots", calendar: "calendar-blank", "chart-column": "chart-bar", settings: "gear-six",
+  "chevron-down": "caret-down", "chevron-left": "caret-left", "chevron-right": "caret-right", "log-out": "sign-out",
+  "layout-grid": "squares-four", "rotate-ccw": "arrow-counter-clockwise", send: "paper-plane-tilt", map: "map-trifold",
+  "trash-2": "trash", "message-square-plus": "chat-circle-dots", pencil: "pencil-simple", "message-circle": "chat-circle",
+};
+// Les icônes "de trait" (coche, +, ×, flèches) : en style plein, elles seraient dans un carré plein → style gras
+const LINE_ICONS = new Set(["plus", "x", "check", "arrow-right", "arrow-left", "caret-down", "caret-left", "caret-right", "arrow-counter-clockwise"]);
+function drawIcons() {
+  for (const el of document.querySelectorAll("i[data-lucide]")) {
+    const name = el.dataset.lucide;
+    if (el.dataset.drawn === name) continue; // déjà dessinée
+    el.dataset.drawn = name;
+    for (const c of [...el.classList]) if (c.startsWith("ph") || c === "lucide" || c.startsWith("lucide-")) el.classList.remove(c);
+    const icon = ICONS[name] || name;
+    // "lucide" et "lucide-nom" : les anciens noms, que la feuille de style utilise encore
+    el.classList.add(LINE_ICONS.has(icon) ? "ph-bold" : "ph-fill", "ph-" + icon, "lucide", "lucide-" + name);
+    el.setAttribute("aria-hidden", "true");
+  }
+}
 drawIcons();
 
 // =============================================================
@@ -181,6 +203,8 @@ function showPage() {
   }
   $("user-dropdown").classList.add("hidden");
   window.scrollTo(0, 0);
+  // La frise du jour se mesure à l'écran : on la redessine quand l'accueil réapparaît
+  if (page === "accueil") setTimeout(redrawTimeline);
 }
 window.addEventListener("hashchange", showPage);
 
@@ -478,7 +502,7 @@ let goalFilter = "toutes";
 function render() {
   stats = computeStats(state.tasks, state.logs, today());
   // Chaque morceau de la page est dessiné séparément : si l'un plante, les autres s'affichent quand même.
-  for (const part of [renderProfile, renderToday, renderGoalsSummary, renderWeek, renderCategories,
+  for (const part of [renderProfile, renderToday, renderTimeline, renderGoalsSummary, renderWeek, renderCategories,
     renderGoalsPage, renderCalendar, renderSuivi, renderSettings, renderTopic, renderResume, renderPushLater, drawIcons]) {
     try {
       part();
@@ -549,6 +573,132 @@ function renderToday() {
   }).join("");
 }
 
+// --- La frise du jour (dans la bannière) ---
+// Les tâches d'aujourd'hui dans l'ordre de la journée, reliées par une courbe. Chaque tâche cochée
+// fait avancer la courbe jusqu'à l'étape suivante ; quand tout est fait, elle arrive sur Buddy qui félicite.
+// Le dessin n'est refait que si la LISTE change : sinon on met seulement à jour les coches et la courbe,
+// pour que le mouvement soit animé (la courbe "glisse" d'une étape à l'autre).
+let tlKey = "";   // la liste dessinée (pour savoir s'il faut tout redessiner)
+let tlDone = -1;  // combien de tâches étaient faites au dernier dessin (-1 = premier dessin : pas d'animation)
+
+function renderTimeline() {
+  const box = $("timeline");
+  // Par heure ; les tâches sans heure à la fin, dans leur ordre habituel
+  const tasks = todayTasks().slice().sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
+  const key = getLang() + "|" + tasks.map((task) => `${task.id}:${task.title}:${task.time || ""}:${task.goal_id || ""}`).join(",");
+  if (key !== tlKey) {
+    tlKey = key;
+    tlDone = -1;
+    box.innerHTML = tasks.length === 0
+      ? `<div class="tl-empty"><img src="buddy/relax.webp" alt=""><p>${t("timeline.empty")}</p>
+           <button class="btn btn-primary" data-new-task><i data-lucide="plus"></i> ${t("today.add")}</button></div>`
+      : `<div class="tl-scroll"><div class="tl-track">
+          <svg class="tl-svg" aria-hidden="true"><path class="tl-path-bg"/><path class="tl-path-done"/></svg>
+          ${tasks.map((task) => {
+            const goal = goalById(task.goal_id);
+            return `<button class="tl-node" data-check="${task.id}" data-task="${task.id}" title="${esc(task.title)}">
+              <span class="tl-dot"><i data-lucide="${goal ? catOf(goal).icon : "check-square"}"></i><span class="tl-check"><i data-lucide="check"></i></span></span>
+              <span class="tl-label">${esc(task.title)}</span>
+              <span class="tl-time">${esc(task.time || "")}</span>
+            </button>`;
+          }).join("")}
+          <div class="tl-node tl-end">
+            <span class="tl-dot"><img src="buddy/relax.webp" alt=""><span class="tl-stars"><i></i><i></i><i></i></span></span>
+            <span class="tl-label"></span><span class="tl-time"></span>
+          </div>
+        </div></div>`;
+    drawIcons();
+  }
+  if (!tasks.length) return;
+
+  // Les coches, la prochaine tâche à faire, et Buddy au bout
+  const nodes = [...box.querySelectorAll(".tl-node:not(.tl-end)")];
+  let done = 0, next = null;
+  for (const node of nodes) {
+    const isDone = isDoneToday({ id: Number(node.dataset.task) });
+    node.classList.toggle("done", isDone);
+    node.classList.remove("next");
+    if (isDone) done++;
+    else if (!next) next = node;
+    node.setAttribute("aria-label", `${node.title} — ${t(isDone ? "timeline.done" : "timeline.todo")}`);
+  }
+  next?.classList.add("next");
+  const end = box.querySelector(".tl-end");
+  const won = done === nodes.length;
+  end.classList.toggle("won", won);
+  end.querySelector("img").src = "buddy/" + (won ? "bravo" : "relax") + ".webp";
+  end.querySelector(".tl-label").textContent = t(won ? "timeline.won" : "timeline.end");
+
+  const before = tlDone;
+  tlDone = done;
+  drawTimelinePath(before < 0 || before === done ? null : before);
+
+  // L'étape que la courbe vient d'atteindre fait un petit "pop" en arrivant
+  if (before >= 0 && done > before) {
+    const reached = done < nodes.length ? nodes[done] : end;
+    reached.classList.remove("reached");
+    void reached.offsetWidth;
+    reached.classList.add("reached");
+  }
+  // On fait défiler la frise jusqu'à l'étape en cours (utile quand il y a beaucoup de tâches)
+  const scroller = box.querySelector(".tl-scroll");
+  const focus = next || end;
+  if (scroller.scrollWidth > scroller.clientWidth) {
+    scroller.scrollTo({ left: focus.offsetLeft - scroller.clientWidth / 2 + focus.offsetWidth / 2, behavior: before < 0 ? "auto" : "smooth" });
+  }
+}
+
+// La courbe : une ligne ondulée qui passe par le centre de chaque rond. La partie "faite" (menthe)
+// va jusqu'à l'étape n° tlDone. from = l'ancienne position (pour animer), null = pas d'animation.
+function drawTimelinePath(from) {
+  const box = $("timeline");
+  const svg = box.querySelector(".tl-svg");
+  if (!svg || !box.offsetParent) return; // pas de frise, ou page cachée : on redessinera plus tard
+  const points = [...box.querySelectorAll(".tl-node")].map((node) => {
+    const dot = node.querySelector(".tl-dot");
+    return [node.offsetLeft + node.offsetWidth / 2, node.offsetTop + dot.offsetTop + dot.offsetHeight / 2];
+  });
+  // Chaque morceau est une courbe douce, un coup vers le bas, un coup vers le haut
+  const parts = points.slice(1).map(([x, y], i) => {
+    const [x0, y0] = points[i], dx = x - x0, wave = i % 2 ? -12 : 12;
+    return `C ${x0 + dx / 2} ${y0 + wave}, ${x - dx / 2} ${y - wave}, ${x} ${y}`;
+  });
+  const d = `M ${points[0][0]} ${points[0][1]} ` + parts.join(" ");
+  const [bg, fill] = svg.querySelectorAll("path");
+  bg.setAttribute("d", d);
+  fill.setAttribute("d", d);
+  // La longueur de la courbe jusqu'à chaque étape
+  const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  svg.append(probe);
+  const lengthTo = (n) => {
+    if (n <= 0) return 0;
+    probe.setAttribute("d", `M ${points[0][0]} ${points[0][1]} ` + parts.slice(0, n).join(" "));
+    return probe.getTotalLength();
+  };
+  const total = fill.getTotalLength();
+  const target = lengthTo(tlDone);
+  const start = from === null ? target : lengthTo(from);
+  probe.remove();
+  fill.style.strokeDasharray = `${total} ${total}`;
+  // On place la courbe à son ancienne position SANS animation, puis on la laisse glisser jusqu'à la nouvelle
+  fill.style.transition = "none";
+  fill.style.strokeDashoffset = total - start;
+  void fill.getBoundingClientRect();
+  fill.style.transition = "";
+  fill.style.strokeDashoffset = total - target;
+}
+// Recalcule la courbe sans animation : quand la taille de l'écran change, quand l'accueil réapparaît,
+// et quand les polices ont fini de charger (les étiquettes changent un peu de taille)
+function redrawTimeline() {
+  if (tlDone >= 0) drawTimelinePath(null);
+}
+let tlResize;
+addEventListener("resize", () => {
+  clearTimeout(tlResize);
+  tlResize = setTimeout(redrawTimeline, 150);
+});
+document.fonts?.ready.then(() => redrawTimeline());
+
 // --- Mes objectifs (carte de l'accueil) ---
 // "Cette semaine : 3/6" pour un objectif, calculé automatiquement à partir des tâches cochées
 function goalWeekText(g) {
@@ -594,13 +744,18 @@ function jokerText() {
 }
 
 // --- Mes catégories ---
+const CATEGORY_ART = ["sport", "etudes", "religion", "finances", "voyages", "quotidien"]; // images/<nom>.jpg
 function renderCategories() {
   $("categories").innerHTML = Object.entries(CATEGORIES).map(([key, cat]) => {
     const count = state.goals.filter((g) => g.category === key).length;
-    return `<a class="cat" href="#objectifs" data-cat="${key}" style="--c:${cat.color}; --photo:url(images/${key}.jpg)">
-      <span class="cat-icon"><i data-lucide="${cat.icon}"></i></span>
-      <h4>${cat.label}</h4>
-      <p>${t("cats.count", { n: count })} <i data-lucide="chevron-right"></i></p>
+    // L'illustration de la catégorie ("Autre" n'en a pas : une grande étincelle sur fond menthe)
+    const art = CATEGORY_ART.includes(key);
+    return `<a class="cat ${art ? "" : "no-art"}" href="#objectifs" data-cat="${key}" style="--c:${cat.color};${art ? ` --photo:url(images/${key}.jpg)` : ""}">
+      <span class="cat-art">${art ? "" : `<i data-lucide="${cat.icon}"></i>`}</span>
+      <span class="cat-foot">
+        <span class="cat-icon"><i data-lucide="${cat.icon}"></i></span>
+        <span><h4>${cat.label}</h4><p>${t("cats.count", { n: count })} <i data-lucide="chevron-right"></i></p></span>
+      </span>
     </a>`;
   }).join("");
 }
@@ -1251,48 +1406,40 @@ const EMOTIONS = {
   celebrating:   { pose: "bravo",      mouvement: "saute" },
   understanding: { pose: "idee",       mouvement: "pop" },
   strict:        { pose: "fache",      mouvement: "pop" },
-  motivational:  { pose: "motivation", mouvement: "pop" },
+  motivational:  { pose: "fier",       mouvement: "pop" },
   hello:         { pose: "salut",      mouvement: "pop" },
   empathy:       { pose: "compassion", mouvement: "" },
   encouraging:   { pose: "encourage",  mouvement: "pop" },
   worried:       { pose: "inquiet",    mouvement: "" },
   proud:         { pose: "fier",       mouvement: "saute" },
-  impressed:     { pose: "surpris",    mouvement: "pop" },
-  laughing:      { pose: "rire",       mouvement: "pop" },
+  impressed:     { pose: "bravo",      mouvement: "pop" },
+  laughing:      { pose: "content",    mouvement: "pop" },
 };
 
 // -------------------------------------------------------------
-// LES TENUES : Buddy "se transforme" selon le sujet de la discussion.
-// Chaque tenue n'a que quelques poses : pour une émotion qui n'y est pas, on prend la pose
-// la plus proche DANS LA MÊME TENUE (il ne change pas de tenue à chaque message).
-// Pour ajouter une tenue (ex : le costume) : ajoute ses poses ici, c'est tout.
+// LES SCÈNES : Buddy s'adapte au sujet de la discussion (il court pour le sport, il prie sur son tapis,
+// il travaille sur son ordinateur…). Une seule image par scène : elle remplace les émotions "calmes".
+// Une vraie joie, un recadrage, une idée ou un moment sensible gardent leur propre expression.
+// (Les noms "outfit / tenue" viennent de l'ancien personnage, qui changeait de vêtements.)
 // -------------------------------------------------------------
 const OUTFITS = {
-  militaire: { repos: "militaire-salut", salut: "militaire-salut", fache: "militaire-fache", motivation: "militaire-motivation", bravo: "militaire-bravo" },
-  sport:     { repos: "sport-repos", content: "sport-content", motivation: "sport-motivation", bravo: "sport-bravo" },
-  etudiant:  { repos: "etudiant-repos", content: "etudiant-content", idee: "etudiant-idee", bravo: "etudiant-bravo" },
-  voyageur:  { repos: "voyageur-repos", content: "voyageur-content", montre: "voyageur-montre", bravo: "voyageur-bravo" },
-  qamis:     { repos: "qamis-repos", content: "qamis-content", encourage: "qamis-encourage", idee: "qamis-idee" },
-  // costume : pas encore dessiné → en attendant, les objectifs Finances gardent la tenue normale
+  sport: "scene-sport",
+  etudiant: "scene-etudes",
+  voyageur: "scene-voyages",
+  qamis: "scene-priere",
+  costume: "scene-finances",
+  quotidien: "scene-quotidien",
 };
-// La pose la plus proche, quand une tenue n'a pas celle demandée (dans l'ordre de préférence)
-const CLOSEST = {
-  content: ["bravo"], bravo: ["content"], idee: ["content"], motivation: ["content", "bravo"],
-  fache: ["motivation"], salut: ["content"], fier: ["bravo", "content"], surpris: ["content"],
-  rire: ["content"], montre: ["content"], reflechit: ["idee"], ecoute: [],
-};
-// Les moments sensibles : Buddy "enlève le costume" et reprend sa tenue normale pour parler sérieusement
-const SENSITIVE = ["compassion", "inquiet", "encourage"];
+const SCENE_POSES = ["repos", "content", "ecoute", "salut", "fier"];
 
-// La tenue qui a du sens MAINTENANT (null = tenue normale) :
-//   1. le THÈME de la conversation, choisi par Buddy à chaque réponse (Sport → sport, Études → étudiant,
-//      Voyages → voyageur, Islam → qamis, Finances → costume quand il existera). Quand on change de sujet,
-//      Buddy répond "aucun" et reprend sa tenue normale ;
-//   2. avant sa première réponse sur un objectif choisi (bouton "parler de…") → la tenue de la catégorie de l'objectif ;
-//   3. sinon, style de coaching "militaire" → tenue militaire ;
-//   4. sinon → tenue normale.
+// La scène qui a du sens MAINTENANT (null = Buddy normal) :
+//   1. le THÈME de la conversation, choisi par Buddy à chaque réponse (Sport → sport, Études → études,
+//      Voyages → voyage, Islam → prière, Finances → finances). Quand on change de sujet,
+//      Buddy répond "aucun" et redevient normal ;
+//   2. avant sa première réponse sur un objectif choisi (bouton "parler de…") → la scène de la catégorie de l'objectif ;
+//   3. sinon → Buddy normal.
 const ISLAM_WORDS = /islam|musulman|muslim|pri[èe]re|salat|salah|coran|quran|qur'?an|ramadan|mosqu|allah|hadith|dhikr|sunna|jumu|fajr|du'?a\b|douaa?|invocation|tarawih|hajj|omra|umrah|zakat|sourate|surah/i;
-const CATEGORY_OUTFIT = { sport: "sport", etudes: "etudiant", voyages: "voyageur", finances: "costume" };
+const CATEGORY_OUTFIT = { sport: "sport", etudes: "etudiant", voyages: "voyageur", finances: "costume", quotidien: "quotidien" };
 const THEME_OUTFIT = { sport: "sport", etudes: "etudiant", voyages: "voyageur", islam: "qamis", finances: "costume" };
 const THEME_TIMEOUT = 10 * 60 * 1000; // sans nouveau message pendant 10 min, il se rhabille normalement tout seul
 
@@ -1321,16 +1468,13 @@ function currentOutfit() {
       ? (ISLAM_WORDS.test(`${goal.text} ${goal.reason || ""}`) ? "qamis" : null)
       : CATEGORY_OUTFIT[goal.category];
   }
-  if (outfit && OUTFITS[outfit]) return outfit;
-  return state.profile.style === "military" ? "militaire" : null;
+  return outfit && OUTFITS[outfit] ? outfit : null;
 }
 
-// Le nom de l'image à afficher pour une pose, dans la tenue du moment
+// Le nom de l'image à afficher pour une pose, dans la scène du moment
 function poseFile(pose) {
-  const outfit = OUTFITS[currentOutfit()];
-  if (!outfit || (SENSITIVE.includes(pose) && !outfit[pose])) return pose; // tenue normale
-  for (const p of [pose, ...(CLOSEST[pose] || [])]) if (outfit[p]) return outfit[p];
-  return outfit.repos;
+  const scene = OUTFITS[currentOutfit()];
+  return scene && SCENE_POSES.includes(pose) ? scene : pose;
 }
 
 // On précharge les images (petites : ~35 Ko), pour qu'il n'y ait pas de "blanc" quand il change de pose.
@@ -1346,7 +1490,7 @@ let shownOutfit = null;              // la tenue affichée en ce moment
 // Change la pose, le mouvement et la petite phrase de Buddy (bannière, discussion, bulle flottante)
 function setBuddy(pose, mouvement, status) {
   const outfit = currentOutfit();
-  if (outfit) preload(Object.values(OUTFITS[outfit]));
+  if (outfit) preload([OUTFITS[outfit]]);
   const file = poseFile(pose);
   const img = $("buddy-img");
   const src = "buddy/" + file + ".webp";
@@ -1694,15 +1838,16 @@ for (const chip of document.querySelectorAll("[data-minutes]")) {
 // Pour ajouter une étape : une ligne ici + ses 2 textes dans i18n.js.
 // =============================================================
 const TOUR = [
+  // Buddy reste discret : il "chille" à chaque étape (relax), dit bonjour au début et se réjouit à la fin
   { key: "welcome",  page: "accueil",    pose: "salut" },
-  { key: "goals",    page: "accueil",    target: ".goals-card", pose: "montre" },
-  { key: "today",    page: "accueil",    target: ".today-card", pose: "montre" },
-  { key: "cats",     page: "accueil",    target: ".cats-card", pose: "montre" },
-  { key: "week",     page: "accueil",    target: ".week-card", pose: "fier" },
-  { key: "calendar", page: "accueil",    target: '.side-link[data-page="calendrier"]', fixed: true, pose: "montre" },
-  { key: "chat",     page: "accueil",    target: "#buddy-fab", round: true, fixed: true, pose: "content" },
-  { key: "settings", page: "accueil",    target: '.side-link[data-page="parametres"]', fixed: true, pose: "montre" },
-  { key: "emails",   page: "parametres", target: "#email-settings .toggles", pose: "idee" },
+  { key: "goals",    page: "accueil",    target: ".goals-card", pose: "relax" },
+  { key: "today",    page: "accueil",    target: ".today-card", pose: "relax" },
+  { key: "cats",     page: "accueil",    target: ".cats-card", pose: "relax" },
+  { key: "week",     page: "accueil",    target: ".week-card", pose: "relax" },
+  { key: "calendar", page: "accueil",    target: '.side-link[data-page="calendrier"]', fixed: true, pose: "relax" },
+  { key: "chat",     page: "accueil",    target: "#buddy-fab", round: true, fixed: true, pose: "relax" },
+  { key: "settings", page: "accueil",    target: '.side-link[data-page="parametres"]', fixed: true, pose: "relax" },
+  { key: "emails",   page: "parametres", target: "#email-settings .toggles", pose: "relax" },
   { key: "end",      page: "accueil",    pose: "bravo" },
 ];
 let tourIndex = -1;     // l'étape affichée (-1 = pas de visite en cours)

@@ -10,13 +10,14 @@ import { t, locale, dayShort, DAYS } from "./i18n.js";
 // =============================================================
 const category = (id, emoji, icon, color) => ({ emoji, icon, color, get label() { return t("cat." + id); } });
 export const CATEGORIES = {
-  sport:     category("sport",     "🏋️", "dumbbell",  "var(--orange)"),
-  etudes:    category("etudes",    "📚", "book-open", "var(--blue)"),
-  religion:  category("religion",  "🕌", "moon-star", "var(--green)"),
-  finances:  category("finances",  "💰", "coins",     "var(--yellow)"),
-  voyages:   category("voyages",   "✈️", "plane",     "var(--red)"),
-  quotidien: category("quotidien", "🏠", "house",     "var(--violet)"),
-  autre:     category("autre",     "✨", "sparkles",  "var(--teal)"),
+  // l'icône = son nom dans la bibliothèque d'icônes Phosphor (le style de la marque)
+  sport:     category("sport",     "🏋️", "barbell",       "var(--orange)"),
+  etudes:    category("etudes",    "📚", "laptop",        "var(--blue)"),
+  religion:  category("religion",  "🕌", "mosque",        "var(--green)"),
+  finances:  category("finances",  "💰", "coins",         "var(--yellow)"),
+  voyages:   category("voyages",   "✈️", "airplane-tilt", "var(--red)"),
+  quotidien: category("quotidien", "🏠", "coffee",        "var(--violet)"),
+  autre:     category("autre",     "✨", "sparkle",       "var(--teal)"),
 };
 
 // Maximum de tâches par jour. 10 pendant la phase de test ;
