@@ -323,13 +323,18 @@ textarea { resize: vertical; }
   filter: drop-shadow(0 0 18px rgba(255, 170, 80, 0.35)) drop-shadow(0 18px 20px rgba(0, 0, 0, 0.5));
   animation: respire 3.2s ease-in-out infinite;
 }
-@keyframes respire { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
-@keyframes reflechit { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
-@keyframes pop { 0% { transform: scale(0.94) translateY(8px); } 60% { transform: scale(1.05) translateY(-6px); } 100% { transform: scale(1) translateY(0); } }
-@keyframes saute { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-16px); } 55% { transform: translateY(0); } 75% { transform: translateY(-6px); } }
-.buddy-img.reflechit { animation: reflechit 0.9s ease-in-out infinite; }
-.buddy-img.pop { animation: pop 0.45s ease-out; }
-.buddy-img.saute { animation: saute 0.8s ease-out; }
+/* Des mouvements discrets, comme une vraie personne (pas de rebond de dessin animé) */
+@keyframes respire { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.012); } }
+@keyframes reflechit { 0%, 100% { transform: rotate(-0.7deg); } 50% { transform: rotate(0.7deg); } }
+@keyframes pop { 0% { transform: translateY(5px) scale(0.99); } 100% { transform: translateY(0) scale(1); } }
+@keyframes saute { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-9px); } 65% { transform: translateY(0); } 82% { transform: translateY(-3px); } }
+.buddy-img.reflechit { animation: reflechit 3s ease-in-out infinite; }
+.buddy-img.pop { animation: pop 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.buddy-img.saute { animation: saute 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Changement d'émotion : fondu enchaîné (voir crossfade dans app.js).
+   La nouvelle pose apparaît vite, l'ancienne ("fantôme", par-dessus) s'efface plus lentement. */
+.buddy-img { transition: opacity 0.18s ease-out; }
+.buddy-ghost { animation: none !important; transition: opacity 0.45s ease-in-out; pointer-events: none; z-index: 1; }
 
 /* ✨ Quand Buddy change de tenue : un éclair doré, et il "apparaît" dans sa nouvelle tenue */
 .buddy-img.tenue { animation: tenue 0.7s ease-out; }

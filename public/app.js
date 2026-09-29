@@ -1286,22 +1286,58 @@ function setBuddy(pose, mouvement, status) {
   if (outfit) preload(Object.values(OUTFITS[outfit]));
   const file = poseFile(pose);
   const img = $("buddy-img");
-  for (const other of [img, $("drawer-buddy"), $("fab-buddy")]) other.src = "buddy/" + file + ".webp";
-  img.className = "buddy-img";
-  void img.offsetWidth; // petite astuce pour pouvoir rejouer la même animation
-  // Il vient de changer de tenue : petit effet magique ✨ (plutôt que le mouvement habituel)
-  const changed = (OUTFITS[outfit] && file !== pose ? outfit : null) !== shownOutfit;
-  shownOutfit = OUTFITS[outfit] && file !== pose ? outfit : null;
-  if (changed) {
-    img.classList.add("tenue");
-    const poof = $("tenue-poof");
-    poof.classList.remove("go");
-    void poof.offsetWidth;
-    poof.classList.add("go");
-  } else if (mouvement) {
-    img.classList.add(mouvement);
-  }
+  const src = "buddy/" + file + ".webp";
+  for (const other of [$("drawer-buddy"), $("fab-buddy")]) other.src = src;
   $("buddy-status").textContent = status;
+  // Il vient de changer de tenue : petit effet magique ✨ (plutôt que le mouvement habituel)
+  const outfitNow = OUTFITS[outfit] && file !== pose ? outfit : null;
+  const changed = outfitNow !== shownOutfit;
+  shownOutfit = outfitNow;
+  crossfade(img, src, () => {
+    img.className = "buddy-img";
+    void img.offsetWidth; // petite astuce pour pouvoir rejouer la même animation
+    if (changed) {
+      img.classList.add("tenue");
+      const poof = $("tenue-poof");
+      poof.classList.remove("go");
+      void poof.offsetWidth;
+      poof.classList.add("go");
+    } else if (mouvement) {
+      img.classList.add(mouvement);
+    }
+  });
+}
+
+// Changement de pose en "fondu enchaîné" : la nouvelle pose apparaît vite, pendant que l'ancienne
+// s'efface doucement par-dessus. Buddy est cadré au même endroit sur toutes les images :
+// on a l'impression qu'il bouge vraiment, sans "saut" d'une image à l'autre.
+let fadeToken = 0;
+function crossfade(img, src, then) {
+  const token = ++fadeToken;
+  const next = new Image();
+  next.src = src;
+  // On attend que la nouvelle image soit prête (sinon Buddy disparaîtrait un instant)
+  Promise.resolve(next.decode ? next.decode() : null).catch(() => {}).then(() => {
+    if (token !== fadeToken) return; // une autre pose a été demandée entre-temps
+    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (img.getAttribute("src") !== src && !calm) {
+      document.querySelectorAll(".buddy-ghost").forEach((g) => g.remove());
+      const ghost = img.cloneNode();
+      ghost.removeAttribute("id");
+      ghost.className = "buddy-img buddy-ghost";
+      ghost.style.transform = getComputedStyle(img).transform; // figée exactement où elle était
+      img.after(ghost);
+      requestAnimationFrame(() => requestAnimationFrame(() => (ghost.style.opacity = "0")));
+      setTimeout(() => ghost.remove(), 700);
+      img.style.transition = "none";
+      img.style.opacity = "0";
+      void img.offsetWidth;
+      img.style.transition = "";
+      img.style.opacity = "";
+    }
+    img.src = src;
+    then();
+  });
 }
 
 // Affiche une émotion (et la retient comme émotion "de fond")
