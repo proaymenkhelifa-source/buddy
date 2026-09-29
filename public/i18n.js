@@ -355,6 +355,9 @@ const DICT = {
     "task.time": "Heure (facultatif)",
     "task.goal": "Objectif lié (facultatif)",
     "task.noGoal": "Aucun",
+    "task.newGoalOption": "Nouvel objectif…",
+    "task.newGoalName": "Nom du nouvel objectif",
+    "task.newGoalMissing": "Donne un nom à ton nouvel objectif.",
     "task.pickDay": "Choisis au moins un jour.",
     "task.confirmDelete": "Supprimer la tâche « {task} » ? Son historique reste dans le suivi.",
 
@@ -808,6 +811,9 @@ const DICT = {
     "task.time": "Time (optional)",
     "task.goal": "Linked goal (optional)",
     "task.noGoal": "None",
+    "task.newGoalOption": "New goal…",
+    "task.newGoalName": "New goal name",
+    "task.newGoalMissing": "Give your new goal a name.",
     "task.pickDay": "Pick at least one day.",
     "task.confirmDelete": "Delete the task “{task}”? Its history stays in your progress.",
 

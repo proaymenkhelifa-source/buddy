@@ -1002,7 +1002,10 @@ function saveGoalDraft() {
 }
 function saveTaskDraft() {
   const form = $("task-form");
-  saveDraft(taskDraftName(), { title: form.title.value, time: form.time.value, goalId: form.goalId.value, repeatMode, pickedDays, onDate: form.onDate.value });
+  saveDraft(taskDraftName(), {
+    title: form.title.value, time: form.time.value, goalId: form.goalId.value, repeatMode, pickedDays, onDate: form.onDate.value,
+    newGoalText: form.newGoalText.value, newGoalCategory: form.newGoalCategory.value,
+  });
 }
 for (const type of ["input", "change"]) {
   $("goal-form").addEventListener(type, saveGoalDraft);
@@ -1128,16 +1131,31 @@ $("day-picker").addEventListener("click", (e) => {
   saveTaskDraft();
 });
 
+// "Objectif lié" : "＋ Nouvel objectif…" fait apparaître son nom et sa catégorie
+function drawNewGoal() {
+  const on = $("task-goal-select").value === "new";
+  $("task-new-goal").classList.toggle("hidden", !on);
+  return on;
+}
+$("task-goal-select").addEventListener("change", () => {
+  if (drawNewGoal()) $("task-form").newGoalText.focus();
+});
+
 // onDate : une nouvelle tâche pour un jour précis (depuis le calendrier)
 function openTaskDialog(task, goalId = null, onDate = null) {
   editingTask = task;
   const form = $("task-form");
   form.reset();
   $("task-goal-select").innerHTML = `<option value="">${t("task.noGoal")}</option>` +
-    state.goals.map((g) => `<option value="${g.id}">${catOf(g).emoji} ${esc(g.text)}</option>`).join("");
+    state.goals.map((g) => `<option value="${g.id}">${catOf(g).emoji} ${esc(g.text)}</option>`).join("") +
+    `<option value="new">＋ ${t("task.newGoalOption")}</option>`;
+  // Les catégories du nouvel objectif (toutes, "Autre" comprise)
+  $("task-new-goal-cat").innerHTML = Object.entries(CATEGORIES)
+    .map(([key, c]) => `<option value="${key}">${c.emoji} ${esc(c.label)}</option>`).join("");
   form.title.value = task?.title || "";
   form.time.value = task?.time || "";
   form.goalId.value = String(task?.goal_id || goalId || "");
+  form.newGoalCategory.value = "autre";
   // Le "Quand ?" de la tâche (ou "tous les jours" pour une nouvelle)
   repeatMode = task?.on_date || onDate ? "date" : task?.days?.length ? "days" : "daily";
   pickedDays = task?.days ? [...task.days] : [];
@@ -1150,6 +1168,8 @@ function openTaskDialog(task, goalId = null, onDate = null) {
     form.title.value = draft.title || "";
     form.time.value = draft.time || "";
     if ([...form.goalId.options].some((o) => o.value === draft.goalId)) form.goalId.value = draft.goalId;
+    form.newGoalText.value = draft.newGoalText || "";
+    if (draft.newGoalCategory in CATEGORIES) form.newGoalCategory.value = draft.newGoalCategory;
     if (!onDate) {
       repeatMode = ["daily", "days", "date"].includes(draft.repeatMode) ? draft.repeatMode : repeatMode;
       pickedDays = Array.isArray(draft.pickedDays) ? draft.pickedDays : pickedDays;
@@ -1157,6 +1177,7 @@ function openTaskDialog(task, goalId = null, onDate = null) {
     }
   }
   drawRepeat();
+  drawNewGoal();
   $("task-dialog-title").textContent = t(task ? "task.edit" : "task.new");
   $("task-delete").classList.toggle("hidden", !task);
   $("task-error").textContent = "";
@@ -1168,10 +1189,27 @@ $("task-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   if (repeatMode === "days" && pickedDays.length === 0) return ($("task-error").textContent = t("task.pickDay"));
+  // "＋ Nouvel objectif…" : on crée d'abord l'objectif, puis la tâche liée à lui
+  let goalId = Number(form.goalId.value) || null;
+  if (form.goalId.value === "new") {
+    if (!form.newGoalText.value.trim()) {
+      form.newGoalText.focus();
+      return ($("task-error").textContent = t("task.newGoalMissing"));
+    }
+    const created = await api("POST", "/api/goals", { text: form.newGoalText.value, category: form.newGoalCategory.value });
+    if (created.error) return ($("task-error").textContent = created.error);
+    goalId = created.id;
+    // Déjà créé : on le sélectionne dans la liste (si la tâche échoue, on ne le recrée pas une 2e fois)
+    const cat = CATEGORIES[form.newGoalCategory.value];
+    form.goalId.querySelector('[value="new"]').before(new Option(`${cat.emoji} ${form.newGoalText.value.trim()}`, String(goalId)));
+    form.goalId.value = String(goalId);
+    form.newGoalText.value = "";
+    drawNewGoal();
+  }
   const body = {
     title: form.title.value,
     time: form.time.value,
-    goalId: Number(form.goalId.value) || null,
+    goalId,
     days: repeatMode === "days" ? pickedDays : [],
     onDate: repeatMode === "date" ? form.onDate.value : null,
   };

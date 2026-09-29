@@ -571,6 +571,11 @@
         <label><span data-i18n="task.time">Heure (facultatif)</span><input name="time" type="time"></label>
         <label><span data-i18n="task.goal">Objectif lié (facultatif)</span><select name="goalId" id="task-goal-select"></select></label>
       </div>
+      <!-- "＋ Nouvel objectif…" choisi dans la liste : l'objectif est créé en même temps que la tâche -->
+      <div class="form-row hidden" id="task-new-goal">
+        <label><span data-i18n="task.newGoalName">Nom du nouvel objectif</span><input name="newGoalText" maxlength="120" placeholder="Ex : Courir un semi-marathon" data-i18n-ph="goal.titlePh"></label>
+        <label><span data-i18n="goal.category">Catégorie</span><select name="newGoalCategory" id="task-new-goal-cat"></select></label>
+      </div>
       <p class="form-error" id="task-error"></p>
       <div class="dialog-actions">
         <button type="button" class="btn btn-danger hidden" id="task-delete"><i data-lucide="trash-2"></i> <span data-i18n="common.delete">Supprimer</span></button>
