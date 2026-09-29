@@ -48,7 +48,7 @@ export const DEMO_MODE = true;
 // Premium = les limites "normales" ci-dessus (MAX_TASKS, MAX_MESSAGES_PER_DAY), sans limite de rappels.
 export const FREE_LIMITS = {
   tasksPerDay: 5,         // 5 tâches par jour maximum
-  messagesPerDay: 50,     // 50 messages par jour avec Buddy
+  messagesPerDay: 20,     // 20 messages par jour avec Buddy
   styles: ["balanced"],   // seulement le coaching "Équilibré"
   remindersPerDay: 3,     // 3 rappels (e-mails / notifications) par jour maximum
 };
