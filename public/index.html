@@ -72,7 +72,8 @@
           Ton coach personnel pour t'aider à être plus discipliné,
           progresser et atteindre tes objectifs.
         </p>
-        <button class="btn btn-primary btn-big" id="hero-cta"><span data-i18n="hero.cta">C'est parti</span> <i data-lucide="arrow-right"></i></button>
+        <!-- "C'est parti" : fait défiler vers la suite (les captures, les offres). L'inscription est en bas et en haut ("Se connecter"). -->
+        <button class="btn btn-primary btn-big" id="hero-cta"><span data-i18n="hero.cta">C'est parti</span> <i data-lucide="arrow-down"></i></button>
       </div>
 
       <!-- Le grand visuel : Buddy qui fait coucou, et deux petits "widgets" de l'appli -->
@@ -86,20 +87,21 @@
     <!-- L'app en images : le tableau de bord (ordinateur) et la discussion avec Buddy (téléphone).
          Les captures existent en français et en anglais : images/app-desktop-fr.jpg, app-phone-en.jpg…
          Pour mettre tes propres images : remplace ces 4 fichiers (mêmes noms). -->
-    <section class="showcase">
+    <!-- class="reveal" : l'élément apparaît en douceur quand on arrive dessus en faisant défiler (voir app.js) -->
+    <section class="showcase" id="showcase">
       <div class="shots">
-        <img class="shot-desktop" data-src-lang="images/app-desktop-{lang}.jpg" src="images/app-desktop-fr.jpg" width="1280" height="800" loading="lazy" data-i18n-alt="shots.desktopAlt" alt="">
-        <img class="shot-phone" data-src-lang="images/app-phone-{lang}.jpg" src="images/app-phone-fr.jpg" width="390" height="780" loading="lazy" data-i18n-alt="shots.phoneAlt" alt="">
+        <img class="shot-desktop reveal"data-src-lang="images/app-desktop-{lang}.jpg" src="images/app-desktop-fr.jpg" width="1280" height="800" loading="lazy" data-i18n-alt="shots.desktopAlt" alt="">
+        <img class="shot-phone reveal" style="--d: 0.3s"data-src-lang="images/app-phone-{lang}.jpg" src="images/app-phone-fr.jpg" width="390" height="780" loading="lazy" data-i18n-alt="shots.phoneAlt" alt="">
       </div>
     </section>
 
     <!-- Gratuit ou Premium ? -->
     <section class="plans" id="plans">
-      <p class="eyebrow" data-i18n="plans.eyebrow">Les offres</p>
-      <h2 data-i18n="plans.title">Gratuit ou Premium ?</h2>
-      <p class="plans-sub" data-i18n="plans.sub">Commence gratuitement. Passe en Premium quand tu veux aller plus loin.</p>
+      <p class="eyebrow reveal" data-i18n="plans.eyebrow">Les offres</p>
+      <h2 class="reveal" style="--d: 0.08s" data-i18n="plans.title">Gratuit ou Premium ?</h2>
+      <p class="plans-sub reveal" style="--d: 0.16s" data-i18n="plans.sub">Commence gratuitement. Passe en Premium quand tu veux aller plus loin.</p>
       <div class="plan-cards">
-        <article class="plan-card">
+        <article class="plan-card reveal">
           <h3 data-i18n="plans.freeName">Gratuit</h3>
           <p class="plan-price"><strong data-i18n="plans.freePrice">0 €</strong></p>
           <ul class="plan-list">
@@ -110,7 +112,7 @@
             <li><i data-lucide="check"></i><span data-i18n="plans.free5">3 rappels par jour</span></li>
           </ul>
         </article>
-        <article class="plan-card premium">
+        <article class="plan-card premium reveal" style="--d: 0.15s">
           <span class="premium-trial"><i data-lucide="gift"></i> <span data-i18n="premium.trial">7 jours offerts</span></span>
           <h3 data-i18n="plans.premiumName">Premium</h3>
           <p class="plan-price"><strong data-i18n="plans.premiumPrice">9,99 €</strong><span data-i18n="plans.perMonth">/mois</span></p>
@@ -123,7 +125,7 @@
           </ul>
         </article>
       </div>
-      <button class="btn btn-primary btn-big" id="plans-cta"><span data-i18n="plans.cta">Créer mon compte</span> <i data-lucide="arrow-right"></i></button>
+      <button class="btn btn-primary btn-big reveal" id="plans-cta"><span data-i18n="plans.cta">Créer mon compte</span> <i data-lucide="arrow-right"></i></button>
     </section>
   </div>
 

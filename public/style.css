@@ -308,8 +308,20 @@ textarea { resize: vertical; }
 .hero-chip.two { bottom: 14%; right: 6%; animation-delay: -3s; }
 @keyframes flotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
+/* "C'est parti" : la flèche invite à descendre (un petit mouvement vers le bas) */
+#hero-cta .lucide-arrow-down { animation: descend 1.8s ease-in-out infinite; }
+@keyframes descend { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(3px); } }
+
+/* Apparition au défilement (class="reveal", voir setupReveal dans app.js) :
+   invisible et un peu plus bas, puis il glisse à sa place quand on arrive dessus */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease-out, transform 0.8s var(--ease-soft); transition-delay: var(--d, 0s); }
+.reveal.in { opacity: 1; transform: none; }
+.shot-phone.reveal { transform: translate(28px, 70px) rotate(4deg); }   /* le téléphone arrive en glissant, un peu penché */
+.plan-list li.reveal { transform: translateX(-14px); }                 /* chaque avantage arrive de la gauche */
+.shot-phone.reveal.in, .plan-list li.reveal.in { transform: none; }
+
 /* L'app en images (sous le titre) : le tableau de bord, avec le téléphone posé devant */
-.showcase { max-width: 1100px; margin: 0 auto; padding: 10px 24px 80px; }
+.showcase { max-width: 1100px; margin: 0 auto; padding: 10px 24px 80px; scroll-margin-top: 76px; }
 .shots { position: relative; padding-right: 9%; }
 .shot-desktop {
   display: block; width: 100%; height: auto; border-radius: 20px;
@@ -1323,6 +1335,8 @@ textarea { resize: vertical; }
   .stat-tiles { grid-template-columns: repeat(2, 1fr); }
   .hero { grid-template-columns: 1fr; gap: 28px; padding: 10px 16px 40px; min-height: auto; }
   .scene-hero { height: 380px; order: -1; }
+  /* Sur téléphone : un visuel un peu moins haut, pour voir le bouton "C'est parti" dès l'ouverture */
+  @media (max-height: 900px) { .scene-hero { height: min(300px, 36vh); } }
   .nav { padding: 14px 16px; }
 }
 

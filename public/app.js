@@ -292,8 +292,37 @@ function closeAuth() {
   if (!session) $("landing").classList.remove("hidden");
 }
 
-$("hero-cta").addEventListener("click", () => openAuth("signup"));
-$("plans-cta").addEventListener("click", () => openAuth("signup")); // le bouton sous "Gratuit ou Premium ?"
+// "C'est parti" : on descend en douceur vers la suite (les captures, puis les offres).
+// L'inscription : le bouton sous "Gratuit ou Premium ?" (et "Se connecter" en haut).
+$("hero-cta").addEventListener("click", () => $("showcase").scrollIntoView({ behavior: "smooth", block: "start" }));
+$("plans-cta").addEventListener("click", () => openAuth("signup"));
+
+// Les éléments de la page d'accueil apparaissent petit à petit quand on fait défiler (class="reveal").
+// --d = un petit retard, pour qu'ils arrivent les uns après les autres.
+function setupReveal() {
+  // Chaque ligne des offres arrive l'une après l'autre
+  document.querySelectorAll(".plan-card").forEach((card, c) => {
+    card.querySelectorAll(".plan-list li").forEach((li, i) => {
+      li.classList.add("reveal");
+      li.style.setProperty("--d", (0.3 + c * 0.15 + i * 0.07).toFixed(2) + "s");
+    });
+  });
+  const items = document.querySelectorAll(".reveal");
+  // Pas d'animation pour ceux qui l'ont demandé (ou un vieux navigateur) : tout est visible tout de suite
+  if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    items.forEach((el) => el.classList.add("in"));
+    return;
+  }
+  const watcher = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      entry.target.classList.add("in"); // il apparaît (une seule fois)
+      watcher.unobserve(entry.target);
+    }
+  }, { threshold: 0.15, rootMargin: "0px 0px -8% 0px" });
+  items.forEach((el) => watcher.observe(el));
+}
+setupReveal();
 $("nav-login").addEventListener("click", () => openAuth("login"));
 for (const tab of document.querySelectorAll(".tab")) {
   tab.addEventListener("click", () => openAuth(tab.dataset.mode));
