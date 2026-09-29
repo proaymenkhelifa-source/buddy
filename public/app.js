@@ -214,6 +214,7 @@ window.addEventListener("hashchange", showPage);
 
 function showLanding() {
   $("landing").classList.remove("hidden");
+  replayReveal();
   $("auth-screen").classList.add("hidden");
   $("app").classList.add("hidden");
   $("buddy-fab").classList.add("hidden");
@@ -289,16 +290,35 @@ const authModeFromHash = () => Object.keys(AUTH_SCREENS).find((m) => AUTH_SCREEN
 
 function closeAuth() {
   $("auth-screen").classList.add("hidden");
-  if (!session) $("landing").classList.remove("hidden");
+  if (!session) {
+    $("landing").classList.remove("hidden");
+    replayReveal(); // de retour sur l'accueil : les éléments réapparaissent en mouvement
+  }
 }
 
 // "C'est parti" : on descend en douceur vers la suite (les captures, puis les offres).
-// L'inscription : le bouton sous "Gratuit ou Premium ?" (et "Se connecter" en haut).
 $("hero-cta").addEventListener("click", () => $("showcase").scrollIntoView({ behavior: "smooth", block: "start" }));
-$("plans-cta").addEventListener("click", () => openAuth("signup"));
+// Les boutons des offres : la personne choisit Gratuit ou Premium AVANT de créer son compte.
+// Le choix est gardé dans le navigateur, puis enregistré juste après l'inscription (l'écran Premium ne redemande pas).
+for (const b of document.querySelectorAll("[data-plan-choice]")) {
+  b.addEventListener("click", () => {
+    try { localStorage.setItem("buddy-plan-wish", b.dataset.planChoice); } catch (e) {}
+    openAuth("signup");
+  });
+}
 
 // Les éléments de la page d'accueil apparaissent petit à petit quand on fait défiler (class="reveal").
 // --d = un petit retard, pour qu'ils arrivent les uns après les autres.
+// Ils rejouent leur apparition à chaque fois : quand on remonte puis redescend, et quand on revient sur l'accueil.
+let revealWatcher = null;
+function replayReveal() {
+  if (!revealWatcher) return;
+  for (const el of document.querySelectorAll(".reveal")) {
+    el.classList.remove("in");
+    revealWatcher.unobserve(el);
+    revealWatcher.observe(el); // regardé à nouveau : il réapparaîtra quand on arrivera dessus
+  }
+}
 function setupReveal() {
   // Chaque ligne des offres arrive l'une après l'autre
   document.querySelectorAll(".plan-card").forEach((card, c) => {
@@ -313,14 +333,14 @@ function setupReveal() {
     items.forEach((el) => el.classList.add("in"));
     return;
   }
-  const watcher = new IntersectionObserver((entries) => {
+  revealWatcher = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      entry.target.classList.add("in"); // il apparaît (une seule fois)
-      watcher.unobserve(entry.target);
+      if (entry.isIntersecting) entry.target.classList.add("in"); // il apparaît
+      // Il est reparti SOUS l'écran (on est remonté) : il rejouera son apparition en redescendant
+      else if (entry.boundingClientRect.top > innerHeight) entry.target.classList.remove("in");
     }
   }, { threshold: 0.15, rootMargin: "0px 0px -8% 0px" });
-  items.forEach((el) => watcher.observe(el));
+  items.forEach((el) => revealWatcher.observe(el));
 }
 setupReveal();
 $("nav-login").addEventListener("click", () => openAuth("login"));
@@ -2274,9 +2294,23 @@ $("plan-open").addEventListener("click", () => showPremium());
 // Le choix n'a jamais été fait (nouveau compte) ? On affiche l'écran complet, et on attend la réponse.
 // (Le petit mémo dans le navigateur évite de le remontrer si Supabase n'a pas encore la colonne "plan".)
 async function askPlanIfNeeded() {
-  let asked = false;
-  try { asked = localStorage.getItem("buddy-plan-asked") === "1"; } catch (e) {}
-  if (state?.profile && !state.profile.plan && !asked) await showPremium();
+  let asked = false, wish = null;
+  try {
+    asked = localStorage.getItem("buddy-plan-asked") === "1";
+    wish = localStorage.getItem("buddy-plan-wish"); // choisi sur la page d'accueil, avant l'inscription
+    localStorage.removeItem("buddy-plan-wish");
+  } catch (e) {}
+  if (!state?.profile || state.profile.plan || asked) return;
+  if (wish === "premium" || wish === "free") {
+    // Déjà choisi sur la page d'accueil : on l'enregistre, sans redemander
+    try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
+    const result = await api("POST", "/api/plan", { plan: wish }).catch(() => ({}));
+    state.profile.plan = result.plan || wish;
+    if (wish === "premium") toast(t("premium.welcome"));
+    render();
+    return;
+  }
+  await showPremium();
 }
 
 // Un nouveau jour commence alors que l'appli est restée ouverte (très courant avec l'appli installée
