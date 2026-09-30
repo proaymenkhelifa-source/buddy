@@ -213,7 +213,7 @@ Known gotchas:
 - Chat bubble (FAB) always shows Buddy waving (`salut`), with a small wave every few seconds.
 - Free trial made obvious: "7 jours de Premium offerts" pill at the top of the home page (scrolls to the plans); Premium card headline "0 € pendant 7 jours" then "puis 9,99 €/mois"; Premium card first on phones.
 
-## Buddy v2 rebrand (decided 2026-09-30) — part 1 DONE (logo, colors, typography), part 2 waiting for the poses
+## Buddy v2 rebrand (decided 2026-09-30) — DONE (logo, colors, typography, 20 poses)
 - Owner's new references (sent in chat): **Buddy v2** = same mascot, livelier eyes (navy ovals with 2 white highlights), slightly more vivid mint. **New logo** = mint speech bubble with Buddy's face (same eyes + small smile) + "Buddy" wordmark in a rounded navy font with a smile-shaped underline (white on navy backgrounds). App icon = the bubble on a navy rounded square.
 - Rule: Buddy as a full character ONLY where he "lives" (banner, home hero, day timeline, guided tour). Everywhere else Buddy = the bubble: logo next to the name, app icon, favicon, chat header avatar next to "Buddy", the floating chat button (FAB).
 - Palette: mint + white + **navy** as a third strong color (app icon, wordmark, dark backgrounds, user message bubbles). Typography: rounded font for logo/titles (match on Google Fonts unless the owner gives the font name), simple readable UI font for text.
@@ -222,7 +222,7 @@ Known gotchas:
 - Colors in `style.css`: `--primary:#5fe2c3`, `--navy:#14284b`, `--mint:#e8f4f0`, `--on-accent` = navy (text on mint buttons is navy, not white). Buddy's chat bubbles = light mint + navy text; user's bubbles = navy + white text. Dark theme = navy backgrounds (#0d1b33 …).
 - Typography: **Nunito 800/900** (rounded) for the logo word and big titles, Plus Jakarta Sans for the rest. The "Buddy" word has a smile-shaped underline (CSS mask, color follows the text).
 - Landing screenshots (`public/images/app-*.jpg`) regenerated with the new look.
-- ⏳ **Part 2**: the 20 Buddy v2 poses (see list above) → replace `public/buddy/*.webp`, then regenerate the landing screenshots again.
+- ✅ **Part 2 done (2026-09-30)**: owner's images `design/buddy v2 01.png` … `21.png` (magenta background, one pose each) cut out into `public/buddy/*.webp` (shared frame 790x700, feet aligned, 29–59 KB each). Mapping: 01 repos, 02 salut, 03 bravo, 04 idee, 05 fache, 06 compassion, 07 ecoute, 08 inquiet, 09 encourage, 10 content, 11 fier, 12 reflechit, 14 relax, 15 triste, 16 scene-sport, 17 scene-voyages, 18 scene-etudes, 19 scene-finances, 20 scene-priere, 21 scene-quotidien. **13 (hiker with sleeping bag) not used** (spare, could replace scene-voyages). Desktop landing screenshots regenerated (phone ones only show the chat, unchanged).
 
 ## Marketing & next steps
-See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
+Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
