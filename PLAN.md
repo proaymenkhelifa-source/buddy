@@ -212,5 +212,11 @@ Known gotchas:
 - Chat bubble (FAB) always shows Buddy waving (`salut`), with a small wave every few seconds.
 - Free trial made obvious: "7 jours de Premium offerts" pill at the top of the home page (scrolls to the plans); Premium card headline "0 € pendant 7 jours" then "puis 9,99 €/mois"; Premium card first on phones.
 
+## NEXT: Buddy v2 rebrand (decided 2026-09-30, waiting for the owner's images)
+- Owner's new references (sent in chat): **Buddy v2** = same mascot, livelier eyes (navy ovals with 2 white highlights), slightly more vivid mint. **New logo** = mint speech bubble with Buddy's face (same eyes + small smile) + "Buddy" wordmark in a rounded navy font with a smile-shaped underline (white on navy backgrounds). App icon = the bubble on a navy rounded square.
+- Rule: Buddy as a full character ONLY where he "lives" (banner, home hero, day timeline, guided tour). Everywhere else Buddy = the bubble: logo next to the name, app icon, favicon, chat header avatar next to "Buddy", the floating chat button (FAB).
+- Palette: mint + white + **navy** as a third strong color (app icon, wordmark, dark backgrounds, user message bubbles). Typography: rounded font for logo/titles (match on Google Fonts unless the owner gives the font name), simple readable UI font for text.
+- Plan: redraw bubble/logo/app icon/favicon as **SVG** (sharp, bubble expression can change in chat). Owner is generating the 20 poses with ChatGPT (one image per pose, magenta #FF00FF background) into `design/buddy-v2/` named `repos.png`, `salut.png`, `content.png`, `bravo.png`, `idee.png`, `fache.png`, `compassion.png`, `encourage.png`, `inquiet.png`, `fier.png`, `ecoute.png`, `reflechit.png`, `relax.png`, `triste.png`, `scene-sport.png`, `scene-priere.png`, `scene-etudes.png`, `scene-voyages.png`, `scene-quotidien.png`, `scene-finances.png` → cut out with the magenta key (same method as the scratchpad "mascotte.html" tool: key magenta, un-mix edges, align all poses on one shared frame by body centre + feet), then re-do the site-wide integration + regenerate the landing screenshots.
+
 ## Marketing & next steps
 See CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
