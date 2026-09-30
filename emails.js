@@ -6,7 +6,7 @@
 import { Resend } from "resend";
 import {
   CATEGORIES, HISTORY_DAYS, DAY_LONG, dayKey, addDays, isoDay, occursOn, isCurrent, computeStats, religionRule, goalProgress,
-  withTimeZone, timeHHMM, hasPremium, FREE_LIMITS,
+  withTimeZone, timeHHMM, hasPremium, FREE_LIMITS, bonusJokersFor,
 } from "./public/shared.js";
 import { t, cleanLang } from "./public/i18n.js";
 import { sendPush, pushReady } from "./push.js";
@@ -118,7 +118,7 @@ ${religionRule(goals)}
 - E-mail court : 2 à 5 phrases, en 1 à 3 petits paragraphes. Pas de Markdown (pas de ** ni de #). Pas de signature (elle est ajoutée automatiquement).`,
     messages: [{
       role: "user",
-      content: `Date : ${dayLabel(today)} (${today})\n\nSes objectifs :\n${goalsText}\n\nSes tâches d'aujourd'hui :\n${tasksText}\n\nSon streak : ${stats.streak} jour(s) d'affilée. Cette semaine : ${stats.week.done}/${stats.week.planned} tâches faites, ${stats.week.activeDays} jour(s) actif(s). Joker de la semaine : ${stats.jokerUsedOn ? "utilisé le " + dayLabel(stats.jokerUsedOn) : "pas utilisé"}.\nLes 7 derniers jours : ${weekDetail}`,
+      content: `Date : ${dayLabel(today)} (${today})\n\nSes objectifs :\n${goalsText}\n\nSes tâches d'aujourd'hui :\n${tasksText}\n\nSon streak : ${stats.streak} jour(s) d'affilée. Cette semaine : ${stats.week.done}/${stats.week.planned} tâches faites, ${stats.week.activeDays} jour(s) actif(s). Joker de la semaine : ${stats.jokerUsedOn ? "utilisé le " + dayLabel(stats.jokerUsedOn) : "pas utilisé"}.${stats.bonusJokers ? ` Jokers bonus Premium restants ce mois-ci : ${stats.bonusLeft}/${stats.bonusJokers}.` : ""}\nLes 7 derniers jours : ${weekDetail}`,
     }],
     output_config: { format: { type: "json_schema", schema: EMAIL_FORM } },
   });
@@ -150,7 +150,7 @@ export function emailHtml(kind, message, lang = "fr") {
 // PRÉPARER ET ENVOYER UN E-MAIL À UNE PERSONNE
 // =============================================================
 // Rassemble ce qu'il faut savoir sur la personne aujourd'hui (calculé dans SON fuseau horaire)
-async function gatherInfo(supabase, userId, today, timezone) {
+async function gatherInfo(supabase, userId, today, timezone, bonusJokers = 0) {
   const since = addDays(today, -(HISTORY_DAYS + 5));
   const [goalsRes, tasksRes, logsRes] = await Promise.all([
     supabase.from("goals").select("*").eq("user_id", userId), // "*" : marche aussi avant/après l'ajout de la colonne "draft"
@@ -169,7 +169,7 @@ async function gatherInfo(supabase, userId, today, timezone) {
     const goals = goalsRes.data
       .filter((g) => !g.draft) // les brouillons (objectifs pas encore définis) ne comptent pas
       .map((g) => ({ ...g, progress: goalProgress(tasks, logs, today, g).value }));
-    return { goals, todays, stats: computeStats(tasks, logs, today) };
+    return { goals, todays, stats: computeStats(tasks, logs, today, bonusJokers) };
   });
 }
 
@@ -177,7 +177,7 @@ async function gatherInfo(supabase, userId, today, timezone) {
 //   1. en NOTIFICATION sur ses téléphones / ordinateurs, si la personne les a activées (gratuit) ;
 //   2. par E-MAIL si elle n'a pas de notification, ou si elle a demandé les deux (et toujours pour l'e-mail de test).
 async function sendOne(supabase, claude, { userId, to, profile, kind, task, today }) {
-  const info = await gatherInfo(supabase, userId, today, profile.timezone || DEFAULT_TIMEZONE);
+  const info = await gatherInfo(supabase, userId, today, profile.timezone || DEFAULT_TIMEZONE, bonusJokersFor(profile));
   const written = await writeEmail(claude, kind === "test" ? "morning" : kind, { ...info, profile, task, today });
 
   let pushed = 0;

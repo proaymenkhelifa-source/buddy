@@ -13,7 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import {
   CATEGORIES, MAX_TASKS, MAX_MESSAGES_PER_DAY, HISTORY_DAYS, BADGES, APP_VERSION,
-  DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, messageLimitFor, styleAllowed,
+  DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, messageLimitFor, styleAllowed, bonusJokersFor,
   dayKey, addDays, computeStats, occursOn, isCurrent, scheduleLabel, dailyLimitError, religionRule, badgeFacts,
   goalProgress, goalWeek, withTimeZone, isoDay, DAY_LONG,
 } from "./public/shared.js";
@@ -165,7 +165,7 @@ async function updateBadges(userId, data, today) {
     supabase.from("task_logs").select("task_id", { count: "exact", head: true }).eq("user_id", userId),
   ]);
   const facts = withTimeZone(data.profile.timezone, () => badgeFacts({
-    stats: computeStats(data.tasks, data.logs, today),
+    stats: computeStats(data.tasks, data.logs, today, bonusJokersFor(data.profile)),
     goals: data.goals,
     totalDone: doneCount.count || 0,
     reviews: data.profile.reviewsCount,
@@ -643,7 +643,7 @@ const LANGUAGE_NAMES = { fr: "français", en: "ANGLAIS (English) : tu écris tou
 
 function buildContext(data, today, topicId, { badgeIds = [], review = false, lang = "fr" } = {}) {
   const { profile, goals, tasks, logs, messages } = data;
-  const stats = computeStats(tasks, logs, today);
+  const stats = computeStats(tasks, logs, today, bonusJokersFor(profile));
   const dateText = new Date(today + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const lines = [
     `- Langue de l'application : ${LANGUAGE_NAMES[lang]}`,
@@ -713,6 +713,7 @@ function buildContext(data, today, topicId, { badgeIds = [], review = false, lan
     `- Cette semaine (depuis lundi) : ${stats.week.done}/${stats.week.planned} tâches faites (${stats.week.rate} %), ${stats.week.activeDays} jour(s) actif(s) sur ${stats.week.daysSoFar}`,
     `- Streak actuel : ${stats.streak} jour(s) actif(s) d'affilée (meilleur : ${stats.best}). Les jours de repos (rien de prévu) ne cassent pas la série.`,
     `- Joker de la semaine : ${stats.jokerUsedOn ? `déjà utilisé le ${dayName(stats.jokerUsedOn)} (il a protégé la série ce jour-là)` : "encore disponible (1 jour raté par semaine est pardonné)"}`,
+    ...(stats.bonusJokers ? [`- Jokers bonus Premium : encore ${stats.bonusLeft} sur ${stats.bonusJokers} ce mois-ci (ils pardonnent automatiquement les autres jours ratés, en plus du joker de la semaine)`] : []),
     `- Les 7 derniers jours : ${stats.history.slice(-7).map((d) =>
       `${dayName(d.key)} ${d.status === "rest" ? "repos" : `${d.done}/${d.planned}${d.status === "joker" ? " (joker)" : d.status === "todo" ? " (en cours)" : ""}`}`).join(", ")}`,
     `- Badges gagnés : ${badgeIds.length ? BADGES.filter((b) => badgeIds.includes(b.id)).map((b) => `${b.emoji} ${b.name}`).join(", ") : "aucun pour l'instant"}`,

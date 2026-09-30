@@ -8,7 +8,7 @@
 //   3. après chaque action (cocher, ajouter, modifier…), on recommence 1 et 2.
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, styleAllowed } from "./shared.js";
+import { DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, styleAllowed, bonusJokersFor } from "./shared.js";
 import { CATEGORIES, MAX_TASKS, BADGES, APP_VERSION, HISTORY_DAYS, dayKey, addDays, mondayOf, computeStats, occursOn, isCurrent, isPlanned, isDone, scheduleLabel, goalWeek, goalProgress } from "./shared.js";
 import { t, getLang, setLang, cleanLang, locale, dayLong, dayInitials, LANGUAGES } from "./i18n.js";
 
@@ -559,7 +559,7 @@ let stats = null;
 let goalFilter = "toutes";
 
 function render() {
-  stats = computeStats(state.tasks, state.logs, today());
+  stats = computeStats(state.tasks, state.logs, today(), bonusJokersFor(state.profile));
   // Chaque morceau de la page est dessiné séparément : si l'un plante, les autres s'affichent quand même.
   for (const part of [renderProfile, renderToday, renderTimeline, renderGoalsSummary, renderWeek, renderCategories,
     renderGoalsPage, renderCalendar, renderSuivi, renderSettings, renderTopic, renderResume, renderPushLater, drawIcons]) {
@@ -817,9 +817,14 @@ function renderWeek() {
     <li style="--c: var(--violet)"><strong>🛡️</strong> ${jokerText()}</li>`;
 }
 
-// Le joker de la semaine : disponible, ou utilisé tel jour
+// Le joker de la semaine : disponible, ou utilisé tel jour (+ les jokers bonus du mois, avec Premium)
 function jokerText() {
-  return stats.jokerUsedOn ? t("joker.used", { day: niceDate(stats.jokerUsedOn, { weekday: "long" }) }) : t("joker.available");
+  const week = stats.jokerUsedOn ? t("joker.used", { day: niceDate(stats.jokerUsedOn, { weekday: "long" }) }) : t("joker.available");
+  return week + bonusText();
+}
+function bonusText() {
+  if (!stats.bonusJokers) return "";
+  return " · " + (stats.bonusLeft ? t("joker.bonus", { n: stats.bonusLeft }) : t("joker.bonusNone"));
 }
 
 // --- Mes catégories ---
@@ -1025,7 +1030,7 @@ function renderSuivi() {
       [`${w.activeDays}/${w.daysSoFar}`, t("tile.activeDays")],
       stats.streak ? [`${stats.streak} 🔥`, t("tile.streak")] : ["🚀", t("tile.streakZero")],
       [`${stats.best}`, t("tile.best")],
-      [t(stats.jokerUsedOn ? "tile.jokerUsed" : "tile.jokerFree"), `🛡️ ${t("tile.joker")}${stats.jokerUsedOn ? ", " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : ""}`],
+      [t(stats.jokerUsedOn ? "tile.jokerUsed" : "tile.jokerFree"), `🛡️ ${t("tile.joker")}${stats.jokerUsedOn ? ", " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : ""}${bonusText()}`],
     ].map(([value, label]) => `<div class="card stat-tile"><strong>${value}</strong><span>${label}</span></div>`).join("");
 
   // Les 7 derniers jours, tâche par tâche

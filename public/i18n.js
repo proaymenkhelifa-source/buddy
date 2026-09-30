@@ -206,6 +206,8 @@ const DICT = {
     "week.streak": "jours de streak",
     "joker.used": "joker utilisé {day}",
     "joker.available": "joker disponible",
+    "joker.bonus": "+{n} bonus ce mois",
+    "joker.bonusNone": "bonus du mois utilisés",
 
     // --- Calendrier ---
     "home.agenda": "Voir mon agenda",
@@ -302,6 +304,7 @@ const DICT = {
     "premium.perk3": "Personnalise ton coaching : militaire, équilibré ou bienveillant",
     "premium.perk4": "Rappels et notifications sans limite",
     "premium.perk5": "Bloque ton téléphone pendant ton focus",
+    "premium.perk6": "3 jokers bonus par mois pour sauver ta série",
     "premium.when1": "Aujourd'hui",
     "premium.step1": "Tout est débloqué",
     "premium.when2": "Jour 5",
@@ -762,6 +765,8 @@ const DICT = {
     "week.streak": "day streak",
     "joker.used": "joker used on {day}",
     "joker.available": "joker available",
+    "joker.bonus": "+{n} bonus this month",
+    "joker.bonusNone": "monthly bonus used up",
 
     "home.agenda": "See my calendar",
     "cal.sub": "Your tasks and deadlines, day by day.",
@@ -853,6 +858,7 @@ const DICT = {
     "premium.perk3": "Personalize your coaching: military, balanced or supportive",
     "premium.perk4": "Unlimited reminders and notifications",
     "premium.perk5": "Lock your phone during your focus",
+    "premium.perk6": "3 bonus jokers a month to save your streak",
     "premium.when1": "Today",
     "premium.step1": "Everything is unlocked",
     "premium.when2": "Day 5",

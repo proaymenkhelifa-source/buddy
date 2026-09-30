@@ -25,7 +25,7 @@ export const CATEGORIES = {
 // La "version" du code. Le serveur et la page la comparent : si elles sont différentes,
 // c'est que le serveur tourne encore avec un vieux code → la page demande de le redémarrer.
 // (À changer à chaque grosse modification.)
-export const APP_VERSION = "2026-09-30-brand-v2";
+export const APP_VERSION = "2026-09-30-jokers";
 
 export const MAX_TASKS = 10;
 
@@ -54,6 +54,9 @@ export const FREE_LIMITS = {
 };
 export const TRIAL_DAYS = 7;
 
+// Premium : en plus du joker de la semaine (pour tout le monde), des jokers BONUS chaque mois
+export const PREMIUM_BONUS_JOKERS = 3;
+
 // La personne a-t-elle droit à tout ? (profile.plan : "premium", "free", ou vide si pas encore choisi)
 // Plus tard, avec les vrais paiements (App Store / Google Play), c'est ICI qu'on vérifiera l'abonnement.
 export function hasPremium(profile) {
@@ -62,6 +65,7 @@ export function hasPremium(profile) {
 export const taskLimitFor = (profile) => (hasPremium(profile) ? MAX_TASKS : FREE_LIMITS.tasksPerDay);
 export const messageLimitFor = (profile) => (hasPremium(profile) ? MAX_MESSAGES_PER_DAY : FREE_LIMITS.messagesPerDay);
 export const styleAllowed = (profile, style) => hasPremium(profile) || FREE_LIMITS.styles.includes(style);
+export const bonusJokersFor = (profile) => (hasPremium(profile) ? PREMIUM_BONUS_JOKERS : 0);
 
 // La règle "religion" donnée à Claude (e-mails, phrases du jour), décidée par le CODE et non par Claude :
 // pas d'objectif dans la catégorie Religion = aucune expression religieuse, jamais.
@@ -214,7 +218,8 @@ export function dayResult(tasks, logs, key) {
 export const HISTORY_DAYS = 90;
 
 // Tout le suivi en un seul appel
-export function computeStats(tasks, logs, today) {
+// bonusJokers = combien de jokers bonus par mois (Premium : 3, gratuit : 0)
+export function computeStats(tasks, logs, today, bonusJokers = 0) {
   // Les 90 derniers jours (du plus ancien au plus récent), avec l'état de chaque jour :
   //   "active" = au moins une tâche faite · "rest" = rien de prévu (jour de repos)
   //   "missed" = des tâches prévues, aucune faite · "joker" = raté, mais pardonné par le joker
@@ -237,6 +242,21 @@ export function computeStats(tasks, logs, today) {
     }
   }
   const jokerUsedOn = jokerWeeks.get(mondayOf(today)) || null; // null = joker encore disponible cette semaine
+
+  // Les jokers BONUS (Premium) : chaque mois, les jours ratés qui restent sont pardonnés aussi,
+  // jusqu'à "bonusJokers" jours par mois. Ils servent tout seuls, dans l'ordre des jours.
+  const bonusUsed = new Map(); // mois "AAAA-MM" → nombre de jokers bonus utilisés
+  for (const day of history) {
+    if (day.status !== "missed" || !bonusJokers) continue;
+    const month = day.key.slice(0, 7);
+    const used = bonusUsed.get(month) || 0;
+    if (used < bonusJokers) {
+      bonusUsed.set(month, used + 1);
+      day.status = "joker";
+      day.bonus = true;
+    }
+  }
+  const bonusLeft = bonusJokers - (bonusUsed.get(today.slice(0, 7)) || 0); // jokers bonus qui restent ce mois-ci
 
   // Cette semaine : du lundi à aujourd'hui
   const monday = mondayOf(today);
@@ -289,7 +309,7 @@ export function computeStats(tasks, logs, today) {
       })),
     }));
 
-  return { today: dayResult(tasks, logs, today), week, streak, best, history, weeks, perTask, jokerUsedOn };
+  return { today: dayResult(tasks, logs, today), week, streak, best, history, weeks, perTask, jokerUsedOn, bonusJokers, bonusLeft };
 }
 
 // La régularité d'UN objectif cette semaine (lundi → aujourd'hui) :
