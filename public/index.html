@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buddy – Ton coach personnel</title>
   <!-- L'icône de Buddy (onglet du navigateur, et écran d'accueil du téléphone) -->
-  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="icon" type="image/svg+xml" href="icons/buddy-bubble.svg">
+  <link rel="alternate icon" type="image/png" href="icons/favicon-64.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/buddy-apple-180.png">
   <meta name="theme-color" content="#f8fafc">
   <!-- Buddy "s'installe" comme une appli (écran d'accueil du téléphone) : c'est ce qui permet les notifications -->
@@ -15,10 +16,10 @@
   <meta name="apple-mobile-web-app-title" content="Buddy">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-  <!-- Les polices d'écriture (gratuites, de Google Fonts) : Calistoga pour les grands titres, Plus Jakarta Sans pour le reste -->
+  <!-- Les polices d'écriture (gratuites, de Google Fonts) : Nunito (arrondie) pour le logo et les grands titres, Plus Jakarta Sans pour le reste -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Calistoga&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Les icônes (bibliothèque gratuite "Phosphor", style plein et arrondi) -->
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
@@ -47,7 +48,7 @@
 
   <!-- Le logo (le "B" menthe + "Buddy"), réutilisé à plusieurs endroits -->
   <template id="logo-template">
-    <img class="logo-img" src="icons/logo.png" alt="" width="36" height="36">Buddy
+    <img class="logo-img" src="icons/buddy-bubble.svg" alt="" width="38" height="38"><span class="logo-word">Buddy</span>
   </template>
 
   <!-- =========================================================
@@ -725,14 +726,14 @@
        BUDDY : la bulle flottante + le panneau de discussion
        ========================================================= -->
   <button id="buddy-fab" class="buddy-fab hidden" data-i18n-title="home.talk">
-    <!-- Toujours Buddy qui te fait coucou -->
-    <img id="fab-buddy" src="buddy/salut.webp" alt="">
+    <!-- La bulle de Buddy (le logo) : elle ouvre la discussion -->
+    <img id="fab-buddy" src="icons/buddy-bubble.svg" alt="">
   </button>
 
   <div id="drawer-backdrop" class="drawer-backdrop hidden"></div>
   <aside id="chat-drawer" class="drawer" aria-hidden="true">
     <header class="drawer-head">
-      <span class="drawer-avatar"><img id="drawer-buddy" src="buddy/repos.webp" alt=""></span>
+      <span class="drawer-avatar"><img id="drawer-buddy" src="icons/buddy-bubble.svg" alt=""></span>
       <div>
         <h3>Buddy <span class="style-badge hidden" id="style-badge"></span></h3>
         <p class="drawer-status"><span class="status-dot"></span><span id="buddy-status" data-i18n="emo.neutral">Buddy t'écoute</span></p>

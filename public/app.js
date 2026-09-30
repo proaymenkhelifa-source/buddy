@@ -1638,7 +1638,6 @@ function setBuddy(pose, mouvement, status) {
   const file = poseFile(pose);
   const img = $("buddy-img");
   const src = "buddy/" + file + ".webp";
-  $("drawer-buddy").src = src; // (la bulle flottante, elle, montre toujours Buddy qui fait coucou)
   $("buddy-status").textContent = status;
   // Il vient de changer de tenue : petit effet magique ✨ (plutôt que le mouvement habituel)
   const outfitNow = OUTFITS[outfit] && file !== pose ? outfit : null;

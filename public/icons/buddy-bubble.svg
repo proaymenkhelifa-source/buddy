@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Buddy">
+  <!-- La bulle de Buddy : une bulle de discussion menthe avec son visage (yeux à reflets + petit sourire) -->
+  <path fill="#5FE2C3" d="M54 6a40 40 0 1 1-17.6 75.9C30 88.6 20.5 93.4 9.5 93.8c6.2-5.2 9.9-11.6 11.2-19.2A40 40 0 0 1 54 6z"/>
+  <ellipse cx="42.5" cy="41" rx="4.6" ry="6.4" fill="#14284B"/>
+  <ellipse cx="66.5" cy="41" rx="4.6" ry="6.4" fill="#14284B"/>
+  <circle cx="43.6" cy="38.2" r="1.7" fill="#fff"/>
+  <circle cx="67.6" cy="38.2" r="1.7" fill="#fff"/>
+  <path d="M47.5 55.5q7 5.5 14 0" fill="none" stroke="#14284B" stroke-width="3.4" stroke-linecap="round"/>
+</svg>
