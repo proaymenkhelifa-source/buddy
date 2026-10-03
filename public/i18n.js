@@ -670,6 +670,11 @@ const DICT = {
     "mail.btnWeekly": "Faire mon bilan avec Buddy →",
     "mail.btnOpen": "Ouvrir Buddy →",
     "mail.footer": "— Buddy, ton coach. Tu peux régler ces e-mails dans Paramètres.",
+    "mail.trial": "⏳ Ton essai Premium",
+    "mail.btnManage": "Gérer mon abonnement →",
+    "mail.footerTrial": "— Buddy. Tu reçois cet e-mail parce que tu as commencé un essai gratuit de Buddy Premium.",
+    "trial.subject": "Ton essai gratuit Premium se termine {date}",
+    "trial.body": "Petit rappel : ton essai gratuit de Buddy Premium se termine {date}.\n\nSi tu ne fais rien, ton abonnement continue tout seul à 9,99 €/mois, sans engagement. Tu gardes tout : Buddy et tes tâches sans limite, le Vide-tête, les jokers bonus…\n\nTu préfères arrêter ? Aucun souci : Paramètres → « Gérer mon abonnement » → Annuler. Ça prend 2 clics et tu ne seras pas débité.",
   },
 
   en: {
@@ -1284,6 +1289,11 @@ const DICT = {
     "mail.btnWeekly": "Do my review with Buddy →",
     "mail.btnOpen": "Open Buddy →",
     "mail.footer": "— Buddy, your coach. You can adjust these emails in Settings.",
+    "mail.trial": "⏳ Your Premium trial",
+    "mail.btnManage": "Manage my subscription →",
+    "mail.footerTrial": "— Buddy. You're receiving this email because you started a free trial of Buddy Premium.",
+    "trial.subject": "Your free Premium trial ends {date}",
+    "trial.body": "Quick reminder: your free trial of Buddy Premium ends {date}.\n\nIf you do nothing, your subscription simply continues at €9.99/month, no commitment. You keep everything: unlimited Buddy and tasks, Brain dump, bonus jokers…\n\nWant to stop? No problem: Settings → “Manage my subscription” → Cancel. It takes 2 clicks and you won't be charged.",
   },
 };
 

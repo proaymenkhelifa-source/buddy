@@ -132,17 +132,18 @@ const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
 
 export function emailHtml(kind, message, lang = "fr") {
   const badge = t("mail." + kind, {}, lang); // "🌅 Le mot du matin", "🌙 Evening recap"…
-  // Le bouton du bilan ouvre directement le bilan avec Buddy dans l'application
-  const link = kind === "weekly" ? APP_URL + "/#bilan" : APP_URL;
-  const button = t(kind === "weekly" ? "mail.btnWeekly" : "mail.btnOpen", {}, lang);
+  // Le bouton du bilan ouvre directement le bilan avec Buddy ; celui de la fin d'essai, les Paramètres (l'abonnement)
+  const link = kind === "weekly" ? APP_URL + "/#bilan" : kind === "trial" ? APP_URL + "/#parametres" : APP_URL;
+  const button = t(kind === "weekly" ? "mail.btnWeekly" : kind === "trial" ? "mail.btnManage" : "mail.btnOpen", {}, lang);
   const paragraphs = message.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 14px">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
-  return `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#07090f;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:520px;margin:0 auto;background:#121621;border:1px solid #232838;border-radius:18px;padding:28px;color:#f3efe8">
-    <div style="font-size:22px;font-weight:800;margin-bottom:6px"><img src="${APP_URL}/icons/logo.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px;margin-right:10px">Buddy</div>
-    <div style="display:inline-block;font-size:13px;font-weight:700;color:#f6b73c;background:rgba(246,183,60,.14);border-radius:99px;padding:5px 12px;margin-bottom:20px">${badge}</div>
-    <div style="font-size:16px;line-height:1.6">${paragraphs}</div>
-    <a href="${link}" style="display:inline-block;margin-top:10px;background:#f6b73c;color:#1d1305;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:99px">${button}</a>
-    <p style="margin:24px 0 0;font-size:12px;color:#9aa1b5">${t("mail.footer", {}, lang)}</p>
+  // Les couleurs de Buddy : fond menthe très clair, carte blanche, texte navy, bouton menthe
+  return `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#eef6f3;font-family:Arial,Helvetica,sans-serif">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #dbe8e3;border-radius:18px;padding:28px;color:#14284b">
+    <div style="font-size:22px;font-weight:800;margin-bottom:8px;color:#14284b"><img src="${APP_URL}/icons/logo.png" width="34" height="34" alt="" style="vertical-align:middle;margin-right:8px">Buddy</div>
+    <div style="display:inline-block;font-size:13px;font-weight:700;color:#0c8a70;background:#e8f4f0;border-radius:99px;padding:5px 12px;margin-bottom:20px">${badge}</div>
+    <div style="font-size:16px;line-height:1.6;color:#14284b">${paragraphs}</div>
+    <a href="${link}" style="display:inline-block;margin-top:10px;background:#5fe2c3;color:#14284b;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:99px">${button}</a>
+    <p style="margin:24px 0 0;font-size:12px;color:#64748b">${t(kind === "trial" ? "mail.footerTrial" : "mail.footer", {}, lang)}</p>
   </div></body></html>`;
 }
 
@@ -225,6 +226,33 @@ async function sendOnce(supabase, claude, base, kind, ref = "", task = null) {
   }
 }
 
+// 💳 Fin de l'essai gratuit Premium : un e-mail 2 jours avant la fin (= le 5e jour d'un essai de 7 jours).
+// Promis dans les conditions. Un seul e-mail par essai, et rien si la personne a déjà annulé.
+// (Un texte fixe, pas écrit par Claude : c'est une information sur le paiement, elle doit être exacte.)
+const TRIAL_NOTICE_HOURS = 48;
+async function sendTrialReminder(supabase, { userId, to, profile, today }) {
+  if (!resend || profile.subscription_status !== "trialing" || !profile.trial_ends_at || profile.cancel_at_period_end) return;
+  const left = new Date(profile.trial_ends_at).getTime() - Date.now();
+  if (left <= 0 || left > TRIAL_NOTICE_HOURS * 3600 * 1000) return;
+  const ref = String(profile.trial_ends_at).slice(0, 10); // l'essai (sa date de fin)
+  const { count } = await supabase.from("email_log").select("user_id", { count: "exact", head: true })
+    .eq("user_id", userId).eq("kind", "trial").eq("ref", ref);
+  if (count) return; // déjà prévenu pour cet essai
+  if (!(await markSent(supabase, userId, "trial", ref, today))) return;
+  const lang = langOf(profile);
+  const date = new Date(profile.trial_ends_at).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR",
+    { weekday: "long", day: "numeric", month: "long", timeZone: profile.timezone || DEFAULT_TIMEZONE });
+  const message = t("trial.body", { date }, lang);
+  try {
+    const { error } = await resend.emails.send({ from: FROM, to, subject: t("trial.subject", { date }, lang), html: emailHtml("trial", message, lang), text: message });
+    if (error) throw new Error(error.message);
+    console.log(`📧 Rappel de fin d'essai envoyé à ${to}`);
+  } catch (error) {
+    await supabase.from("email_log").delete().match({ user_id: userId, kind: "trial", ref, day: today });
+    throw error;
+  }
+}
+
 // Un e-mail de test, envoyé tout de suite (bouton dans Paramètres)
 export async function sendTestEmail(supabase, claude, { userId, to, profile, today }) {
   if (!resend) throw new Error("Il manque la clé RESEND_API_KEY dans .env.");
@@ -262,6 +290,9 @@ export async function runEmailTick(supabase, claude) {
     const base = { userId: user.id, to, profile, today };
 
     try {
+      // 💳 Fin d'essai Premium : à l'adresse du COMPTE (c'est elle qui est liée au paiement)
+      await sendTrialReminder(supabase, { userId: user.id, to: user.email, profile, today });
+
       // 🌅 Le matin : dans l'heure qui suit l'heure choisie (si le serveur était éteint à 8h pile, ça part à 8h20)
       const morning = toMinutes(profile.morning_time || "08:00");
       if (profile.email_morning && now >= morning && now < morning + 60) {
