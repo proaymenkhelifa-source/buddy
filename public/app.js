@@ -165,6 +165,10 @@ const visitorSource = () => { try { return localStorage.getItem(SOURCE_KEY); } c
 // (on le regarde MAINTENANT : Supabase efface ces informations de l'adresse une fois lues)
 const RECOVERY_LINK = /type=recovery/.test(location.hash);
 const EXPIRED_LINK = /error_code=otp_expired|error=access_denied/.test(location.hash);
+// On revient de Google / Apple ? (pour bien expliquer une éventuelle erreur au retour)
+const OAUTH_RETURN = (() => {
+  try { const v = sessionStorage.getItem("buddy-oauth"); sessionStorage.removeItem("buddy-oauth"); return v === "1"; } catch (e) { return false; }
+})();
 
 // On demande au serveur l'adresse Supabase et la clé PUBLIQUE.
 const config = await (await fetch("/api/config")).json();
@@ -236,6 +240,27 @@ function showApp() {
 //   "signup" = créer un compte · "login" = se connecter
 //   "forgot" = mot de passe oublié (on reçoit un lien par e-mail) · "reset" = choisir un nouveau mot de passe
 let authMode = "signup";
+
+// --- Se connecter avec Google / Apple ---
+// On demande à Supabase quels services sont activés (Authentication → Providers) : seuls leurs boutons s'affichent.
+let oauthProviders = [];
+fetch(config.supabaseUrl + "/auth/v1/settings", { headers: { apikey: config.supabasePublishableKey } })
+  .then((r) => r.json())
+  .then((settings) => { oauthProviders = ["google", "apple"].filter((p) => settings.external?.[p]); showProviders(); })
+  .catch(() => {});
+function showProviders() {
+  for (const b of document.querySelectorAll("[data-provider]")) b.classList.toggle("hidden", !oauthProviders.includes(b.dataset.provider));
+  $("auth-providers").classList.toggle("hidden", !oauthProviders.length || !["signup", "login"].includes(authMode));
+}
+for (const button of document.querySelectorAll("[data-provider]")) {
+  button.addEventListener("click", async () => {
+    try { sessionStorage.setItem("buddy-oauth", "1"); } catch (e) {}
+    authInfo("…");
+    // On part chez Google / Apple, qui nous renvoie ici une fois connecté (la session est lue automatiquement)
+    const { error } = await supabase.auth.signInWithOAuth({ provider: button.dataset.provider, options: { redirectTo: location.origin + "/" } });
+    if (error) authInfo(authErrorText(error));
+  });
+}
 const AUTH_SCREENS = {
   signup: { hash: "#inscription",          title: "auth.titleSignup", sub: "auth.subSignup", submit: "auth.submitSignup" },
   login:  { hash: "#connexion",            title: "auth.titleLogin",  sub: "auth.subLogin",  submit: "auth.submitLogin" },
@@ -266,6 +291,7 @@ function openAuth(mode, fresh = true) {
   // Ce qu'on affiche selon l'écran
   document.querySelector(".auth-card .tabs").classList.toggle("hidden", mode === "forgot" || mode === "reset");
   $("auth-legal").classList.toggle("hidden", mode !== "signup"); // "En créant ton compte, tu acceptes…"
+  showProviders(); // "Continuer avec Google / Apple" (inscription et connexion seulement)
   $("email").classList.toggle("hidden", mode === "reset");
   $("password").classList.toggle("hidden", mode === "forgot");
   $("password2").classList.toggle("hidden", mode !== "reset");
@@ -508,7 +534,8 @@ let stripeReturn = returnParams.get("checkout") || (returnParams.has("portal") ?
 // Recharge toutes les données, puis redessine la page
 async function refresh() {
   // sync=1 : le serveur redemande tout de suite à Stripe où en est l'abonnement
-  const data = await api("GET", "/api/state?today=" + today() + (stripeReturn ? "&sync=1" : ""));
+  const src = visitorSource();
+  const data = await api("GET", "/api/state?today=" + today() + (stripeReturn ? "&sync=1" : "") + (src ? "&src=" + encodeURIComponent(src) : ""));
   if (data.error) return toast(data.error, "error");
   // Le serveur tourne-t-il avec le même code que la page ? Sinon, des choses peuvent ne pas s'enregistrer.
   if (data.version !== APP_VERSION) {
@@ -2712,7 +2739,11 @@ if (data.session && RECOVERY_LINK) {
   showLanding();
   // L'e-mail tapé avant un rechargement (brouillon)
   if (!$("email").value) $("email").value = readDraft("auth-email") || "";
-  if (EXPIRED_LINK) {
+  if (EXPIRED_LINK && OAUTH_RETURN) {
+    // Retour de Google / Apple sans connexion (annulé, ou refusé)
+    openAuth("signup");
+    authInfo(t("auth.oauthFailed"));
+  } else if (EXPIRED_LINK) {
     // Le lien de l'e-mail a expiré (ou a déjà servi) : on propose d'en redemander un
     openAuth("forgot");
     authInfo(t("auth.linkExpired"));

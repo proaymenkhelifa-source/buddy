@@ -1511,3 +1511,18 @@ html:has(dialog[open]) { overflow: hidden; }
 .tool-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tool-form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 480px) { .tool-form-row { grid-template-columns: 1fr; } }
+
+/* ---------- 14. SE CONNECTER AVEC GOOGLE / APPLE ---------- */
+.auth-providers { display: grid; gap: 10px; }
+.btn-provider {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+  padding: 12px 16px; border-radius: 99px; border: 1px solid var(--border-strong);
+  background: var(--card); color: var(--text); font: inherit; font-weight: 700; cursor: pointer;
+  transition: background 0.2s, transform 0.18s var(--ease);
+}
+.btn-provider:hover { background: var(--card-hover); transform: translateY(-1px); }
+.btn-provider svg { width: 20px; height: 20px; flex: none; }
+.btn-provider.apple { background: #000; color: #fff; border-color: #000; }
+[data-theme="dark"] .btn-provider.apple { background: #fff; color: #000; border-color: #fff; }
+.auth-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.82rem; margin: 2px 0; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }

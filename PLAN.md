@@ -240,5 +240,10 @@ Known gotchas:
 - 💰 **Cagnotte** (free): savings pots (name, target €), add amounts (negative = withdrawal), progress bar, estimated date at the current pace.
 - Storage: table `trackers` (kind quit/savings, jsonb data) → **SQL `supabase-outils.sql` to run** (also adds dump_day/dump_count). Max 10 per person. Buddy sees them in his context ("## Ses outils") and companion-prompt.md tells him when to suggest each tool.
 
+## Sign in with Google / Apple (owner's request, 2026-10-03)
+- Code done: "Continuer avec Google" / "Continuer avec Apple" buttons on the sign-up and log-in screens (`supabase.auth.signInWithOAuth`, back to the site). Each button shows **only when the provider is enabled in Supabase** (the page reads `/auth/v1/settings`), so nothing is broken while not configured. Cancelled sign-in → clear message. The "where they come from" tag (?src=) is sent with `/api/state` for these accounts. Landing plan choice (`buddy-plan-wish`) survives the redirect.
+- ⏳ Owner setup: **Google** (free) = Google Cloud OAuth client (Web) with redirect URI `https://<project>.supabase.co/auth/v1/callback` → paste Client ID + secret in Supabase → Authentication → Providers → Google. Supabase → Authentication → URL Configuration: Site URL https://buddycoach.app, redirect URLs https://buddycoach.app/** and http://localhost:3000/**. **Apple** needs the Apple Developer Program (99 €/year) → later, with the App Store app (Apple requires it there anyway if Google sign-in is offered).
+- Also fixed (2026-10-03): dialogs taller than the screen now scroll (the Premium screen got too tall), and the page behind no longer moves.
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

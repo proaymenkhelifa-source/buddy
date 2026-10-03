@@ -217,7 +217,8 @@ app.get("/api/state", requireUser, async (req, res) => {
     const data = await loadAll(req.user.id, today);
     // D'où vient la personne : l'étiquette envoyée à l'inscription (?src=insta-fr…) est rangée une fois dans son profil.
     // Rangée à part : si la colonne "source" n'existe pas encore dans Supabase, le reste marche quand même.
-    const source = String(req.user.user_metadata?.source || "").toLowerCase();
+    // (avec Google / Apple, elle n'est pas dans le compte : la page la donne dans l'adresse, ?src=…)
+    const source = String(req.user.user_metadata?.source || req.query.src || "").toLowerCase();
     if (/^[a-z0-9_-]{1,40}$/.test(source) && !data.profile.source) {
       try {
         await saveProfile(req.user.id, { source });
