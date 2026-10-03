@@ -1449,3 +1449,61 @@ mark.todo { background: #fff3c4; color: #7a4b00; padding: 1px 6px; border-radius
   .sidebar .logo-img { width: 32px; height: 32px; }
   .sidebar .logo { font-size: 1.2rem; }
 }
+
+/* ---------- 13. LES OUTILS (Vide-tête, Jours sans, Cagnotte) ---------- */
+.tools-grid { columns: 2 340px; column-gap: 20px; } /* en colonnes : chaque carte se range sous la précédente, sans trou */
+.tools-grid > .card { break-inside: avoid; margin-bottom: 20px; }
+.tools-grid .focus-card { max-width: none; }
+.premium-tag {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; vertical-align: middle;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em; color: var(--navy);
+  background: linear-gradient(135deg, #ffe08a, #ffb547); padding: 3px 9px; border-radius: 99px;
+}
+.premium-tag .lucide { font-size: 12px; }
+.premium-tag.big { font-size: 0.85rem; padding: 6px 14px; margin: 0; }
+.btn.btn-small { padding: 8px 14px; font-size: 0.85rem; }
+
+/* Le Vide-tête */
+.dump-zone { position: relative; }
+.dump-body { display: grid; gap: 12px; }
+.dump-body textarea { min-height: 104px; }
+.dump-result { display: grid; gap: 10px; }
+.dump-message { margin: 4px 0 0; font-weight: 600; line-height: 1.45; }
+.dump-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dump-list label { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-strong); cursor: pointer; }
+.dump-list input { width: 18px; height: 18px; flex: none; accent-color: var(--accent-ink); }
+.dump-title { flex: 1; font-weight: 600; font-size: 0.92rem; }
+.dump-when { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.dump-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+/* Version gratuite : on voit un exemple flouté, avec le bandeau Premium par-dessus */
+.locked-overlay { display: none; }
+.dump-card.locked .dump-body { filter: blur(3.5px); opacity: 0.7; pointer-events: none; user-select: none; }
+.dump-card.locked .locked-overlay {
+  display: flex; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 20px; text-align: center;
+  /* un léger voile au centre, pour bien lire le texte par-dessus le flou */
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--card) 94%, transparent) 55%, transparent);
+}
+.locked-overlay p { margin: 0; max-width: 280px; font-weight: 800; font-size: 1.05rem; }
+
+/* Les compteurs et les cagnottes */
+.tracker-list { display: grid; gap: 12px; }
+.tracker { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-strong); }
+.tracker p { margin: 0; }
+.tracker-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.quit-days { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.quit-days strong { font-family: var(--font-display); font-size: 2.4rem; font-weight: 900; line-height: 1; color: var(--accent-ink); }
+.quit-days span { font-weight: 700; }
+.tracker-bar { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.tracker-bar span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width 0.6s var(--ease-soft); }
+.tracker .btn-small { justify-self: start; }
+.pot-name { font-size: 1rem; }
+.pot-amount { color: var(--muted); }
+.pot-amount b { color: var(--text); font-size: 1.15rem; }
+.pot-add { display: flex; gap: 8px; }
+.pot-add input { flex: 1; min-width: 0; }
+.tool-form { display: grid; gap: 10px; margin-top: 12px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.tool-form label { display: grid; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.tool-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tool-form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 480px) { .tool-form-row { grid-template-columns: 1fr; } }

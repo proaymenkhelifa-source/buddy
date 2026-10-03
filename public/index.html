@@ -126,6 +126,7 @@
             <li><i data-lucide="chat-circle-dots"></i><span data-i18n="premium.perk1">Parle à Buddy sans limite</span></li>
             <li><i data-lucide="list-checks"></i><span data-i18n="premium.perk2">Tâches sans limite</span></li>
             <li><i data-lucide="shield-check"></i><span data-i18n="premium.perk6">3 jokers bonus par mois pour sauver ta série</span></li>
+            <li><i data-lucide="brain"></i><span data-i18n="premium.perk7">Vide-tête : écris tout ce que tu as en tête, Buddy le range en tâches dans ton planning</span></li>
             <li><i data-lucide="sliders-horizontal"></i><span data-i18n="premium.perk3">Personnalise ton coaching : militaire, équilibré ou bienveillant</span></li>
             <li><i data-lucide="bell-ringing"></i><span data-i18n="premium.perk4">Rappels et notifications sans limite</span></li>
             <li><i data-lucide="device-mobile-slash"></i><span data-i18n="premium.perk5">Bloque ton téléphone pendant ton focus</span></li>
@@ -438,6 +439,7 @@
             <p class="muted" data-i18n="tools.sub">Des outils simples pour passer à l'action. D'autres arriveront plus tard.</p>
           </div>
         </header>
+        <div class="tools-grid">
         <section class="card focus-card">
           <div class="card-head"><div class="card-title">
             <span class="title-icon" style="--c: var(--accent)"><i data-lucide="timer"></i></span>
@@ -454,6 +456,81 @@
             <button class="btn btn-ghost" id="focus-reset"><i data-lucide="rotate-ccw"></i> <span data-i18n="focus.reset">Réinitialiser</span></button>
           </div>
         </section>
+
+        <!-- 🧠 LE VIDE-TÊTE (Premium). En version gratuite : un exemple flouté + le bandeau Premium -->
+        <section class="card tool-card dump-card" id="dump-card">
+          <div class="card-head"><div class="card-title">
+            <span class="title-icon" style="--c: var(--violet)"><i data-lucide="brain"></i></span>
+            <div><h3><span data-i18n="dump.title">Vide-tête</span> <span class="premium-tag"><i data-lucide="crown"></i> Premium</span></h3><p class="muted small" data-i18n="dump.sub">Écris tout ce que tu as en tête, en vrac. Buddy l'organise en tâches pour toi.</p></div>
+          </div></div>
+          <div class="dump-zone">
+            <div class="dump-body">
+              <textarea id="dump-text" rows="4" maxlength="3000" data-i18n-ph="dump.ph" placeholder="Ex : appeler la banque, réviser le chapitre 3 avant jeudi, acheter du lait…"></textarea>
+              <button class="btn btn-primary" id="dump-go"><i data-lucide="sparkle"></i> <span data-i18n="dump.go">Organiser avec Buddy</span></button>
+              <!-- La proposition de Buddy : rien n'est ajouté tant que la personne n'a pas dit oui -->
+              <div class="dump-result hidden" id="dump-result">
+                <p class="dump-message" id="dump-message"></p>
+                <ul class="dump-list" id="dump-list"></ul>
+                <div class="dump-actions">
+                  <button class="btn btn-primary" id="dump-confirm"><i data-lucide="check"></i> <span data-i18n="dump.confirm">Oui, ajoute-les</span></button>
+                  <button class="btn btn-ghost" id="dump-cancel" data-i18n="common.cancel">Annuler</button>
+                </div>
+              </div>
+            </div>
+            <div class="locked-overlay">
+              <span class="premium-tag big"><i data-lucide="crown"></i> Premium</span>
+              <p data-i18n="dump.locked">Vide ta tête, Buddy fait ton planning.</p>
+              <button class="btn btn-primary" id="dump-unlock"><span data-i18n="dump.unlock">Débloquer avec Premium</span> <i data-lucide="arrow-right"></i></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 🚫 JOURS SANS : compteurs pour arrêter une mauvaise habitude (gratuit) -->
+        <section class="card tool-card" id="quit-card">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="title-icon" style="--c: var(--red)"><i data-lucide="prohibit"></i></span>
+              <div><h3 data-i18n="quit.title">Jours sans</h3><p class="muted small" data-i18n="quit.sub">Arrête une mauvaise habitude et regarde les jours s'additionner.</p></div>
+            </div>
+            <button class="mini-btn" data-open-form="quit-form" data-i18n-title="quit.new"><i data-lucide="plus"></i></button>
+          </div>
+          <div class="tracker-list" id="quit-list"></div>
+          <form class="tool-form hidden" id="quit-form">
+            <label><span data-i18n="quit.name">Sans quoi ?</span><input name="name" maxlength="40" required data-i18n-ph="quit.namePh" placeholder="Ex : cigarette, réseaux sociaux, sucre…"></label>
+            <label><span data-i18n="quit.since">Depuis le</span><input name="start" type="date"></label>
+            <div class="tool-form-row">
+              <label><span data-i18n="quit.money">€ dépensés par jour (facultatif)</span><input name="money" inputmode="decimal" placeholder="10"></label>
+              <label><span data-i18n="quit.minutes">Minutes perdues par jour (facultatif)</span><input name="minutes" inputmode="numeric" placeholder="60"></label>
+            </div>
+            <div class="tool-form-actions">
+              <button class="btn btn-primary" type="submit" data-i18n="quit.create">Lancer le compteur</button>
+              <button class="btn btn-ghost" type="button" data-close-form data-i18n="common.cancel">Annuler</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- 💰 CAGNOTTES : mettre de l'argent de côté pour un projet (gratuit) -->
+        <section class="card tool-card" id="pot-card">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="title-icon" style="--c: var(--green)"><i data-lucide="piggy-bank"></i></span>
+              <div><h3 data-i18n="pot.title">Cagnotte</h3><p class="muted small" data-i18n="pot.sub">Mets de l'argent de côté pour un projet et regarde ta cagnotte grandir.</p></div>
+            </div>
+            <button class="mini-btn" data-open-form="pot-form" data-i18n-title="pot.new"><i data-lucide="plus"></i></button>
+          </div>
+          <div class="tracker-list" id="pot-list"></div>
+          <form class="tool-form hidden" id="pot-form">
+            <div class="tool-form-row">
+              <label><span data-i18n="pot.name">Pour quoi ?</span><input name="name" maxlength="40" required data-i18n-ph="pot.namePh" placeholder="Ex : voyage au Japon, permis…"></label>
+              <label><span data-i18n="pot.target">Objectif (€)</span><input name="target" inputmode="decimal" required placeholder="1000"></label>
+            </div>
+            <div class="tool-form-actions">
+              <button class="btn btn-primary" type="submit" data-i18n="pot.create">Créer la cagnotte</button>
+              <button class="btn btn-ghost" type="button" data-close-form data-i18n="common.cancel">Annuler</button>
+            </div>
+          </form>
+        </section>
+        </div>
       </main>
 
       <!-- ===================== PAGE : PARAMÈTRES ===================== -->
@@ -672,6 +749,7 @@
         <li><span class="perk-icon"><i data-lucide="chat-circle-dots"></i></span><span data-i18n="premium.perk1">Parle à Buddy sans limite</span></li>
         <li><span class="perk-icon"><i data-lucide="list-checks"></i></span><span data-i18n="premium.perk2">Tâches sans limite</span></li>
         <li><span class="perk-icon"><i data-lucide="shield-check"></i></span><span data-i18n="premium.perk6">3 jokers bonus par mois pour sauver ta série</span></li>
+        <li><span class="perk-icon"><i data-lucide="brain"></i></span><span data-i18n="premium.perk7">Vide-tête : écris tout ce que tu as en tête, Buddy le range en tâches dans ton planning</span></li>
         <li><span class="perk-icon"><i data-lucide="sliders-horizontal"></i></span><span data-i18n="premium.perk3">Personnalise ton coaching : militaire, équilibré ou bienveillant</span></li>
         <li><span class="perk-icon"><i data-lucide="bell-ringing"></i></span><span data-i18n="premium.perk4">Rappels et notifications sans limite</span></li>
         <li><span class="perk-icon"><i data-lucide="device-mobile-slash"></i></span><span data-i18n="premium.perk5">Bloque ton téléphone pendant ton focus</span></li>

@@ -119,13 +119,15 @@ function todayFrom(req) {
 // =============================================================
 async function loadAll(userId, today) {
   const since = addDays(today, -(HISTORY_DAYS + 5)); // l'historique utile pour le suivi, le streak et les badges
-  const [profile, allGoals, tasks, logs, messages] = await Promise.all([
+  const [profile, allGoals, tasks, logs, messages, trackers] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle().then(check),
     supabase.from("goals").select("*").eq("user_id", userId).order("id").then(check),
     supabase.from("tasks").select("*").eq("user_id", userId)
       .or(`archived_at.is.null,archived_at.gte.${since}`).order("id").then(check),
     supabase.from("task_logs").select("task_id, day").eq("user_id", userId).gte("day", since).then(check),
     supabase.from("messages").select("role, content, emotion, created_at").eq("user_id", userId).order("id").then(check),
+    // Les compteurs "Jours sans" et les cagnottes (page Outils). Tableau pas encore créé dans Supabase : aucun.
+    supabase.from("trackers").select("*").eq("user_id", userId).order("id").then((r) => (r.error ? [] : r.data)),
   ]);
   return {
     profile: {
@@ -160,6 +162,7 @@ async function loadAll(userId, today) {
     tasks,
     logs,
     messages,
+    trackers,
   };
 }
 
@@ -621,6 +624,186 @@ app.post("/api/tasks/:id/check", requireUser, async (req, res) => {
 });
 
 // =============================================================
+// LES OUTILS : compteurs "Jours sans", cagnottes (gratuits) et le Vide-tête (Premium)
+// =============================================================
+const MAX_TRACKERS = 10;
+// Un montant en euros (accepte "12,50") : un nombre positif raisonnable, sinon null
+const euros = (value) => {
+  const n = Math.round(Number(String(value ?? "").replace(",", ".")) * 100) / 100;
+  return Number.isFinite(n) && n > 0 && n < 1e7 ? n : null;
+};
+// Le nombre de jours entre deux dates "AAAA-MM-JJ"
+const daysBetween = (from, to) => Math.round((new Date(to + "T12:00:00") - new Date(from + "T12:00:00")) / 86400000);
+
+async function ownTracker(userId, id) {
+  const tracker = check(await supabase.from("trackers").select("*").eq("id", id).eq("user_id", userId).maybeSingle());
+  if (!tracker) throw new UserError("err.generic");
+  return tracker;
+}
+
+// Nouveau compteur ("quit") ou nouvelle cagnotte ("savings")
+app.post("/api/trackers", requireUser, async (req, res) => {
+  try {
+    const today = todayFrom(req);
+    const name = String(req.body.name || "").trim().slice(0, 40);
+    if (!name) throw new UserError("err.trackerName");
+    const existing = check(await supabase.from("trackers").select("id").eq("user_id", req.user.id));
+    if (existing.length >= MAX_TRACKERS) throw new UserError("err.trackerMax", { max: MAX_TRACKERS });
+    let data;
+    if (req.body.kind === "quit") {
+      // "Depuis le" : une date passée est possible (j'ai arrêté il y a 2 semaines), jamais dans le futur
+      const start = /^\d{4}-\d{2}-\d{2}$/.test(req.body.start || "") && req.body.start <= today ? req.body.start : today;
+      const minutes = Math.min(1440, Math.max(0, Math.round(Number(req.body.minutes) || 0)));
+      data = { start, record: 0, resets: 0, money: euros(req.body.money), minutes: minutes || null };
+    } else if (req.body.kind === "savings") {
+      const target = euros(req.body.target);
+      if (!target) throw new UserError("err.trackerTarget");
+      data = { target, deposits: [] };
+    } else {
+      throw new UserError("err.generic");
+    }
+    const tracker = check(await supabase.from("trackers").insert({ user_id: req.user.id, kind: req.body.kind, name, data }).select("*").single());
+    res.json({ ok: true, tracker });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+// "J'ai craqué" (compteur : on repart de zéro, le record est gardé) ou "J'ajoute X €" (cagnotte)
+app.patch("/api/trackers/:id", requireUser, async (req, res) => {
+  try {
+    const today = todayFrom(req);
+    const tracker = await ownTracker(req.user.id, req.params.id);
+    const data = { ...tracker.data };
+    if (tracker.kind === "quit" && req.body.action === "reset") {
+      data.record = Math.max(data.record || 0, daysBetween(data.start, today));
+      data.resets = (data.resets || 0) + 1;
+      data.start = today;
+    } else if (tracker.kind === "savings" && req.body.action === "deposit") {
+      // Un montant négatif = un retrait (on a dû piocher dedans)
+      const amount = Math.round(Number(String(req.body.amount ?? "").replace(",", ".")) * 100) / 100;
+      if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) >= 1e7) throw new UserError("err.trackerAmount");
+      data.deposits = [...(data.deposits || []), { amount, day: today }].slice(-500);
+    } else {
+      throw new UserError("err.generic");
+    }
+    check(await supabase.from("trackers").update({ data }).eq("id", tracker.id).eq("user_id", req.user.id));
+    res.json({ ok: true, data });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+app.delete("/api/trackers/:id", requireUser, async (req, res) => {
+  try {
+    check(await supabase.from("trackers").delete().eq("id", req.params.id).eq("user_id", req.user.id));
+    res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+// --- Le VIDE-TÊTE (Premium) ---
+// La personne écrit en vrac tout ce qu'elle a en tête ; Buddy en tire des tâches réparties sur les jours qui viennent.
+// Rien n'est ajouté ici : la page montre la proposition, et c'est seulement si la personne dit OUI
+// qu'elle crée les tâches (avec les règles habituelles : nombre maximum par jour, etc.).
+const DUMP_FORM = {
+  type: "object",
+  properties: {
+    message: { type: "string", description: "1 à 2 phrases courtes pour présenter ta proposition (et un mot bienveillant sur ce qui n'est pas une tâche : stress, émotions…)" },
+    taches: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          titre: { type: "string", description: "Tâche courte et concrète, qui commence par un verbe (60 caractères maximum)" },
+          date: { type: "string", description: "Le jour où la faire, au format AAAA-MM-JJ (aujourd'hui ou plus tard)" },
+          heure: { type: "string", description: "HH:MM si la personne a donné une heure ou si c'est évident, sinon une chaîne vide" },
+          objectif_id: { type: "integer", description: "Le numéro de l'objectif lié, ou 0 si aucun" },
+        },
+        required: ["titre", "date", "heure", "objectif_id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["message", "taches"],
+  additionalProperties: false,
+};
+const DUMPS_PER_DAY = 10; // pour limiter les coûts
+
+app.post("/api/braindump", requireUser, async (req, res) => {
+  const userId = req.user.id;
+  const today = todayFrom(req);
+  const text = String(req.body.text || "").trim().slice(0, 3000);
+  if (!text) return res.status(400).json({ error: tr(req, "err.dumpEmpty") });
+  try {
+    const profile = check(await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle());
+    if (!hasPremium(profile)) return res.status(403).json({ error: tr(req, "err.dumpPremium"), premium: "braindump" });
+    // 10 par jour maximum (si les colonnes de supabase-outils.sql n'existent pas encore : pas de compteur)
+    const used = profile?.dump_day === today ? profile.dump_count || 0 : 0;
+    if (used >= DUMPS_PER_DAY) return res.status(429).json({ error: tr(req, "err.dumpLimit", { max: DUMPS_PER_DAY }) });
+    saveProfile(userId, { dump_day: today, dump_count: used + 1 }).catch(() => {});
+
+    const [goals, tasks] = await Promise.all([
+      supabase.from("goals").select("id, text, draft").eq("user_id", userId).then(check),
+      currentTasks(userId, today),
+    ]);
+    const realGoals = goals.filter((g) => !g.draft);
+    // Les 14 prochains jours, avec le nombre de tâches déjà prévues (pour ne pas surcharger un jour)
+    const days = [];
+    for (let i = 0; i < 14; i++) {
+      const key = addDays(today, i);
+      const planned = tasks.filter((task) => isCurrent(task, key) && occursOn(task, key)).length;
+      days.push(`- ${key} (${dayName(key)}${i === 0 ? ", aujourd'hui" : i === 1 ? ", demain" : ""}) : ${planned} tâche(s) déjà prévue(s)`);
+    }
+    const en = req.lang === "en";
+    const response = await claude.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 1500,
+      system: `Tu es Buddy, le coach de l'application Buddy. La personne a fait un « vide-tête » : elle a écrit en vrac tout ce qu'elle a en tête.
+Ton travail : transformer ce qui est ACTIONNABLE en tâches concrètes, et les répartir intelligemment sur les jours qui viennent.
+Écris ${en ? "en ANGLAIS (English), sur un ton direct et amical" : "en français, en tutoyant"}.
+Règles :
+- Une tâche = une action concrète et courte qui commence par un verbe (« Appeler la banque », « Réviser le chapitre 3 »). 60 caractères maximum. 12 tâches maximum.
+- Respecte les jours et heures que la personne a donnés (« avant jeudi », « demain matin », « à 18h »). Sinon, choisis un jour réaliste : l'urgent tôt, le reste réparti.
+- Maximum ${taskLimitFor(profile)} tâches par jour EN COMPTANT celles déjà prévues (voir la liste des jours). Évite d'en mettre beaucoup le même jour.
+- Jamais de date passée, ni au-delà de 30 jours.
+- Si une tâche correspond clairement à un de ses objectifs, mets son numéro ; sinon 0.
+- Ce qui n'est pas une tâche (stress, émotions, idées vagues) : pas de tâche, mais un mot bienveillant dans le message.
+- Le message : 1 à 2 phrases courtes, sans liste (les tâches sont affichées à côté).`,
+      messages: [{
+        role: "user",
+        content: `Aujourd'hui : ${today} (${dayName(today)}).
+Les 14 prochains jours :
+${days.join("\n")}
+
+Ses objectifs :
+${realGoals.length ? realGoals.map((g) => `- n°${g.id} : ${g.text}`).join("\n") : "aucun"}
+
+Son vide-tête :
+"""
+${text}
+"""`,
+      }],
+      output_config: { format: { type: "json_schema", schema: DUMP_FORM } },
+    });
+    const form = JSON.parse(response.content.find((b) => b.type === "text").text);
+    const lastDay = addDays(today, 30);
+    const goalIds = new Set(realGoals.map((g) => g.id));
+    const proposals = (form.taches || []).slice(0, 12).map((item) => ({
+      title: String(item.titre || "").trim().slice(0, 80),
+      onDate: /^\d{4}-\d{2}-\d{2}$/.test(item.date) && item.date >= today && item.date <= lastDay ? item.date : today,
+      time: taskTime(item.heure),
+      goalId: goalIds.has(item.objectif_id) ? item.objectif_id : null,
+    })).filter((item) => item.title);
+    console.log(`🧠 Vide-tête : ${proposals.length} tâche(s) proposée(s)`);
+    res.json({ message: String(form.message || "").trim(), tasks: proposals });
+  } catch (error) {
+    fail(res, error, claudeErrorMessage(error) || "err.buddyFailed");
+  }
+});
+
+// =============================================================
 // BUDDY
 // =============================================================
 
@@ -775,6 +958,21 @@ function buildContext(data, today, topicId, { badgeIds = [], review = false, lan
       `${dayName(d.key)} ${d.status === "rest" ? "repos" : `${d.done}/${d.planned}${d.status === "joker" ? " (joker)" : d.status === "todo" ? " (en cours)" : ""}`}`).join(", ")}`,
     `- Badges gagnés : ${badgeIds.length ? BADGES.filter((b) => badgeIds.includes(b.id)).map((b) => `${b.emoji} ${b.name}`).join(", ") : "aucun pour l'instant"}`,
   );
+
+  // Les outils de la page Outils : compteurs "Jours sans" et cagnottes
+  const quits = (data.trackers || []).filter((x) => x.kind === "quit");
+  const pots = (data.trackers || []).filter((x) => x.kind === "savings");
+  if (quits.length || pots.length) {
+    lines.push("", "## Ses outils (page Outils)",
+      ...quits.map((x) => {
+        const days = daysBetween(x.data.start, today);
+        return `- Compteur « Jours sans » : ${x.name} → ${days} jour(s) sans (record : ${Math.max(x.data.record || 0, days)}, rechutes : ${x.data.resets || 0})`;
+      }),
+      ...pots.map((x) => {
+        const saved = (x.data.deposits || []).reduce((sum, d) => sum + d.amount, 0);
+        return `- Cagnotte « ${x.name} » : ${saved} € mis de côté sur ${x.data.target} €`;
+      }));
+  }
 
   const topic = goals.find((g) => g.id === topicId);
   lines.push("", "## Sujet choisi pour cette conversation",

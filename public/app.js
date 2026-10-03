@@ -567,7 +567,7 @@ function render() {
   stats = computeStats(state.tasks, state.logs, today(), bonusJokersFor(state.profile));
   // Chaque morceau de la page est dessiné séparément : si l'un plante, les autres s'affichent quand même.
   for (const part of [renderProfile, renderToday, renderTimeline, renderGoalsSummary, renderWeek, renderCategories,
-    renderGoalsPage, renderCalendar, renderSuivi, renderSettings, renderTopic, renderResume, renderPushLater, drawIcons]) {
+    renderGoalsPage, renderCalendar, renderSuivi, renderTools, renderSettings, renderTopic, renderResume, renderPushLater, drawIcons]) {
     try {
       part();
     } catch (error) {
@@ -2342,6 +2342,219 @@ async function choosePlan(plan) {
   premiumDone = null;
   done?.(plan);
 }
+// =============================================================
+// LES OUTILS : le Vide-tête (Premium), les compteurs "Jours sans" et les cagnottes (gratuits)
+// =============================================================
+const MILESTONES = [1, 3, 7, 14, 30, 60, 100, 180, 365]; // les paliers des compteurs "Jours sans"
+const daysSince = (key) => Math.round((new Date(today() + "T12:00:00") - new Date(key + "T12:00:00")) / 86400000);
+const euro = (n) => new Intl.NumberFormat(locale(), { style: "currency", currency: "EUR", maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
+const trackerById = (id) => (state.trackers || []).find((x) => x.id === id);
+
+function renderTools() {
+  const trackers = state.trackers || [];
+  const quits = trackers.filter((x) => x.kind === "quit");
+  const pots = trackers.filter((x) => x.kind === "savings");
+  $("quit-list").innerHTML = quits.length ? quits.map(quitHtml).join("") : `<p class="empty">${t("quit.empty")}</p>`;
+  $("pot-list").innerHTML = pots.length ? pots.map(potHtml).join("") : `<p class="empty">${t("pot.empty")}</p>`;
+  renderDumpLock();
+}
+
+// Un compteur "Jours sans" : le nombre de jours, la barre jusqu'au prochain palier, le record et ce qui a été gagné
+function quitHtml(x) {
+  const days = Math.max(0, daysSince(x.data.start));
+  const record = Math.max(x.data.record || 0, days);
+  const next = MILESTONES.find((m) => m > days) || Math.ceil((days + 1) / 365) * 365;
+  const prev = [...MILESTONES].reverse().find((m) => m <= days) || 0;
+  const pct = Math.round(((days - prev) / (next - prev)) * 100);
+  const gains = [];
+  if (x.data.money && days) gains.push(t("quit.saved", { amount: euro(Math.round(days * x.data.money)) }));
+  if (x.data.minutes && days) gains.push(t("quit.time", { hours: Math.round((days * x.data.minutes) / 60) }));
+  const one = getLang() === "fr" ? days <= 1 : days === 1;
+  return `<div class="tracker quit">
+    <div class="tracker-top">
+      <div class="quit-days"><strong>${days}</strong><span>${t(one ? "quit.day" : "quit.days", { name: esc(x.name) })}</span></div>
+      <button class="mini-btn" data-tracker-delete="${x.id}" title="${t("common.delete")}"><i data-lucide="trash-2"></i></button>
+    </div>
+    <div class="tracker-bar"><span style="width:${pct}%"></span></div>
+    <p class="muted small">${[t(next === 1 ? "quit.nextOne" : "quit.next", { n: next }), t("quit.record", { n: record }), ...gains].join(" · ")}</p>
+    <button class="btn btn-ghost btn-small" data-quit-reset="${x.id}">${t("quit.relapse")}</button>
+  </div>`;
+}
+
+// Une cagnotte : combien sur combien, la barre, et quand l'objectif sera atteint à ce rythme
+function potHtml(x) {
+  const deposits = x.data.deposits || [];
+  const saved = Math.round(deposits.reduce((sum, d) => sum + d.amount, 0) * 100) / 100;
+  const pct = Math.max(0, Math.min(100, Math.round((saved / x.data.target) * 100)));
+  let eta = t("pot.etaSoon");
+  if (saved >= x.data.target) eta = t("pot.done");
+  else if (saved > 0) {
+    // Le rythme : ce qui a été mis de côté depuis la création (au moins sur une semaine, pour ne pas s'emballer)
+    const elapsed = Math.max(7, daysSince(dayKey(new Date(x.created_at))) + 1);
+    const left = Math.ceil((x.data.target - saved) / (saved / elapsed));
+    const when = new Date(addDays(today(), left) + "T12:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
+    eta = t("pot.eta", { when });
+  }
+  return `<div class="tracker pot">
+    <div class="tracker-top">
+      <div><strong class="pot-name">${esc(x.name)}</strong><p class="pot-amount"><b>${euro(saved)}</b> / ${euro(x.data.target)}</p></div>
+      <button class="mini-btn" data-tracker-delete="${x.id}" title="${t("common.delete")}"><i data-lucide="trash-2"></i></button>
+    </div>
+    <div class="tracker-bar"><span style="width:${pct}%"></span></div>
+    <p class="muted small">${pct} % · ${eta}</p>
+    <form class="pot-add" data-pot-add="${x.id}">
+      <input name="amount" inputmode="decimal" placeholder="${t("pot.amountPh")}" aria-label="${t("pot.amountPh")}">
+      <button class="btn btn-ghost btn-small" type="submit"><i data-lucide="plus"></i> ${t("pot.add")}</button>
+    </form>
+  </div>`;
+}
+
+// Ouvrir / fermer les petits formulaires "Nouveau compteur" et "Nouvelle cagnotte"
+$("page-outils").addEventListener("click", async (event) => {
+  const el = event.target.closest("[data-open-form], [data-close-form], [data-tracker-delete], [data-quit-reset]");
+  if (!el) return;
+  if (el.dataset.openForm) {
+    const form = $(el.dataset.openForm);
+    form.classList.toggle("hidden");
+    const start = form.elements.start;
+    if (start) { start.value = today(); start.max = today(); }
+    if (!form.classList.contains("hidden")) form.querySelector("input").focus();
+    return;
+  }
+  if ("closeForm" in el.dataset) return el.closest("form").classList.add("hidden");
+  const tracker = trackerById(Number(el.dataset.trackerDelete || el.dataset.quitReset));
+  if (!tracker) return;
+  if (el.dataset.trackerDelete) {
+    if (!confirm(t("tracker.confirmDelete", { name: tracker.name }))) return;
+    await api("DELETE", "/api/trackers/" + tracker.id).catch(() => ({}));
+    return refresh();
+  }
+  // "J'ai craqué" : le compteur repart de zéro (le record est gardé) et Buddy aide à repartir
+  if (!confirm(t("quit.confirmRelapse"))) return;
+  const result = await api("PATCH", "/api/trackers/" + tracker.id, { action: "reset" }).catch(() => ({}));
+  if (!result.ok) return toast(result.error || t("err.generic"), "error");
+  await refresh();
+  toast(t("quit.restarted"));
+  $("message").value = t("say.relapse", { name: tracker.name });
+  openChat(true);
+});
+
+// Créer un compteur ou une cagnotte
+async function createTracker(form, kind, fields) {
+  const result = await api("POST", "/api/trackers", { kind, ...fields }).catch(() => ({}));
+  if (!result.ok) return toast(result.error || t("err.generic"), "error");
+  form.reset();
+  form.classList.add("hidden");
+  refresh();
+}
+$("quit-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const f = event.target;
+  createTracker(f, "quit", { name: f.elements.name.value, start: f.elements.start.value, money: f.elements.money.value, minutes: f.elements.minutes.value });
+});
+$("pot-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const f = event.target;
+  createTracker(f, "savings", { name: f.elements.name.value, target: f.elements.target.value });
+});
+
+// Ajouter de l'argent dans une cagnotte (un montant négatif = un retrait)
+$("pot-list").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.target.closest("[data-pot-add]");
+  const tracker = form && trackerById(Number(form.dataset.potAdd));
+  const amount = form?.amount.value.trim();
+  if (!tracker || !amount) return;
+  const before = (tracker.data.deposits || []).reduce((sum, d) => sum + d.amount, 0);
+  const result = await api("PATCH", "/api/trackers/" + tracker.id, { action: "deposit", amount }).catch(() => ({}));
+  if (!result.ok) return toast(result.error || t("err.generic"), "error");
+  const after = result.data.deposits.reduce((sum, d) => sum + d.amount, 0);
+  await refresh();
+  toast(before < tracker.data.target && after >= tracker.data.target
+    ? t("pot.reached", { name: tracker.name })
+    : t("pot.added", { amount: euro(after - before), name: tracker.name }));
+});
+
+// --- Le Vide-tête (Premium) ---
+let dumpProposals = []; // la proposition de Buddy, en attente du "oui"
+let dumpExample = false; // l'exemple flouté est-il affiché (version gratuite) ?
+
+function renderDumpList(items, message, example = false) {
+  $("dump-message").textContent = message;
+  $("dump-list").innerHTML = items.map((item, i) => {
+    const goal = item.goalId ? goalById(item.goalId) : null;
+    const when = niceDate(item.onDate, { weekday: "short", day: "numeric", month: "short" }) + (item.time ? " · " + item.time : "");
+    return `<li><label>
+      <input type="checkbox" data-dump-item="${i}" checked ${example ? "disabled" : ""}>
+      ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}
+      <span class="dump-title">${esc(item.title)}</span><span class="dump-when">${when}</span>
+    </label></li>`;
+  }).join("");
+  $("dump-result").classList.remove("hidden");
+}
+
+// Version gratuite : un exemple (flouté) pour qu'on voie à quoi ça sert, et le bandeau Premium
+function renderDumpLock() {
+  const locked = !hasPremium(state.profile);
+  $("dump-card").classList.toggle("locked", locked);
+  if (locked && !dumpExample) {
+    dumpExample = true;
+    $("dump-text").value = t("dump.exampleText");
+    renderDumpList([
+      { title: t("dump.ex1"), onDate: today() },
+      { title: t("dump.ex2"), onDate: addDays(today(), 1), time: "18:00" },
+      { title: t("dump.ex3"), onDate: addDays(today(), 1) },
+      { title: t("dump.ex4"), onDate: addDays(today(), 2), time: "19:00" },
+    ], t("dump.exampleMsg"), true);
+  } else if (!locked && dumpExample) {
+    dumpExample = false;
+    $("dump-text").value = "";
+    $("dump-result").classList.add("hidden");
+  }
+}
+
+$("dump-unlock").addEventListener("click", () => showPremium("braindump"));
+$("dump-go").addEventListener("click", async () => {
+  if (!hasPremium(state.profile)) return showPremium("braindump");
+  const text = $("dump-text").value.trim();
+  if (!text) return $("dump-text").focus();
+  const button = $("dump-go");
+  button.disabled = true;
+  button.querySelector("span").textContent = t("dump.thinking");
+  const result = await api("POST", "/api/braindump", { text }).catch(() => ({}));
+  button.disabled = false;
+  button.querySelector("span").textContent = t("dump.go");
+  if (result.premium) return showPremium(result.premium);
+  if (result.error || !result.tasks) return toast(result.error || t("err.buddyFailed"), "error");
+  if (!result.tasks.length) return toast(result.message || t("dump.nothing"));
+  dumpProposals = result.tasks;
+  renderDumpList(result.tasks, result.message);
+  drawIcons();
+});
+$("dump-cancel").addEventListener("click", () => {
+  dumpProposals = [];
+  $("dump-result").classList.add("hidden");
+});
+// "Oui, ajoute-les" : on crée les tâches cochées (avec les règles habituelles : nombre maximum par jour…)
+$("dump-confirm").addEventListener("click", async () => {
+  const chosen = dumpProposals.filter((_, i) => $("dump-list").querySelector(`[data-dump-item="${i}"]`)?.checked);
+  if (!chosen.length) return toast(t("dump.noneChosen"), "error");
+  $("dump-confirm").disabled = true;
+  let added = 0, problem = null;
+  for (const item of chosen) {
+    const result = await api("POST", "/api/tasks", { title: item.title, onDate: item.onDate, time: item.time, goalId: item.goalId }).catch(() => ({}));
+    if (result.ok) added++;
+    else problem = problem || result.error || t("err.generic");
+  }
+  $("dump-confirm").disabled = false;
+  dumpProposals = [];
+  $("dump-text").value = "";
+  $("dump-result").classList.add("hidden");
+  await refresh();
+  if (added) toast(t("dump.added", { n: added }));
+  if (problem) toast(problem, "error");
+});
+
 // Ouvre la page de paiement sécurisée de Stripe. Renvoie false si elle n'a pas pu s'ouvrir.
 async function startCheckout() {
   try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
