@@ -501,9 +501,14 @@ async function api(method, url, body) {
   return response.json();
 }
 
+// On revient de Stripe ? (?checkout=success / ?checkout=cancel après le paiement, ?portal=1 après "Gérer mon abonnement")
+const returnParams = new URLSearchParams(location.search);
+let stripeReturn = returnParams.get("checkout") || (returnParams.has("portal") ? "portal" : null);
+
 // Recharge toutes les données, puis redessine la page
 async function refresh() {
-  const data = await api("GET", "/api/state?today=" + today());
+  // sync=1 : le serveur redemande tout de suite à Stripe où en est l'abonnement
+  const data = await api("GET", "/api/state?today=" + today() + (stripeReturn ? "&sync=1" : ""));
   if (data.error) return toast(data.error, "error");
   // Le serveur tourne-t-il avec le même code que la page ? Sinon, des choses peuvent ne pas s'enregistrer.
   if (data.version !== APP_VERSION) {
@@ -1096,14 +1101,30 @@ function celebrateBadges(ids) {
   setTimeout(() => showEmotion(currentEmotion, false), 3000);
 }
 
+// La phrase "Ton offre" : l'abonnement Stripe s'il y en a un, sinon gratuit / Premium (ou "phase de test" en mode démo)
+function planText() {
+  const p = state.profile;
+  const date = (iso) => niceDate(dayKey(new Date(iso)), { day: "numeric", month: "long" });
+  if (state.payments && p.plan === "premium") {
+    if (p.cancelAtPeriodEnd && p.premiumUntil) return t("plan.ends", { date: date(p.premiumUntil) });
+    if (p.subscriptionStatus === "trialing" && p.trialEndsAt) return t("plan.trial", { date: date(p.trialEndsAt) });
+    if (p.subscriptionStatus === "past_due") return t("plan.pastDue");
+    if (p.premiumUntil) return t("plan.renews", { date: date(p.premiumUntil) });
+  }
+  if (DEMO_MODE) return t("plan.demo");
+  return t(hasPremium(p) ? "plan.premium" : "plan.free");
+}
+
 // --- Page Paramètres ---
 function renderSettings() {
   if (document.activeElement !== $("settings-name")) $("settings-name").value = state.profile.firstName || "";
   for (const b of document.querySelectorAll("[data-style]")) {
     b.classList.toggle("active", b.dataset.style === state.profile.style);
   }
-  // L'offre (Premium / gratuite). En mode démo, tout le monde a tout : on le dit.
-  $("plan-status").textContent = DEMO_MODE ? t("plan.demo") : t(hasPremium(state.profile) ? "plan.premium" : "plan.free");
+  // L'offre (Premium / gratuite), et l'abonnement s'il y en a un
+  $("plan-status").textContent = planText();
+  $("plan-manage").classList.toggle("hidden", !(state.payments && state.profile.billing));
+  $("plan-open").classList.toggle("hidden", Boolean(state.payments && state.profile.plan === "premium"));
   setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
   // Les réglages des e-mails (on ne les réécrit pas si la personne est en train de les modifier)
@@ -2292,6 +2313,8 @@ function showPremium(reason = null) {
   $("premium-reason").classList.toggle("hidden", !reason);
   if (reason) $("premium-reason").textContent = t("premium.why." + reason, FREE_LIMITS);
   $("premium-free").textContent = t(reason ? "premium.later" : "premium.free");
+  // Essai gratuit déjà utilisé (déjà abonné une fois) : le bouton annonce directement le prix
+  $("premium-start").textContent = t(state?.payments && state.profile.subscriptionStatus ? "premium.go" : "premium.cta");
   drawIcons();
   return new Promise((resolve) => {
     premiumDone = resolve;
@@ -2302,6 +2325,11 @@ async function choosePlan(plan) {
   const dialog = $("premium-dialog");
   const short = dialog.classList.contains("short");
   dialog.close();
+  // Paiements branchés : Premium = la page de paiement de Stripe (on y part, la suite se passe au retour)
+  if (plan === "premium" && state?.payments) {
+    if (await startCheckout()) return;
+    plan = "free"; // la page de paiement n'a pas pu s'ouvrir : on continue en gratuit
+  }
   // Version courte + "Plus tard" : on ne change rien. Sinon on enregistre le choix (et sa date) dans Supabase.
   if (!short || plan === "premium") {
     try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
@@ -2314,6 +2342,49 @@ async function choosePlan(plan) {
   premiumDone = null;
   done?.(plan);
 }
+// Ouvre la page de paiement sécurisée de Stripe. Renvoie false si elle n'a pas pu s'ouvrir.
+async function startCheckout() {
+  try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
+  toast(t("premium.redirect"));
+  const result = await api("POST", "/api/checkout", {}).catch(() => ({}));
+  if (result.url) {
+    location.href = result.url;
+    return true;
+  }
+  toast(result.error || t("err.payment"), "error");
+  return false;
+}
+
+// "Gérer mon abonnement" (Paramètres) : la page de Stripe pour changer de carte, voir ses factures ou annuler
+$("plan-manage").addEventListener("click", async () => {
+  const result = await api("POST", "/api/billing-portal", {}).catch(() => ({}));
+  if (result.url) location.href = result.url;
+  else toast(result.error || t("err.payment"), "error");
+});
+
+// Au retour de Stripe : on dit ce qui s'est passé, puis on nettoie l'adresse de la page
+async function handleStripeReturn() {
+  if (!stripeReturn) return;
+  const kind = stripeReturn;
+  history.replaceState(null, "", location.pathname + location.hash);
+  if (kind === "success") {
+    if (state.profile.plan !== "premium") { // Stripe a parfois une seconde de retard : on réessaie une fois
+      toast(t("premium.checking"));
+      await new Promise((r) => setTimeout(r, 3000));
+      await refresh();
+    }
+    if (state.profile.plan === "premium") toast(t("premium.welcome"));
+  } else if (kind === "cancel") {
+    toast(t("premium.cancelled"));
+    if (!state.profile.plan) { // jamais choisi : on note "gratuit" (pour ne pas reposer la question)
+      const result = await api("POST", "/api/plan", { plan: "free" }).catch(() => ({}));
+      state.profile.plan = result.plan || "free";
+    }
+  }
+  stripeReturn = null;
+  render();
+}
+
 $("premium-start").addEventListener("click", () => choosePlan("premium"));
 $("premium-free").addEventListener("click", () => choosePlan("free"));
 $("premium-close").addEventListener("click", () => choosePlan("free")); // la croix = continuer gratuitement
@@ -2330,6 +2401,7 @@ async function askPlanIfNeeded() {
     localStorage.removeItem("buddy-plan-wish");
   } catch (e) {}
   if (!state?.profile || state.profile.plan || asked) return;
+  if (wish === "premium" && state.payments && (await startCheckout())) return; // choisi sur l'accueil : direction le paiement
   if (wish === "premium" || wish === "free") {
     // Déjà choisi sur la page d'accueil : on l'enregistre, sans redemander
     try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
@@ -2359,6 +2431,7 @@ async function loadMyBuddy(newSession) {
   chat.innerHTML = "";
   showApp();
   await refresh();
+  await handleStripeReturn(); // on revient de la page de paiement ? (sinon : rien)
   // Nouveau compte : l'écran Buddy Premium d'abord (la visite guidée suit, comme avant)
   await askPlanIfNeeded();
 

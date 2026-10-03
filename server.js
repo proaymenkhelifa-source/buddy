@@ -20,6 +20,7 @@ import {
 import { t, cleanLang, dayLong } from "./public/i18n.js";
 import { startEmailScheduler, sendTestEmail, runEmailTick } from "./emails.js";
 import { sendPush, pushReady, vapidPublicKey } from "./push.js";
+import { paymentsReady, TRIAL_DAYS, createCheckout, createPortal, subscriptionState, needsSync, cancelEverything } from "./stripe.js";
 
 // Sommes-nous en ligne sur Vercel ? (Vercel remplit tout seul cette variable)
 const ONLINE = Boolean(process.env.VERCEL);
@@ -145,6 +146,12 @@ async function loadAll(userId, today) {
       source: profile?.source || null,     // d'où vient la personne (ex : "insta-fr"), null = inconnu / lien direct
       plan: profile?.plan || null,         // "premium" ou "free" (choisi sur l'écran Premium), null = pas encore choisi
       planChosenAt: profile?.plan_chosen_at || null,
+      // L'abonnement Stripe (voir stripe.js) : rempli seulement quand les paiements sont branchés
+      subscriptionStatus: profile?.subscription_status || null, // "trialing" (essai), "active", "canceled"…
+      trialEndsAt: profile?.trial_ends_at || null,
+      premiumUntil: profile?.premium_until || null,             // prochain paiement, ou fin de Premium si annulé
+      cancelAtPeriodEnd: profile?.cancel_at_period_end || false,
+      billing: Boolean(profile?.stripe_customer_id),            // a déjà un compte Stripe → bouton "Gérer mon abonnement"
     },
     // Les objectifs "brouillons" (en train d'être définis avec Buddy) sont rangés à part :
     // ils ne comptent nulle part (stats, e-mails, badges…), sauf sur la page Mes objectifs et pour Buddy.
@@ -203,6 +210,7 @@ function fail(res, error, key = "err.generic") {
 app.get("/api/state", requireUser, async (req, res) => {
   try {
     const today = todayFrom(req);
+    await syncSubscription(req.user.id, req.query.sync === "1");
     const data = await loadAll(req.user.id, today);
     // D'où vient la personne : l'étiquette envoyée à l'inscription (?src=insta-fr…) est rangée une fois dans son profil.
     // Rangée à part : si la colonne "source" n'existe pas encore dans Supabase, le reste marche quand même.
@@ -216,7 +224,7 @@ app.get("/api/state", requireUser, async (req, res) => {
       }
     }
     const { badges, newBadges } = await updateBadges(req.user.id, data, today);
-    res.json({ ...data, badges, newBadges, maxMessages: messageLimitFor(data.profile), version: APP_VERSION });
+    res.json({ ...data, badges, newBadges, maxMessages: messageLimitFor(data.profile), version: APP_VERSION, payments: paymentsReady, trialDays: TRIAL_DAYS });
   } catch (error) {
     fail(res, error, "err.loadState");
   }
@@ -226,6 +234,9 @@ app.get("/api/state", requireUser, async (req, res) => {
 app.delete("/api/account", requireUser, async (req, res) => {
   const userId = req.user.id;
   try {
+    // D'abord : plus aucun prélèvement (s'il y a un abonnement Stripe, on l'arrête tout de suite)
+    const raw = paymentsReady ? await planProfile(userId, true) : null;
+    await cancelEverything(raw?.stripe_customer_id);
     // On vide chaque tableau (dans l'ordre : d'abord ce qui dépend des autres)…
     for (const table of ["task_logs", "email_log", "user_badges", "messages", "tasks", "goals", "profiles"]) {
       check(await supabase.from(table).delete().eq("user_id", userId));
@@ -241,11 +252,15 @@ app.delete("/api/account", requireUser, async (req, res) => {
 });
 
 // --- L'offre choisie sur l'écran Premium ("premium" ou "free"), avec la date ---
-// Pas encore de vrai paiement : on enregistre juste le choix (pour les statistiques, et pour brancher
-// les paiements App Store / Google Play plus tard). En mode démo, tout le monde a tout de toute façon.
+// Sans paiements (pas de clé Stripe) : on enregistre juste le choix. En mode démo, tout le monde a tout de toute façon.
+// Avec les paiements : Premium s'obtient SEULEMENT en payant (voir /api/checkout) ; ici on ne note que "gratuit".
 app.post("/api/plan", requireUser, async (req, res) => {
-  const plan = req.body.plan === "premium" ? "premium" : "free";
+  let plan = req.body.plan === "premium" ? "premium" : "free";
   try {
+    if (paymentsReady) {
+      const raw = await planProfile(req.user.id, true);
+      if (raw?.plan === "premium" || plan === "premium") return res.json({ ok: true, plan: raw?.plan || "free" });
+    }
     await saveProfile(req.user.id, { plan, plan_chosen_at: new Date().toISOString() });
     console.log(`⭐ Offre choisie : ${plan}`);
     res.json({ ok: true, plan });
@@ -255,9 +270,51 @@ app.post("/api/plan", requireUser, async (req, res) => {
   }
 });
 
-// L'offre d'une personne (seulement quand les limites sont actives : en mode démo, inutile d'aller la chercher)
-async function planProfile(userId) {
-  if (DEMO_MODE) return null;
+// =============================================================
+// LES PAIEMENTS (Stripe) : la page de paiement, "Gérer mon abonnement", et l'état de l'abonnement
+// =============================================================
+// L'adresse de Buddy (pour revenir de Stripe) : le vrai site en ligne, ou ton ordinateur
+const appUrlFor = (req) => (ONLINE ? process.env.APP_URL || "https://" + req.get("host") : "http://localhost:" + PORT);
+
+// On redemande à Stripe où en est l'abonnement (au retour de Stripe, ou toutes les 6 h) et on le range dans le profil
+async function syncSubscription(userId, force = false) {
+  if (!paymentsReady) return;
+  try {
+    const raw = await planProfile(userId, true);
+    if (!needsSync(raw, force)) return;
+    const state = await subscriptionState(raw.stripe_customer_id);
+    await saveProfile(userId, { ...state, ...(raw.plan_chosen_at ? {} : { plan_chosen_at: new Date().toISOString() }) });
+    if (state.plan !== raw.plan) console.log(`💳 Abonnement : ${raw.plan || "aucun"} → ${state.plan} (${state.subscription_status})`);
+  } catch (error) {
+    console.error("💳 Abonnement non vérifié (as-tu lancé supabase-stripe.sql ?) :", error.message);
+  }
+}
+
+app.post("/api/checkout", requireUser, async (req, res) => {
+  if (!paymentsReady) return res.status(400).json({ error: tr(req, "err.generic") });
+  try {
+    const url = await createCheckout({
+      user: req.user, profile: await planProfile(req.user.id, true), saveProfile, appUrl: appUrlFor(req), lang: req.lang,
+    });
+    res.json({ url });
+  } catch (error) {
+    fail(res, error, "err.payment");
+  }
+});
+
+app.post("/api/billing-portal", requireUser, async (req, res) => {
+  if (!paymentsReady) return res.status(400).json({ error: tr(req, "err.generic") });
+  try {
+    res.json({ url: await createPortal({ profile: await planProfile(req.user.id, true), appUrl: appUrlFor(req) }) });
+  } catch (error) {
+    fail(res, error, "err.payment");
+  }
+});
+
+// L'offre d'une personne (seulement quand les limites sont actives : en mode démo, inutile d'aller la chercher ;
+// always = la chercher quand même, pour les paiements)
+async function planProfile(userId, always = false) {
+  if (DEMO_MODE && !always) return null;
   return check(await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle());
 }
 
