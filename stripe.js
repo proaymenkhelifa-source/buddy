@@ -76,15 +76,15 @@ export async function createCheckout({ user, profile, saveProfile, appUrl, lang 
     success_url: appUrl + "/?checkout=success#accueil",
     cancel_url: appUrl + "/?checkout=cancel#accueil",
   };
-  // La case à cocher "J'accepte les conditions" (avec le droit de rétractation de 14 jours).
+  // La case à cocher "J'accepte les conditions" (le droit de rétractation de 14 jours est expliqué dans les conditions).
   // Stripe l'exige seulement si le lien des conditions est rempli dans Paramètres → Informations publiques :
   // s'il ne l'est pas encore, la page de paiement s'ouvre quand même, sans la case (et on le signale ici).
   const terms = appUrl + "/legal/conditions.html";
   const consent = {
     consent_collection: { terms_of_service: "required" },
     custom_text: { terms_of_service_acceptance: { message: lang === "en"
-      ? `I accept the [terms of use](${terms}) and ask for Premium to start right away. I can change my mind within 14 days and cancel anytime.`
-      : `J'accepte les [conditions d'utilisation](${terms}) et je demande que Premium commence tout de suite. Je peux changer d'avis pendant 14 jours et annuler à tout moment.` } },
+      ? `I accept the [terms of use](${terms}) and ask for Premium to start right away.`
+      : `J'accepte les [conditions d'utilisation](${terms}) et je demande que Premium commence tout de suite.` } },
   };
   try {
     return (await stripe.checkout.sessions.create({ ...params, ...consent })).url;
