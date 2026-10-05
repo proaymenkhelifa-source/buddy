@@ -286,7 +286,9 @@ async function syncSubscription(userId, force = false) {
   try {
     const raw = await planProfile(userId, true);
     if (!needsSync(raw, force)) return;
-    const state = await subscriptionState(raw.stripe_customer_id);
+    const { premium_until, ...state } = await subscriptionState(raw.stripe_customer_id);
+    // Jamais abonné (paiement abandonné) : on garde son éventuel "Premium offert jusqu'au…"
+    if (state.subscription_status) state.premium_until = premium_until;
     await saveProfile(userId, { ...state, ...(raw.plan_chosen_at ? {} : { plan_chosen_at: new Date().toISOString() }) });
     if (state.plan !== raw.plan) console.log(`💳 Abonnement : ${raw.plan || "aucun"} → ${state.plan} (${state.subscription_status})`);
   } catch (error) {

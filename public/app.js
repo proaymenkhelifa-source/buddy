@@ -8,7 +8,7 @@
 //   3. après chaque action (cocher, ajouter, modifier…), on recommence 1 et 2.
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, styleAllowed, bonusJokersFor } from "./shared.js";
+import { DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, styleAllowed, bonusJokersFor, giftUntil, isSubscribed } from "./shared.js";
 import { CATEGORIES, MAX_TASKS, BADGES, APP_VERSION, HISTORY_DAYS, dayKey, addDays, mondayOf, computeStats, occursOn, isCurrent, isPlanned, isDone, scheduleLabel, goalWeek, goalProgress } from "./shared.js";
 import { t, getLang, setLang, cleanLang, locale, dayLong, dayInitials, LANGUAGES } from "./i18n.js";
 
@@ -1132,6 +1132,7 @@ function celebrateBadges(ids) {
 function planText() {
   const p = state.profile;
   const date = (iso) => niceDate(dayKey(new Date(iso)), { day: "numeric", month: "long" });
+  if (giftUntil(p)) return t("plan.gift", { date: date(giftUntil(p)) }); // Premium offert (testeurs)
   if (state.payments && p.plan === "premium") {
     if (p.cancelAtPeriodEnd && p.premiumUntil) return t("plan.ends", { date: date(p.premiumUntil) });
     if (p.subscriptionStatus === "trialing" && p.trialEndsAt) return t("plan.trial", { date: date(p.trialEndsAt) });
@@ -1151,7 +1152,7 @@ function renderSettings() {
   // L'offre (Premium / gratuite), et l'abonnement s'il y en a un
   $("plan-status").textContent = planText();
   $("plan-manage").classList.toggle("hidden", !(state.payments && state.profile.billing));
-  $("plan-open").classList.toggle("hidden", Boolean(state.payments && state.profile.plan === "premium"));
+  $("plan-open").classList.toggle("hidden", Boolean(state.payments && isSubscribed(state.profile)));
   setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
   // Les réglages des e-mails (on ne les réécrit pas si la personne est en train de les modifier)
@@ -2582,6 +2583,18 @@ $("dump-confirm").addEventListener("click", async () => {
   if (problem) toast(problem, "error");
 });
 
+// L'annonce du lancement (5 octobre 2026) : pour les testeurs qui ont Premium offert, une seule fois par appareil
+function showLaunchNotice() {
+  const until = giftUntil(state.profile);
+  let seen = false;
+  try { seen = localStorage.getItem("buddy-launch-seen") === "1"; } catch (e) {}
+  if (!until || seen) return;
+  try { localStorage.setItem("buddy-launch-seen", "1"); } catch (e) {}
+  $("launch-text").textContent = t("launch.text", { date: niceDate(dayKey(new Date(until)), { day: "numeric", month: "long" }) });
+  $("launch-dialog").showModal();
+}
+$("launch-more").addEventListener("click", () => { $("launch-dialog").close(); showPremium(); });
+
 // Ouvre la page de paiement sécurisée de Stripe. Renvoie false si elle n'a pas pu s'ouvrir.
 async function startCheckout() {
   try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
@@ -2640,7 +2653,7 @@ async function askPlanIfNeeded() {
     wish = localStorage.getItem("buddy-plan-wish"); // choisi sur la page d'accueil, avant l'inscription
     localStorage.removeItem("buddy-plan-wish");
   } catch (e) {}
-  if (!state?.profile || state.profile.plan || asked) return;
+  if (!state?.profile || state.profile.plan || asked || giftUntil(state.profile)) return; // Premium offert : rien à choisir
   if (wish === "premium" && state.payments && (await startCheckout())) return; // choisi sur l'accueil : direction le paiement
   if (wish === "premium" || wish === "free") {
     // Déjà choisi sur la page d'accueil : on l'enregistre, sans redemander
@@ -2674,6 +2687,7 @@ async function loadMyBuddy(newSession) {
   await handleStripeReturn(); // on revient de la page de paiement ? (sinon : rien)
   // Nouveau compte : l'écran Buddy Premium d'abord (la visite guidée suit, comme avant)
   await askPlanIfNeeded();
+  showLaunchNotice(); // l'annonce "Buddy est lancé, Premium offert 2 semaines" (une seule fois, testeurs)
 
   // LA LANGUE : un choix fait sur CET appareil (bouton FR/EN) passe en premier ;
   // sinon on reprend la langue enregistrée dans le compte (choisie sur un autre appareil).

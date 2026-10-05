@@ -268,5 +268,11 @@ Known gotchas:
 - Stripe Checkout: "J'accepte les conditions…" checkbox (`consent_collection.terms_of_service` + custom text FR/EN with the link and the 14 days). If Stripe refuses because the terms URL isn't set in Stripe → opens without the checkbox and logs a warning. Tested in test mode: checkbox present.
 - Launch-day checklist: Stripe account activated (live) → same product "Buddy Premium" 9,99 €/month in LIVE mode (+ image) → Stripe settings (invoice footer "TVA non applicable, art. 293 B du CGI", public details: terms + privacy URLs, support e-mail, statement descriptor BUDDYCOACH, customer e-mails/receipts ON) → owner puts sk_live_ in Vercel STRIPE_SECRET_KEY → I set DEMO_MODE = false + remove the "Phase de test" note + optional promo code for early testers → owner does a real test (subscribe, then cancel during the trial = 0 €).
 
+## 🚀 OFFICIAL LAUNCH (2026-10-05)
+- Stripe LIVE: account activated (statement descriptor BUDDYCOACH.APP / BUDDY), product "BUDDY premium" 9,99 €/month live, restricted live key ("full access except sensitive operations") in Vercel `STRIPE_SECRET_KEY` (local .env keeps the TEST key).
+- `DEMO_MODE = false`: free limits active. "Phase de test" note removed from the terms.
+- Premium rule (`hasPremium` in shared.js): a Stripe subscription (active / trialing / past_due) OR a gift: `premium_until` in the future and never subscribed (`giftUntil`). Stripe sync keeps the gift if the person never subscribed.
+- **Testers' gift (owner's choice)**: all 21 accounts existing at launch got `premium_until = 2026-10-19 23:59 Paris`. In-app one-time announcement "Buddy est officiellement lancé 🎉 … Premium offert jusqu'au 19 octobre" (`launch-dialog`), Settings shows "Premium offert jusqu'au…", subscribe button stays visible. To gift Premium to someone later: set their `premium_until`.
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

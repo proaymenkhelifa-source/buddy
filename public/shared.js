@@ -25,7 +25,7 @@ export const CATEGORIES = {
 // La "version" du code. Le serveur et la page la comparent : si elles sont différentes,
 // c'est que le serveur tourne encore avec un vieux code → la page demande de le redémarrer.
 // (À changer à chaque grosse modification.)
-export const APP_VERSION = "2026-10-05-logs";
+export const APP_VERSION = "2026-10-05-launch";
 
 export const MAX_TASKS = 10;
 
@@ -42,7 +42,7 @@ export const MAX_MESSAGES_PER_DAY = 100;
 //   false = le vrai lancement : les limites de la version gratuite (ci-dessous) s'appliquent,
 //           et l'écran Premium court s'affiche quand une personne gratuite atteint une limite.
 // Pour changer : remplace true par false (ou l'inverse), enregistre, et mets en ligne. C'est tout.
-export const DEMO_MODE = true;
+export const DEMO_MODE = false; // lancé officiellement le 5 octobre 2026
 
 // Les limites de la version GRATUITE (actives seulement quand DEMO_MODE = false).
 // Premium = les limites "normales" ci-dessus (MAX_TASKS, MAX_MESSAGES_PER_DAY), sans limite de rappels.
@@ -57,11 +57,24 @@ export const TRIAL_DAYS = 7;
 // Premium : en plus du joker de la semaine (pour tout le monde), des jokers BONUS chaque mois
 export const PREMIUM_BONUS_JOKERS = 3;
 
-// La personne a-t-elle droit à tout ? (profile.plan : "premium", "free", ou vide si pas encore choisi)
-// Plus tard, avec les vrais paiements (App Store / Google Play), c'est ICI qu'on vérifiera l'abonnement.
-export function hasPremium(profile) {
-  return DEMO_MODE || profile?.plan === "premium";
+// La personne a-t-elle droit à tout ? Deux façons d'avoir Premium :
+//   1. un abonnement Stripe en cours (essai, payé, ou paiement en retard que Stripe réessaie) ;
+//   2. Premium OFFERT jusqu'à une date (premium_until), sans abonnement : ex. les testeurs de la première heure.
+// (Le profil vient soit du serveur — subscription_status, premium_until — soit de la page — subscriptionStatus, premiumUntil.)
+const PAID_STATUSES = ["active", "trialing", "past_due"];
+export const subscriptionStatusOf = (profile) => profile?.subscription_status ?? profile?.subscriptionStatus ?? null;
+export function giftUntil(profile) {
+  if (subscriptionStatusOf(profile)) return null; // abonné (ou l'a été) : c'est Stripe qui décide
+  const until = profile?.premium_until ?? profile?.premiumUntil;
+  return until && Date.now() < new Date(until).getTime() ? until : null;
 }
+export function hasPremium(profile) {
+  if (DEMO_MODE) return true;
+  const status = subscriptionStatusOf(profile);
+  if (status) return PAID_STATUSES.includes(status);
+  return Boolean(giftUntil(profile));
+}
+export const isSubscribed = (profile) => PAID_STATUSES.includes(subscriptionStatusOf(profile));
 export const taskLimitFor = (profile) => (hasPremium(profile) ? MAX_TASKS : FREE_LIMITS.tasksPerDay);
 export const messageLimitFor = (profile) => (hasPremium(profile) ? MAX_MESSAGES_PER_DAY : FREE_LIMITS.messagesPerDay);
 export const styleAllowed = (profile, style) => hasPremium(profile) || FREE_LIMITS.styles.includes(style);

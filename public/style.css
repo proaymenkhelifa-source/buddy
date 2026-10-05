@@ -1551,3 +1551,8 @@ html:has(dialog[open]) { overflow: hidden; }
 .phone-card p { margin: 4px 0 0; }
 /* Le QR code n'a de sens que sur ordinateur (pas sur un téléphone ni une tablette tactile) */
 @media (max-width: 760px), (pointer: coarse) { .desktop-only { display: none !important; } }
+
+/* ---------- 16. L'ANNONCE DU LANCEMENT ---------- */
+.launch-box { display: grid; gap: 12px; justify-items: center; text-align: center; }
+.launch-buddy { height: 150px; width: auto; }
+.launch-box p { margin: 0; color: var(--muted); line-height: 1.55; }
