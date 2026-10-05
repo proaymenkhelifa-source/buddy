@@ -252,5 +252,10 @@ Known gotchas:
 - Notifications & e-mails: Buddy now ALWAYS uses the first name when known (once in the notification, at the start of the e-mail). Tested with Claude: 3/3 notifications and e-mails start with the name.
 - Plan agreed: step 1 = Stripe live on the website (waiting for: SIRET, contact e-mail, Supabase region, minimum age 15?; owner keeps his home address on the legal page). Step 2 = Google Play via an "organisation" developer account (needs a free D-U-N-S number → avoids the 12 testers / 14 days rule) — owner to request the D-U-N-S now. Step 3 = App Store later (99 €/year, Mac, native features, Apple in-app purchase).
 
+## ⚠️ Supabase free plan: "Log Ingestion" quota exceeded (found 2026-10-05)
+- Cause: the reminder tick (every minute) called `gatherInfo` for EVERY user (3 Supabase requests each) → ~60 requests/min → 1.25 GB of logs/month (quota 1 GB), with only ~19 users.
+- Fix: `runEmailTick` now reads profiles + timed tasks + recent ticks in 3 grouped requests per minute for everyone (`gatherInfo` only runs when a reminder is really sent). Dry-run on the real base OK (17 profiles, 18 timed tasks). To watch: Supabase → Usage next cycle. If Supabase restricts the project before then → Pro plan (25 $/month) or wait for the new cycle.
+- Legal pages filled (2026-10-05): name Aymen Khelifa, entrepreneur individuel (micro-entrepreneur), SIRET "en cours d'attribution" (SIREN probably the same as before: 884 116 856), address Le Mans, contact proaymenkhelifa@gmail.com. Still to fill: Supabase region, minimum age, consumer mediator, withdrawal-right wording.
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

@@ -271,7 +271,15 @@ export async function runEmailTick(supabase, claude) {
   if (!resend && !pushReady) return;
   const { data: usersPage, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   if (error) throw error;
-  const { data: profiles } = await supabase.from("profiles").select("*");
+  // On lit tout ce qu'il faut en QUELQUES demandes groupées (et pas 3 demandes par personne et par minute) :
+  // chaque demande à Supabase est notée dans ses journaux, et la version gratuite n'en accepte qu'1 Go par mois.
+  const since = addDays(dayKey(new Date()), -1); // hier (le "aujourd'hui" de chacun dépend de son fuseau horaire)
+  const [{ data: profiles }, { data: timedTasks }, { data: recentLogs }] = await Promise.all([
+    supabase.from("profiles").select("*"),
+    // seulement les tâches qui ont une heure (les seules qui ont un rappel "5 minutes avant")
+    supabase.from("tasks").select("id, user_id, title, time, days, on_date, created_at, archived_at").is("archived_at", null).not("time", "is", null),
+    supabase.from("task_logs").select("task_id, day").gte("day", since),
+  ]);
 
   // Réglages par défaut (tout activé) pour quelqu'un qui n'a encore rien modifié
   const DEFAULTS = { email_morning: true, morning_time: "08:00", email_evening: true, evening_time: "21:00", email_tasks: true, email_weekly: true };
@@ -311,13 +319,13 @@ export async function runEmailTick(supabase, claude) {
 
       // ⏰ 5 minutes avant chaque tâche du jour qui a une heure (et qui n'est pas déjà faite)
       if (profile.email_tasks) {
-        const { todays } = await gatherInfo(supabase, user.id, today, timezone);
-        for (const task of todays) {
-          if (!task.time || task.done) continue;
+        const mine = withTimeZone(timezone, () =>
+          (timedTasks || []).filter((task) => task.user_id === user.id && isCurrent(task, today) && occursOn(task, today)));
+        for (const task of mine) {
           const start = toMinutes(task.time);
-          if (now >= start - 5 && now < start) {
-            await sendOnce(supabase, claude, base, "task", String(task.id), task);
-          }
+          if (now < start - 5 || now >= start) continue;
+          const done = (recentLogs || []).some((l) => l.task_id === task.id && l.day === today);
+          if (!done) await sendOnce(supabase, claude, base, "task", String(task.id), task);
         }
       }
     } catch (e) {
