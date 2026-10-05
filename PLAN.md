@@ -257,5 +257,11 @@ Known gotchas:
 - Fix: `runEmailTick` now reads profiles + timed tasks + recent ticks in 3 grouped requests per minute for everyone (`gatherInfo` only runs when a reminder is really sent). Dry-run on the real base OK (17 profiles, 18 timed tasks). To watch: Supabase → Usage next cycle. If Supabase restricts the project before then → Pro plan (25 $/month) or wait for the new cycle.
 - Legal pages filled (2026-10-05): name Aymen Khelifa, entrepreneur individuel (micro-entrepreneur), SIRET "en cours d'attribution" (SIREN probably the same as before: 884 116 856), address Le Mans, contact proaymenkhelifa@gmail.com. Still to fill: Supabase region, minimum age, consumer mediator, withdrawal-right wording.
 
+## Database moved to Europe (2026-10-05)
+- Old Supabase project "BUDDY" (bgysoqiolwaamytsbxkh, West US Oregon, free plan over its log quota) → new project "Buddy EU" (jvjaugoasawzlbqyhryt, **West EU Paris**). Created with "Automatically expose new tables" OFF and automatic RLS ON; the server (service_role) is granted access explicitly.
+- Copied with a one-off script (scratchpad `migrate/migrate.cjs`, `pg`): exact table structure read from the old base, auth.users + auth.identities (passwords kept), all 9 tables, foreign keys and id counters, in one transaction. Counts identical (21 accounts, 17 profiles, 15 goals, 36 tasks, 48 ticks, 204 messages, 27 badges, 295 e-mail logs, 3 push subscriptions).
+- Owner switched `.env` + Vercel (SUPABASE_URL / PUBLISHABLE / SECRET), new project Auth: Site URL + redirects, custom SMTP Resend (new key), Confirm email ON. `vercel.json` → functions in Paris (`cdg1`). Users must log in again once.
+- Keep the old project a few days as a backup, then pause/delete it. Remove OLD_DB_URL / NEW_DB_URL from .env when done. Legal pages: region → France (Paris).
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
