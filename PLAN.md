@@ -263,5 +263,10 @@ Known gotchas:
 - Owner switched `.env` + Vercel (SUPABASE_URL / PUBLISHABLE / SECRET), new project Auth: Site URL + redirects, custom SMTP Resend (new key), Confirm email ON. `vercel.json` → functions in Paris (`cdg1`). Users must log in again once.
 - Keep the old project a few days as a backup, then pause/delete it. Remove OLD_DB_URL / NEW_DB_URL from .env when done. Legal pages: region → France (Paris).
 
+## Terms ready for Stripe (2026-10-05)
+- conditions.html: price "9,99 €/mois (TVA non applicable, art. 293 B du CGI)"; payment = card on buddycoach.app via Stripe, managed in Settings → "Gérer mon abonnement"; **withdrawal (my proposal, owner can change)**: 14 days after subscribing — cancel during the trial (nothing charged), or full refund on request by e-mail if already charged within those 14 days. Minimum age 15. Still to fill: consumer mediator. The "Phase de test" note must be removed on launch day (with DEMO_MODE = false).
+- Stripe Checkout: "J'accepte les conditions…" checkbox (`consent_collection.terms_of_service` + custom text FR/EN with the link and the 14 days). If Stripe refuses because the terms URL isn't set in Stripe → opens without the checkbox and logs a warning. Tested in test mode: checkbox present.
+- Launch-day checklist: Stripe account activated (live) → same product "Buddy Premium" 9,99 €/month in LIVE mode (+ image) → Stripe settings (invoice footer "TVA non applicable, art. 293 B du CGI", public details: terms + privacy URLs, support e-mail, statement descriptor BUDDYCOACH, customer e-mails/receipts ON) → owner puts sk_live_ in Vercel STRIPE_SECRET_KEY → I set DEMO_MODE = false + remove the "Phase de test" note + optional promo code for early testers → owner does a real test (subscribe, then cancel during the trial = 0 €).
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
