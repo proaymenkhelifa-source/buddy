@@ -96,6 +96,22 @@
         <img class="shot-desktop reveal"data-src-lang="images/app-desktop-{lang}.jpg" src="images/app-desktop-fr.jpg" width="1280" height="800" loading="lazy" data-i18n-alt="shots.desktopAlt" alt="">
         <img class="shot-phone reveal" style="--d: 0.3s"data-src-lang="images/app-phone-{lang}.jpg" src="images/app-phone-fr.jpg" width="390" height="780" loading="lazy" data-i18n-alt="shots.phoneAlt" alt="">
       </div>
+      <!-- Buddy s'installe comme une appli, sans passer par un store (présenté comme un avantage) -->
+      <div class="get-app reveal" style="--d: 0.15s">
+        <div class="get-app-text">
+          <h3 data-i18n="getapp.title">Sur ton téléphone et ton ordinateur</h3>
+          <p data-i18n="getapp.sub">Installe Buddy en 10 secondes, sans passer par un store. Il a son icône, s'ouvre en plein écran et t'envoie tes rappels.</p>
+          <div class="platforms">
+            <span><i data-lucide="apple-logo"></i> iPhone</span>
+            <span><i data-lucide="android-logo"></i> Android</span>
+            <span><i data-lucide="desktop"></i> <span data-i18n="getapp.desktop">Ordinateur</span></span>
+          </div>
+        </div>
+        <div class="get-app-qr desktop-only">
+          <img src="images/qr-buddy.svg" width="112" height="112" alt="QR code buddycoach.app">
+          <span data-i18n="getapp.scan">Scanne pour l'avoir sur ton téléphone</span>
+        </div>
+      </div>
     </section>
 
     <!-- Gratuit ou Premium ? -->
@@ -592,6 +608,13 @@
             <p class="push-status" id="push-status"></p>
             <div class="inline-form" id="push-actions"></div>
           </section>
+          <section class="card desktop-only phone-card">
+            <img src="images/qr-buddy.svg" width="104" height="104" alt="QR code buddycoach.app">
+            <div>
+              <h3 data-i18n="phone.title">Buddy sur ton téléphone</h3>
+              <p class="muted small" data-i18n="phone.sub">Scanne ce code avec l'appareil photo de ton téléphone : tu installes Buddy et tu reçois tes rappels partout.</p>
+            </div>
+          </section>
           <section class="card" id="email-settings">
             <h3 data-i18n="settings.emails">Tes rappels</h3>
             <p class="muted small" data-i18n="settings.emailsHint">Buddy les écrit lui-même, jamais deux fois pareil, à ton heure. Par notification si elles sont activées, sinon par e-mail.</p>
@@ -778,9 +801,9 @@
       <h2 data-i18n="ios.title">Installer Buddy sur ton iPhone</h2>
       <p class="muted" data-i18n="ios.why">Sur iPhone, les notifications marchent seulement quand Buddy est sur ton écran d'accueil. Ça prend 10 secondes :</p>
       <ol class="ios-steps">
-        <li data-i18n-html="ios.step1">Dans Safari, touche le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut).</li>
-        <li data-i18n-html="ios.step2">Choisis <strong>Sur l'écran d'accueil</strong>, puis <strong>Ajouter</strong>.</li>
-        <li data-i18n-html="ios.step3">Ouvre Buddy depuis sa nouvelle icône, puis touche <strong>Activer les notifications</strong>.</li>
+        <li><span class="ios-num">1</span><span class="ios-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10H6.5A1.5 1.5 0 0 0 5 11.5v8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5H16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span><span data-i18n-html="ios.step1">Dans Safari, touche <strong>Partager</strong>. Tu ne le vois pas ? Touche d'abord <strong>⋯</strong> en bas.</span></li>
+        <li><span class="ios-num">2</span><span class="ios-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 8.5v7M8.5 12h7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span><span data-i18n-html="ios.step2">Choisis <strong>Sur l'écran d'accueil</strong>, puis <strong>Ajouter</strong>.</span></li>
+        <li><span class="ios-num">3</span><span class="ios-icon app"><img src="icons/buddy-192.png" alt=""></span><span data-i18n-html="ios.step3">Ouvre Buddy depuis sa nouvelle icône, puis touche <strong>Activer les notifications</strong>.</span></li>
       </ol>
       <button class="btn btn-primary btn-full" value="ok" data-i18n="ios.ok">Compris 👍</button>
     </form>

@@ -1163,7 +1163,13 @@ html:has(dialog[open]) { overflow: hidden; }
 .push-banner-close { width: 34px; height: 34px; flex: none; }
 .push-status { margin: 12px 0; font-weight: 600; }
 .push-status[data-status="denied"], .push-status[data-status="unsupported"] { color: var(--muted); font-weight: 500; font-size: 0.92rem; }
-.ios-steps { margin: 14px 0 18px; padding-left: 20px; display: grid; gap: 10px; line-height: 1.5; }
+.ios-steps { margin: 14px 0 18px; padding: 0; list-style: none; display: grid; gap: 10px; line-height: 1.45; }
+.ios-steps li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-strong); }
+.ios-num { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--primary); color: var(--navy); font-size: 0.78rem; font-weight: 800; }
+.ios-icon { flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 11px; background: var(--card); border: 1px solid var(--border); color: #0a84ff; }
+.ios-icon svg { width: 24px; height: 24px; }
+.ios-icon.app { padding: 0; overflow: hidden; border: none; }
+.ios-icon.app img { width: 100%; height: 100%; }
 @media (max-width: 700px) {
   .push-banner { flex-wrap: wrap; gap: 10px; }
   .push-banner p { flex-basis: calc(100% - 90px); font-size: 0.92rem; }
@@ -1526,3 +1532,22 @@ html:has(dialog[open]) { overflow: hidden; }
 [data-theme="dark"] .btn-provider.apple { background: #fff; color: #000; border-color: #fff; }
 .auth-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.82rem; margin: 2px 0; }
 .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* ---------- 15. INSTALLER BUDDY (accueil + QR code sur ordinateur) ---------- */
+.get-app {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  max-width: 880px; margin: 34px auto 0; padding: 22px 26px; border: 1px solid var(--border); border-radius: 22px;
+  background: var(--card); box-shadow: var(--shadow-soft, 0 10px 30px rgba(15, 23, 42, 0.06));
+}
+.get-app-text { flex: 1 1 320px; display: grid; gap: 8px; }
+.get-app h3 { font-family: var(--font-display); font-weight: 900; font-size: 1.3rem; }
+.get-app p { margin: 0; color: var(--muted); line-height: 1.5; }
+.platforms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.platforms > span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; background: var(--accent-soft); color: var(--text); font-weight: 700; font-size: 0.86rem; }
+.platforms .lucide { font-size: 16px; }
+.get-app-qr { display: grid; justify-items: center; gap: 6px; max-width: 140px; text-align: center; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+.get-app-qr img, .phone-card img { border-radius: 12px; border: 1px solid var(--border); background: #fff; padding: 4px; }
+.phone-card { display: flex; align-items: center; gap: 18px; }
+.phone-card p { margin: 4px 0 0; }
+/* Le QR code n'a de sens que sur ordinateur (pas sur un téléphone ni une tablette tactile) */
+@media (max-width: 760px), (pointer: coarse) { .desktop-only { display: none !important; } }

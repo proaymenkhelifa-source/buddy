@@ -33,8 +33,8 @@ const EMAIL_FORM = {
   properties: {
     sujet: { type: "string", description: "Objet de l'e-mail : précis et personnel, 45 caractères max" },
     message: { type: "string", description: "Le texte de l'e-mail, 2 à 5 phrases, paragraphes séparés par une ligne vide" },
-    notif_titre: { type: "string", description: "Titre de la notification du téléphone : 35 caractères max, précis" },
-    notif_texte: { type: "string", description: "Texte de la notification : UNE phrase, 90 caractères max, qui donne envie d'ouvrir" },
+    notif_titre: { type: "string", description: "Titre de la notification du téléphone : 35 caractères max, précis (avec son prénom, s'il est connu et pas déjà dans le texte)" },
+    notif_texte: { type: "string", description: "Texte de la notification : UNE phrase, 90 caractères max, qui donne envie d'ouvrir (avec son prénom, s'il est connu et pas déjà dans le titre)" },
   },
   required: ["sujet", "message", "notif_titre", "notif_texte"],
   additionalProperties: false,
@@ -104,6 +104,9 @@ LE TON (très important) :
 - Même en style bienveillant : chaleureux mais adulte, jamais infantilisant.
 
 L'OBJET ET LA NOTIFICATION (c'est ce qui décide si la personne ouvre) :
+${profile.first_name
+    ? `- OBLIGATOIRE : son prénom est ${profile.first_name}. Il apparaît TOUJOURS dans la notification (une seule fois : dans le titre OU dans le texte), et la première phrase de l'e-mail commence par lui (ex : « ${profile.first_name}, il te reste la lecture ce soir. »). C'est ce qui fait sentir que Buddy la connaît. Varie sa place d'un message à l'autre (début du titre, début ou fin du texte).`
+    : "- Son prénom n'est pas connu : n'en invente pas, et ne mets pas de formule du type « Salut toi »."}
 - Précis et personnel : ils contiennent un vrai élément de sa journée (le nom de la tâche, l'heure, un chiffre). Exemples de l'esprit attendu (ne les recopie pas) : « 18h : ta séance de course », « 2 sur 3 aujourd'hui. Et la lecture ? », « 5 jours d'affilée. On garde le rythme ».
 - Donne envie d'ouvrir par la curiosité ou l'enjeu, jamais par le racolage (pas de « Tu ne devineras jamais », pas de « Urgent »).
 - La notification se comprend seule, en un coup d'œil sur l'écran verrouillé.

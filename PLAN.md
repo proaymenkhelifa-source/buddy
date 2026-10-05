@@ -245,5 +245,12 @@ Known gotchas:
 - ⏳ Owner setup: **Google** (free) = Google Cloud OAuth client (Web) with redirect URI `https://<project>.supabase.co/auth/v1/callback` → paste Client ID + secret in Supabase → Authentication → Providers → Google. Supabase → Authentication → URL Configuration: Site URL https://buddycoach.app, redirect URLs https://buddycoach.app/** and http://localhost:3000/**. **Apple** needs the Apple Developer Program (99 €/year) → later, with the App Store app (Apple requires it there anyway if Google sign-in is offered).
 - Also fixed (2026-10-03): dialogs taller than the screen now scroll (the Premium screen got too tall), and the page behind no longer moves.
 
+## Install & credibility + personal notifications (2026-10-05)
+- Home page: block "Sur ton téléphone et ton ordinateur" under the screenshots (installing without a store presented as an advantage, iPhone / Android / Ordinateur chips) + a **QR code** on computers (`public/images/qr-buddy.svg` → https://buddycoach.app/?src=qr, so scans show up as source "qr"). Settings (computer only): "Buddy sur ton téléphone" card with the same QR. `.desktop-only` hides them on phones/tablets.
+- iPhone install guide redrawn with the real iOS icons (Share, Add to Home Screen, Buddy icon) and the iOS 26 tip (tap ⋯ first if Share isn't visible).
+- Mentions légales: `noindex` (still reachable from the site, as the law requires, but not shown in Google results — the owner's home address is there).
+- Notifications & e-mails: Buddy now ALWAYS uses the first name when known (once in the notification, at the start of the e-mail). Tested with Claude: 3/3 notifications and e-mails start with the name.
+- Plan agreed: step 1 = Stripe live on the website (waiting for: SIRET, contact e-mail, Supabase region, minimum age 15?; owner keeps his home address on the legal page). Step 2 = Google Play via an "organisation" developer account (needs a free D-U-N-S number → avoids the 12 testers / 14 days rule) — owner to request the D-U-N-S now. Step 3 = App Store later (99 €/year, Mac, native features, Apple in-app purchase).
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
