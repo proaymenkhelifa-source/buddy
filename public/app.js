@@ -140,6 +140,21 @@ function clearAllDrafts() {
   try { for (const k of Object.keys(localStorage)) if (k.startsWith(DRAFT_PREFIX)) localStorage.removeItem(k); } catch (e) {}
 }
 
+// L'APPLI ANDROID (Google Play) : Buddy y est ouvert par l'appli du store, avec ?src=play.
+// Là-bas, Google interdit de vendre un abonnement autrement qu'avec son propre système : dans ce "mode store",
+// on n'affiche ni prix ni bouton de paiement. Les abonnés du site gardent bien sûr Premium en se connectant.
+// Lu AVANT que l'étiquette ?src= soit retirée de l'adresse (juste en dessous).
+// (Mémorisé pour la session seulement : le site ouvert dans Chrome, lui, n'est jamais concerné.)
+const STORE_MODE = (() => {
+  try {
+    if (new URLSearchParams(location.search).get("src") === "play" || document.referrer.startsWith("android-app://")) {
+      sessionStorage.setItem("buddy-store", "play");
+    }
+    return sessionStorage.getItem("buddy-store") === "play";
+  } catch (e) { return false; }
+})();
+document.documentElement.classList.toggle("store-mode", STORE_MODE);
+
 // =============================================================
 // D'OÙ VIENT LA PERSONNE ? (pour savoir quel réseau social amène des inscrits)
 // Chaque réseau a son lien : buddycoach.app/?src=insta-fr, ?src=tiktok-en…
@@ -2354,7 +2369,7 @@ async function choosePlan(plan) {
   const short = dialog.classList.contains("short");
   dialog.close();
   // Paiements branchés : Premium = la page de paiement de Stripe (on y part, la suite se passe au retour)
-  if (plan === "premium" && state?.payments) {
+  if (plan === "premium" && (state?.payments || STORE_MODE)) {
     if (await startCheckout()) return;
     plan = "free"; // la page de paiement n'a pas pu s'ouvrir : on continue en gratuit
   }
@@ -2597,6 +2612,7 @@ $("launch-more").addEventListener("click", () => { $("launch-dialog").close(); s
 
 // Ouvre la page de paiement sécurisée de Stripe. Renvoie false si elle n'a pas pu s'ouvrir.
 async function startCheckout() {
+  if (STORE_MODE) return false; // appli Google Play : pas de paiement Stripe (voir STORE_MODE)
   try { localStorage.setItem("buddy-plan-asked", "1"); } catch (e) {}
   toast(t("premium.redirect"));
   const result = await api("POST", "/api/checkout", {}).catch(() => ({}));

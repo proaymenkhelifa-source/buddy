@@ -79,6 +79,17 @@ app.use(express.static("public"));
 const INDEX_FILE = new URL("./public/index.html", import.meta.url);
 app.get("/", (req, res) => res.type("html").send(fs.readFileSync(INDEX_FILE, "utf-8")));
 
+// GOOGLE PLAY : le fichier qui prouve que l'appli Android et buddycoach.app sont au même propriétaire
+// (sinon l'appli s'ouvre avec une barre d'adresse en haut). À remplir une fois l'appli créée sur la Play Console :
+// le nom du paquet et l'empreinte SHA-256 de la clé de signature (ce ne sont PAS des secrets).
+const ANDROID_APP = { package: null, sha256: [] };
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.json(ANDROID_APP.package && ANDROID_APP.sha256.length ? [{
+    relation: ["delegate_permission/common.handle_all_urls"],
+    target: { namespace: "android_app", package_name: ANDROID_APP.package, sha256_cert_fingerprints: ANDROID_APP.sha256 },
+  }] : []);
+});
+
 // La page a besoin de l'adresse Supabase et de la clé PUBLIQUE pour gérer les connexions.
 // La clé publique ("publishable") est faite pour être visible : elle n'ouvre pas nos tableaux.
 app.get("/api/config", (req, res) => {

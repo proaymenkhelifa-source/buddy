@@ -9,8 +9,70 @@
   "background_color": "#f8fafc",
   "theme_color": "#f8fafc",
   "icons": [
-    { "src": "/icons/buddy-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/buddy-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/buddy-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/buddy-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/buddy-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/buddy-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "lang": "fr",
+  "dir": "ltr",
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "health"
+  ],
+  "screenshots": [
+    {
+      "src": "/images/app-phone-fr.jpg",
+      "sizes": "780x1560",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Discuter avec Buddy, ton coach"
+    },
+    {
+      "src": "/images/app-desktop-fr.jpg",
+      "sizes": "2560x1600",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Ta journée, tes objectifs et ta série"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mes objectifs",
+      "url": "/?src=raccourci#objectifs",
+      "icons": [
+        {
+          "src": "/icons/buddy-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Outils",
+      "url": "/?src=raccourci#outils",
+      "icons": [
+        {
+          "src": "/icons/buddy-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

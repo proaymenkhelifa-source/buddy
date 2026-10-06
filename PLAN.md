@@ -276,11 +276,18 @@ Known gotchas:
 
 ## ⏳ TO DO — owner (as of 2026-10-06)
 - [ ] **Consumer mediator (mandatory)**: join **SMP – Société de la Médiation Professionnelle** (checked: on the official CECMC list; 30 € TTC for 3 years for a micro-entreprise < 60 k€; a mediation case = 150 € HT simple / 350 € HT complex). Needs the SIREN → sign up at https://www.mediateur-consommation-smp.fr/designer-mediateur-professionnel/ → then tell Claude to add to conditions.html: "Société de la Médiation Professionnelle (SMP), www.mediateur-consommation-smp.fr, Alteritae, 5 rue Salvaing, 12000 Rodez". One membership covers the whole business (other apps too; B2B website clients don't need it).
-- [ ] SIRET → legal pages (mentions légales) + Stripe if asked.
+- [x] SIRET **884 116 856 00029** (SIREN 884 116 856, APE 58.29C "Édition de logiciels applicatifs", RNE 05/10/2026, nature "libérale non réglementée") → in the mentions légales (2026-10-06). SIREN active → D-U-N-S and SMP can be done now.
 - [ ] Real payment test on buddycoach.app (subscribe with own card, then cancel during the trial = 0 €).
 - [ ] Launch announcement (e-mail to 19 confirmed accounts + 2 push): ready (`scratchpad/announce.mjs`), waiting for the owner's "envoie".
 - [ ] D-U-N-S number (free, needs the SIREN) → Google Play "organisation" account (no 12 testers / 14 days rule).
 - [ ] Later: Google sign-in; pause the old Supabase project (Oregon) + remove OLD_DB_URL / NEW_DB_URL from .env.
+
+## Google Play preparation (2026-10-06) — nothing changes for the website
+- Offline page `public/offline.html` (FR/EN, Buddy relax, auto-reload when back online) cached by `sw.js`, which now answers ONLY page navigations that fail (everything else goes to the network as before).
+- Manifest: lang, categories (productivity, lifestyle, health), 2 screenshots (narrow + wide), 2 shortcuts (Mes objectifs, Outils).
+- `/.well-known/assetlinks.json` served by server.js from `ANDROID_APP` (package name + SHA-256 of the Play signing key, both public) → to fill once the app exists in the Play Console (otherwise the app shows an address bar). Empty list until then.
+- **Store mode** (`STORE_MODE` in app.js): when Buddy is opened by the Android app (`?src=play` start URL or `android-app://` referrer) → no prices, no plans section, no trial pill, no Stripe checkout, no "Gérer mon abonnement"; the Premium screen says "Premium arrive bientôt dans l'appli Android" (Google requires its own billing for in-app subscriptions). Kept for the session only (sessionStorage) so Chrome on the same phone is never affected. Web subscribers still get Premium when logging in. Sign-ups from the app are counted as source "play".
+- Next: D-U-N-S (with SIREN 884116856) → Play Console "Organisation" account (25 $) → build the Android package with pwabuilder.com (start URL `/?src=play`, keep the signing key safe!) → fill ANDROID_APP → store listing (texts FR/EN, screenshots 1080×1920, feature graphic 1024×500, data safety form, content rating). Later: Google Play Billing for in-app Premium.
 
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

@@ -32,6 +32,20 @@ self.addEventListener("notificationclick", (event) => {
   })());
 });
 
-// Rien de spécial à l'installation : Buddy a toujours besoin d'Internet (pas de mode hors ligne pour l'instant)
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+// HORS CONNEXION : Buddy a besoin d'Internet, mais s'il s'ouvre sans réseau, on affiche une jolie page
+// "Pas de connexion" (gardée en mémoire à l'installation) au lieu de l'écran d'erreur du navigateur.
+const OFFLINE_CACHE = "buddy-offline-v1";
+const OFFLINE_FILES = ["/offline.html", "/buddy/relax.webp", "/icons/buddy-bubble.svg"];
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(OFFLINE_CACHE).then((cache) => cache.addAll(OFFLINE_FILES)).catch(() => {}));
+  self.skipWaiting();
+});
+self.addEventListener("activate", (event) => event.waitUntil((async () => {
+  for (const key of await caches.keys()) if (key !== OFFLINE_CACHE) await caches.delete(key);
+  await self.clients.claim();
+})()));
+// Seulement l'ouverture des PAGES, et seulement si Internet ne répond pas. Tout le reste passe normalement.
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode !== "navigate") return;
+  event.respondWith(fetch(event.request).catch(async () => (await caches.match("/offline.html")) || Response.error()));
+});
