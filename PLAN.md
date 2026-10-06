@@ -274,5 +274,13 @@ Known gotchas:
 - Premium rule (`hasPremium` in shared.js): a Stripe subscription (active / trialing / past_due) OR a gift: `premium_until` in the future and never subscribed (`giftUntil`). Stripe sync keeps the gift if the person never subscribed.
 - **Testers' gift (owner's choice)**: all 21 accounts existing at launch got `premium_until = 2026-10-19 23:59 Paris`. In-app one-time announcement "Buddy est officiellement lancé 🎉 … Premium offert jusqu'au 19 octobre" (`launch-dialog`), Settings shows "Premium offert jusqu'au…", subscribe button stays visible. To gift Premium to someone later: set their `premium_until`.
 
+## ⏳ TO DO — owner (as of 2026-10-06)
+- [ ] **Consumer mediator (mandatory)**: join **SMP – Société de la Médiation Professionnelle** (checked: on the official CECMC list; 30 € TTC for 3 years for a micro-entreprise < 60 k€; a mediation case = 150 € HT simple / 350 € HT complex). Needs the SIREN → sign up at https://www.mediateur-consommation-smp.fr/designer-mediateur-professionnel/ → then tell Claude to add to conditions.html: "Société de la Médiation Professionnelle (SMP), www.mediateur-consommation-smp.fr, Alteritae, 5 rue Salvaing, 12000 Rodez". One membership covers the whole business (other apps too; B2B website clients don't need it).
+- [ ] SIRET → legal pages (mentions légales) + Stripe if asked.
+- [ ] Real payment test on buddycoach.app (subscribe with own card, then cancel during the trial = 0 €).
+- [ ] Launch announcement (e-mail to 19 confirmed accounts + 2 push): ready (`scratchpad/announce.mjs`), waiting for the owner's "envoie".
+- [ ] D-U-N-S number (free, needs the SIREN) → Google Play "organisation" account (no 12 testers / 14 days rule).
+- [ ] Later: Google sign-in; pause the old Supabase project (Oregon) + remove OLD_DB_URL / NEW_DB_URL from .env.
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
