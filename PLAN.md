@@ -279,7 +279,7 @@ Known gotchas:
 - [x] SIRET **884 116 856 00029** (SIREN 884 116 856, APE 58.29C "Édition de logiciels applicatifs", RNE 05/10/2026, nature "libérale non réglementée") → in the mentions légales (2026-10-06). SIREN active → D-U-N-S and SMP can be done now.
 - [ ] Real payment test on buddycoach.app (subscribe with own card, then cancel during the trial = 0 €).
 - [ ] Launch announcement (e-mail to 19 confirmed accounts + 2 push): ready (`scratchpad/announce.mjs`), waiting for the owner's "envoie".
-- [ ] D-U-N-S number (free, needs the SIREN) → Google Play "organisation" account (no 12 testers / 14 days rule).
+- [~] D-U-N-S requested on 2026-10-06 via Apple's lookup tool (Aymen KHELIFA, 8 rue Jean Francois La Perouse, 72000 Le Mans) → wait for the e-mail (a few days) → Google Play "organisation" account (25 $, no 12 testers / 14 days rule).
 - [ ] Later: Google sign-in; pause the old Supabase project (Oregon) + remove OLD_DB_URL / NEW_DB_URL from .env.
 
 ## Google Play preparation (2026-10-06) — nothing changes for the website
