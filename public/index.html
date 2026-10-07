@@ -361,6 +361,25 @@
             </div>
           </a>
 
+          <!-- 🧠 LE VIDE-TÊTE (Premium) sur l'accueil : tout le monde voit à quoi il sert (flouté en gratuit) -->
+          <section class="card home-dump" id="home-dump">
+            <div class="card-title">
+              <span class="title-icon" style="--c: var(--violet)"><i data-lucide="brain"></i></span>
+              <div><h3><span data-i18n="dump.title">Vide-tête</span> <span class="premium-tag"><i data-lucide="crown"></i> Premium</span></h3>
+                <p class="muted small" data-i18n="home.dumpSub">Trop de choses en tête ? Écris tout en vrac, Buddy en fait ton planning.</p></div>
+            </div>
+            <div class="home-dump-zone">
+              <div class="home-dump-body">
+                <textarea id="home-dump-text" rows="3" maxlength="3000" data-i18n-ph="dump.ph" placeholder="Ex : appeler la banque, réviser le chapitre 3 avant jeudi…"></textarea>
+                <button class="btn btn-primary" id="home-dump-go"><i data-lucide="sparkle"></i> <span data-i18n="dump.go">Organiser avec Buddy</span></button>
+              </div>
+              <div class="locked-overlay">
+                <span class="premium-tag big"><i data-lucide="crown"></i> Premium</span>
+                <button class="btn btn-primary" id="home-dump-unlock"><span data-i18n="dump.unlock">Débloquer avec Premium</span> <i data-lucide="arrow-right"></i></button>
+              </div>
+            </div>
+          </section>
+
           <!-- MES CATÉGORIES -->
           <section class="card cats-card">
             <div class="card-head">
@@ -462,6 +481,7 @@
           </div>
         </header>
         <div class="tools-grid">
+        <div class="tools-col">
         <section class="card focus-card">
           <div class="card-head"><div class="card-title">
             <span class="title-icon" style="--c: var(--accent)"><i data-lucide="timer"></i></span>
@@ -507,6 +527,8 @@
           </div>
         </section>
 
+        </div>
+        <div class="tools-col">
         <!-- 🚫 JOURS SANS : compteurs pour arrêter une mauvaise habitude (gratuit) -->
         <section class="card tool-card" id="quit-card">
           <div class="card-head">
@@ -552,6 +574,7 @@
             </div>
           </form>
         </section>
+        </div>
         </div>
       </main>
 

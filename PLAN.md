@@ -289,5 +289,12 @@ Known gotchas:
 - **Store mode** (`STORE_MODE` in app.js): when Buddy is opened by the Android app (`?src=play` start URL or `android-app://` referrer) → no prices, no plans section, no trial pill, no Stripe checkout, no "Gérer mon abonnement"; the Premium screen says "Premium arrive bientôt dans l'appli Android" (Google requires its own billing for in-app subscriptions). Kept for the session only (sessionStorage) so Chrome on the same phone is never affected. Web subscribers still get Premium when logging in. Sign-ups from the app are counted as source "play".
 - Next: D-U-N-S (with SIREN 884116856) → Play Console "Organisation" account (25 $) → build the Android package with pwabuilder.com (start URL `/?src=play`, keep the signing key safe!) → fill ANDROID_APP → store listing (texts FR/EN, screenshots 1080×1920, feature graphic 1024×500, data safety form, content rating). Later: Google Play Billing for in-app Premium.
 
+## Owner's iPad feedback (2026-10-08)
+- Task dialog: "Heure" and "Objectif lié" overlapped on iPad Safari (time inputs have a minimum width there) → `.form-row > * { min-width: 0 }` + iOS-only `appearance: none` on time/date inputs.
+- Outils: odd line on iPad = Safari clipping card shadows in CSS multi-columns → replaced by two real columns (`.tools-col`).
+- Mes objectifs: all category filters on ONE scrollable row; category emojis replaced everywhere by the home page category icons (`catIcon`): filters, goal category picker, chat topic chips, chat topic label; plain text in <select> options; no emojis in "Bilan de la semaine" / "Nouvel objectif" chips.
+- Home page: Vide-tête card (`#home-dump`) between "Cette semaine" and "Mes catégories" (desktop: next to the week card; categories now full width, 7 per row) — free: blurred example + Premium badge + "Débloquer avec Premium"; Premium: write → goes to Outils and Buddy proposes the tasks (confirmation as before).
+- Chat: "Nouvelle conversation" (and the after-a-break topics) now starts on an EMPTY screen like ChatGPT; older messages stay saved (Buddy remembers) and "Voir la conversation précédente" shows them again (`buddy-chat-start` in the browser). The "On reprend…" home card reopens the whole conversation.
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).

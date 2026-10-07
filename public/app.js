@@ -601,6 +601,8 @@ const activeTasks = () => state.tasks.filter((t) => isCurrent(t, today())); // t
 const todayTasks = () => activeTasks().filter((t) => occursOn(t, today())); // celles d'aujourd'hui
 const goalById = (id) => state.goals.find((g) => g.id === id);
 const catOf = (goal) => CATEGORIES[goal?.category] || CATEGORIES.quotidien;
+// L'icône d'une catégorie (la même que sur l'accueil), à la place des emojis
+const catIcon = (cat) => `<i data-lucide="${cat.icon}" class="chip-ico" style="--c:${cat.color}"></i>`;
 const isDoneToday = (task) => state.logs.some((l) => l.task_id === task.id && l.day === today());
 let stats = null;
 let goalFilter = "toutes";
@@ -896,7 +898,7 @@ function renderGoalsPage() {
   // Les compteurs des filtres comptent aussi les brouillons (ils sont sur cette page)
   const all = state.goals.concat(state.drafts);
   const chips = [["toutes", t("filter.all"), all.length]].concat(
-    Object.entries(CATEGORIES).map(([key, cat]) => [key, `${cat.emoji} ${cat.label}`, all.filter((g) => g.category === key).length])
+    Object.entries(CATEGORIES).map(([key, cat]) => [key, `${catIcon(cat)}${cat.label}`, all.filter((g) => g.category === key).length])
   );
   $("goal-filters").innerHTML = chips
     .map(([key, label, count]) => `<button class="chip ${goalFilter === key ? "active" : ""}" data-filter="${key}">${label} <span class="muted">${count}</span></button>`)
@@ -1398,8 +1400,9 @@ let pickedCategory = "sport";
 
 function drawCategoryPicker() {
   $("cat-picker").innerHTML = Object.entries(CATEGORIES)
-    .map(([key, cat]) => `<button type="button" class="chip ${key === pickedCategory ? "active" : ""}" data-pick="${key}">${cat.emoji} ${cat.label}</button>`)
+    .map(([key, cat]) => `<button type="button" class="chip ${key === pickedCategory ? "active" : ""}" data-pick="${key}">${catIcon(cat)}${cat.label}</button>`)
     .join("");
+  drawIcons();
 }
 $("cat-picker").addEventListener("click", (e) => {
   const chip = e.target.closest("[data-pick]");
@@ -1516,11 +1519,11 @@ function openTaskDialog(task, goalId = null, onDate = null) {
   const form = $("task-form");
   form.reset();
   $("task-goal-select").innerHTML = `<option value="">${t("task.noGoal")}</option>` +
-    state.goals.map((g) => `<option value="${g.id}">${catOf(g).emoji} ${esc(g.text)}</option>`).join("") +
+    state.goals.map((g) => `<option value="${g.id}">${esc(g.text)}</option>`).join("") +
     `<option value="new">＋ ${t("task.newGoalOption")}</option>`;
   // Les catégories du nouvel objectif (toutes, "Autre" comprise)
   $("task-new-goal-cat").innerHTML = Object.entries(CATEGORIES)
-    .map(([key, c]) => `<option value="${key}">${c.emoji} ${esc(c.label)}</option>`).join("");
+    .map(([key, c]) => `<option value="${key}">${esc(c.label)}</option>`).join("");
   form.title.value = task?.title || "";
   form.time.value = task?.time || "";
   form.goalId.value = String(task?.goal_id || goalId || "");
@@ -1570,7 +1573,7 @@ $("task-form").addEventListener("submit", async (event) => {
     goalId = created.id;
     // Déjà créé : on le sélectionne dans la liste (si la tâche échoue, on ne le recrée pas une 2e fois)
     const cat = CATEGORIES[form.newGoalCategory.value];
-    form.goalId.querySelector('[value="new"]').before(new Option(`${cat.emoji} ${form.newGoalText.value.trim()}`, String(goalId)));
+    form.goalId.querySelector('[value="new"]').before(new Option(form.newGoalText.value.trim(), String(goalId)));
     form.goalId.value = String(goalId);
     form.newGoalText.value = "";
     drawNewGoal();
@@ -1832,11 +1835,39 @@ function closeChat() {
   if (state) $("buddy-fab").classList.remove("hidden");
 }
 $("open-chat").addEventListener("click", () => openChat());
-$("resume-card").addEventListener("click", () => openChat()); // toute la carte (et son bouton) ouvre la discussion
+// "On reprend où on s'était arrêtés ?" : toute la carte rouvre la discussion EN ENTIER (y compris la précédente)
+$("resume-card").addEventListener("click", () => { renderChatHistory(true); openChat(true); });
 $("buddy-fab").addEventListener("click", () => openChat());
 $("close-chat").addEventListener("click", closeChat);
 $("drawer-backdrop").addEventListener("click", closeChat);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeChat(); });
+
+// --- LES CONVERSATIONS ---
+// "Nouvelle conversation" repart sur un écran vide, comme ChatGPT. Les anciens messages restent enregistrés
+// (Buddy s'en souvient) et le bouton "Voir la conversation précédente" les réaffiche.
+const CHAT_START_KEY = "buddy-chat-start";
+let chatStart = (() => { try { return localStorage.getItem(CHAT_START_KEY); } catch (e) { return null; } })();
+function renderChatHistory(showAll = false) {
+  chat.innerHTML = "";
+  const older = chatStart ? state.messages.filter((m) => m.created_at < chatStart) : [];
+  const shown = showAll ? state.messages : state.messages.filter((m) => !chatStart || m.created_at >= chatStart);
+  if (!showAll && older.length) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chat-previous";
+    button.innerHTML = `<i data-lucide="clock-counter-clockwise"></i> ${t("chat.previous")}`;
+    button.addEventListener("click", () => { renderChatHistory(true); chat.scrollTop = 0; });
+    chat.appendChild(button);
+    drawIcons();
+  }
+  for (const m of shown) showMessage(m.content, m.role === "user" ? "user" : "buddy");
+}
+function startFreshChat() {
+  if (!state?.messages.length) return; // rien à cacher
+  chatStart = new Date().toISOString();
+  try { localStorage.setItem(CHAT_START_KEY, chatStart); } catch (e) {}
+  renderChatHistory();
+}
 
 // --- "Alors, on travaille sur quoi aujourd'hui ?" ---
 // Proposé quand on revient après une pause (plus de 2 h sans message), une fois par visite.
@@ -1849,16 +1880,18 @@ function shouldOfferTopics() {
 function offerTopics() {
   topicsOffered = true;
   removeChoices();
+  startFreshChat(); // on repart sur un écran vide (l'ancienne discussion reste accessible)
   const name = state.profile.firstName ? " " + state.profile.firstName : "";
   showMessage(t("topics.ask", { name }), "buddy");
   const box = document.createElement("div");
   box.className = "choices";
   box.innerHTML = state.goals.length
-    ? state.goals.slice(0, 6).map((g) => `<button class="chip" data-topic="${g.id}">${catOf(g).emoji} ${esc(g.text)}</button>`).join("") +
-      `<button class="chip" data-topic="review">${t("topics.review")}</button>` +
-      `<button class="chip" data-topic="new">${t("topics.new")}</button>`
-    : Object.entries(CATEGORIES).map(([key, cat]) => `<button class="chip" data-topic-cat="${key}">${cat.emoji} ${cat.label}</button>`).join("");
+    ? state.goals.slice(0, 6).map((g) => `<button class="chip" data-topic="${g.id}">${catIcon(catOf(g))}${esc(g.text)}</button>`).join("") +
+      `<button class="chip" data-topic="review"><i data-lucide="compass" class="chip-ico"></i>${t("topics.review")}</button>` +
+      `<button class="chip" data-topic="new"><i data-lucide="plus" class="chip-ico"></i>${t("topics.new")}</button>`
+    : Object.entries(CATEGORIES).map(([key, cat]) => `<button class="chip" data-topic-cat="${key}">${catIcon(cat)}${cat.label}</button>`).join("");
   $("chat").appendChild(box);
+  drawIcons();
   $("chat").scrollTop = $("chat").scrollHeight;
   showEmotion("neutral", false);
 }
@@ -1906,7 +1939,7 @@ $("new-topic").addEventListener("click", () => {
 function renderTopic() {
   const goal = currentTopic && state && (goalById(currentTopic) || draftById(currentTopic));
   $("topic-chip").classList.toggle("hidden", !goal);
-  if (goal) $("topic-text").textContent = `${catOf(goal).emoji} ${goal.text}`;
+  if (goal) { $("topic-text").innerHTML = catIcon(catOf(goal)) + esc(goal.text); drawIcons(); }
   // Le sujet (ou le style de coaching) a changé → Buddy change de tenue si besoin
   const outfit = OUTFITS[currentOutfit()] ? currentOutfit() : null;
   if (state && outfit !== shownOutfit) showEmotion(currentEmotion, false);
@@ -2400,6 +2433,7 @@ function renderTools() {
   $("quit-list").innerHTML = quits.length ? quits.map(quitHtml).join("") : `<p class="empty">${t("quit.empty")}</p>`;
   $("pot-list").innerHTML = pots.length ? pots.map(potHtml).join("") : `<p class="empty">${t("pot.empty")}</p>`;
   renderDumpLock();
+  renderHomeDump();
 }
 
 // Un compteur "Jours sans" : le nombre de jours, la barre jusqu'au prochain palier, le record et ce qui a été gagné
@@ -2557,6 +2591,24 @@ function renderDumpLock() {
 }
 
 $("dump-unlock").addEventListener("click", () => showPremium("braindump"));
+$("home-dump-unlock").addEventListener("click", () => showPremium("braindump"));
+// Sur l'accueil : on écrit, et on part dans Outils où Buddy propose les tâches (à valider avant ajout)
+$("home-dump-go").addEventListener("click", () => {
+  if (!hasPremium(state.profile)) return showPremium("braindump");
+  const text = $("home-dump-text").value.trim();
+  if (!text) return $("home-dump-text").focus();
+  $("dump-text").value = text;
+  $("home-dump-text").value = "";
+  location.hash = "#outils";
+  setTimeout(() => { $("dump-card").scrollIntoView({ block: "start", behavior: "smooth" }); $("dump-go").click(); }, 150);
+});
+let homeDumpExample = false;
+function renderHomeDump() {
+  const locked = !hasPremium(state.profile);
+  $("home-dump").classList.toggle("locked", locked);
+  if (locked && !homeDumpExample) { homeDumpExample = true; $("home-dump-text").value = t("dump.exampleText"); }
+  else if (!locked && homeDumpExample) { homeDumpExample = false; $("home-dump-text").value = ""; }
+}
 $("dump-go").addEventListener("click", async () => {
   if (!hasPremium(state.profile)) return showPremium("braindump");
   const text = $("dump-text").value.trim();
@@ -2727,7 +2779,7 @@ async function loadMyBuddy(newSession) {
     api("PATCH", "/api/profile", { timezone }).catch((e) => console.error("Fuseau horaire :", e));
   }
 
-  for (const m of state.messages) showMessage(m.content, m.role === "user" ? "user" : "buddy");
+  renderChatHistory(); // la conversation en cours (une "nouvelle conversation" cache les plus anciennes)
 
   const lastReply = state.messages.filter((m) => m.role === "assistant").pop();
   if (lastReply) {
