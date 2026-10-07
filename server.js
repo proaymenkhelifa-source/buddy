@@ -13,7 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import {
   CATEGORIES, MAX_TASKS, MAX_MESSAGES_PER_DAY, HISTORY_DAYS, BADGES, APP_VERSION,
-  DEMO_MODE, FREE_LIMITS, hasPremium, taskLimitFor, messageLimitFor, styleAllowed, bonusJokersFor,
+  DEMO_MODE, FREE_LIMITS, hasPremium, isSubscribed, giftUntil, taskLimitFor, messageLimitFor, styleAllowed, bonusJokersFor,
   dayKey, addDays, computeStats, occursOn, isCurrent, scheduleLabel, dailyLimitError, religionRule, badgeFacts,
   goalProgress, goalWeek, withTimeZone, isoDay, DAY_LONG,
 } from "./public/shared.js";
@@ -82,7 +82,12 @@ app.get("/", (req, res) => res.type("html").send(fs.readFileSync(INDEX_FILE, "ut
 // GOOGLE PLAY : le fichier qui prouve que l'appli Android et buddycoach.app sont au même propriétaire
 // (sinon l'appli s'ouvre avec une barre d'adresse en haut). À remplir une fois l'appli créée sur la Play Console :
 // le nom du paquet et l'empreinte SHA-256 de la clé de signature (ce ne sont PAS des secrets).
-const ANDROID_APP = { package: null, sha256: [] };
+// sha256 : la clé PWABuilder (07/10/2026). Quand Google Play signe l'appli lui-même (Play App Signing),
+// ajouter AUSSI l'empreinte affichée dans Play Console → Intégrité de l'application → Signature de l'application.
+const ANDROID_APP = {
+  package: "app.buddycoach.buddy",
+  sha256: ["FC:55:6B:41:43:56:28:BE:74:B7:1D:FD:C3:47:74:9D:EA:CA:0F:BF:FC:31:2D:25:93:2A:C8:E4:FB:02:EE:66"],
+};
 app.get("/.well-known/assetlinks.json", (req, res) => {
   res.json(ANDROID_APP.package && ANDROID_APP.sha256.length ? [{
     relation: ["delegate_permission/common.handle_all_urls"],
@@ -1260,6 +1265,102 @@ ${religionRule(goals)}
   } catch (error) {
     console.error("Phrases du jour :", error.message);
     res.json({ short: tr(req, "quote.short"), long: tr(req, "quote.long") }); // en cas de souci : les phrases par défaut
+  }
+});
+
+// =============================================================
+// LA PAGE ADMIN (tableau de bord du propriétaire : qui s'inscrit, d'où il vient)
+// Réservée aux adresses écrites dans ADMIN_EMAILS (fichier .env et réglages Vercel),
+// séparées par des virgules. Personne d'autre ne peut lire ces données.
+// =============================================================
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean);
+
+// Le "videur" de l'admin : d'abord connecté (requireUser), puis l'adresse doit être dans la liste.
+function requireAdmin(req, res, next) {
+  if (!ADMIN_EMAILS.includes((req.user.email || "").toLowerCase())) {
+    return res.status(403).json({ error: "Accès réservé à l'administrateur." });
+  }
+  next();
+}
+
+// Supabase renvoie au maximum 1000 lignes à la fois : on lit page par page jusqu'au bout.
+async function readAll(table, columns, filter = (q) => q) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const page = check(await filter(supabase.from(table).select(columns)).range(from, from + 999));
+    rows.push(...page);
+    if (page.length < 1000) return rows;
+  }
+}
+
+// Tous les comptes (e-mail, date d'inscription, dernière connexion), page par page aussi.
+async function allAccounts() {
+  const users = [];
+  for (let page = 1; ; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    users.push(...data.users);
+    if (data.users.length < 1000) return users;
+  }
+}
+
+// Petit compteur : bump(map, clé) ajoute 1 à la case "clé".
+const bump = (map, key) => map.set(key, (map.get(key) || 0) + 1);
+// Garde la date la plus récente
+const latest = (map, key, date) => { if (date && !(map.get(key) >= date)) map.set(key, date); };
+
+// La page admin elle-même (le fichier est dans public/, mais on lui donne une adresse simple : /admin)
+const ADMIN_FILE = new URL("./public/admin.html", import.meta.url);
+app.get("/admin", (req, res) => res.type("html").send(fs.readFileSync(ADMIN_FILE, "utf-8")));
+
+app.get("/api/admin/users", requireUser, requireAdmin, async (req, res) => {
+  try {
+    const [accounts, profiles, goals, tasks, messages, logs] = await Promise.all([
+      allAccounts(),
+      readAll("profiles", "*"),
+      readAll("goals", "user_id, draft"),
+      readAll("tasks", "user_id, archived_at"),
+      readAll("messages", "user_id, created_at", (q) => q.eq("role", "user")),
+      readAll("task_logs", "user_id, day"),
+    ]);
+
+    // On range tout par personne
+    const profileOf = new Map(profiles.map((p) => [p.user_id, p]));
+    const goalCount = new Map(), taskCount = new Map(), messageCount = new Map(), doneCount = new Map();
+    const lastActive = new Map(); // dernière action dans l'appli (message à Buddy ou tâche cochée)
+    for (const g of goals) if (!g.draft) bump(goalCount, g.user_id);
+    for (const t of tasks) if (!t.archived_at) bump(taskCount, t.user_id);
+    for (const m of messages) { bump(messageCount, m.user_id); latest(lastActive, m.user_id, m.created_at); }
+    for (const l of logs) { bump(doneCount, l.user_id); latest(lastActive, l.user_id, l.day); }
+
+    const users = accounts.map((u) => {
+      const p = profileOf.get(u.id) || {};
+      // L'offre : abonné payant, Premium offert (cadeau en cours), ou gratuit
+      const plan = isSubscribed(p) ? "abonne" : giftUntil(p) ? "offert" : "gratuit";
+      const active = [lastActive.get(u.id), u.last_sign_in_at].filter(Boolean).sort().pop() || null;
+      return {
+        id: u.id,
+        email: u.email || "",
+        firstName: p.first_name || "",
+        createdAt: u.created_at,
+        lastActive: active,
+        // D'où vient la personne : l'étiquette du lien (?src=…), sinon "direct"
+        source: p.source || u.user_metadata?.source || "direct",
+        provider: u.app_metadata?.provider || "email", // email, google, apple…
+        confirmed: Boolean(u.email_confirmed_at),
+        language: p.language || "",
+        plan,
+        subscriptionStatus: p.subscription_status || "",
+        goals: goalCount.get(u.id) || 0,
+        tasks: taskCount.get(u.id) || 0,
+        tasksDone: doneCount.get(u.id) || 0,
+        messages: messageCount.get(u.id) || 0,
+      };
+    });
+    users.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // les plus récents en premier
+    res.json({ users });
+  } catch (error) {
+    fail(res, error);
   }
 });
 
