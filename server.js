@@ -86,7 +86,10 @@ app.get("/", (req, res) => res.type("html").send(fs.readFileSync(INDEX_FILE, "ut
 // ajouter AUSSI l'empreinte affichée dans Play Console → Intégrité de l'application → Signature de l'application.
 const ANDROID_APP = {
   package: "app.buddycoach.buddy",
-  sha256: ["FC:55:6B:41:43:56:28:BE:74:B7:1D:FD:C3:47:74:9D:EA:CA:0F:BF:FC:31:2D:25:93:2A:C8:E4:FB:02:EE:66"],
+  sha256: [
+    "FC:55:6B:41:43:56:28:BE:74:B7:1D:FD:C3:47:74:9D:EA:CA:0F:BF:FC:31:2D:25:93:2A:C8:E4:FB:02:EE:66", // clé PWABuilder (importation)
+    "B7:C9:9E:FF:6E:83:E8:FB:A0:36:6B:88:8F:FA:09:2A:9D:A6:4C:72:BF:70:BC:1E:D8:80:4D:3B:E2:37:A0:52", // clé de signature Google Play
+  ],
 };
 app.get("/.well-known/assetlinks.json", (req, res) => {
   res.json(ANDROID_APP.package && ANDROID_APP.sha256.length ? [{
