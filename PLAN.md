@@ -302,6 +302,7 @@ Known gotchas:
 - contact@buddycoach.app works (ImprovMX catch-all → Gmail; MX + SPF in Vercel DNS).
 - Android package built with PWABuilder: package **app.buddycoach.buddy**, start URL /?src=play, notification delegation on. The zip (aab, apk, signing.keystore, signing-key-info) belongs to the owner and must be kept safe (2 copies). assetlinks.json is served with the PWABuilder key SHA-256; the Play App Signing SHA-256 must be ADDED in server.js ANDROID_APP once the app is created.
 - Store listing ready in `store/google-play-fiche.md` (FR/EN texts, contact, category, content rating, target audience 16+, data safety table) + `store/images/` (10 framed screenshots 1080×1920 FR/EN, banner 1024×500 FR/EN).
+- 2026-10-09 Play Console filled by Claude: FR listing (texts, icon, banner, 5 screenshots), category Productivité, contact, privacy URL, Ads = No, Advertising ID = No, Government/Financial/Health = none, Data safety fully answered (draft saved; deletion page `/legal/suppression-compte.html` live). Data safety can only be SUBMITTED after "Target audience". Left for the owner: App access (test account review@buddycoach.app + password typed by the owner), Target audience (16-17 + 18+), Content rating (IARC terms to accept), then Production release → send for review.
 - iOS plan: Capacitor (wrap the site) + Codemagic (cloud Mac build) or a friend's Mac; Apple Developer as "individual" (99 €/year); add native push, widgets and Apple in-app purchase to pass review guideline 4.2.
 
 ## Marketing & next steps
