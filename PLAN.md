@@ -26,6 +26,7 @@ This is a **learning project**: simple code we understand beats perfect code we 
 - [x] **Phase 8 – Online**: put the app on Vercel and share a link with friends. → **https://buddycoach.app** (done 2026-09-26)
 - [x] **Phase 8b – Bilingual FR/EN** (owner's request 2026-09-26): whole interface, Buddy, e-mails and daily phrases in French or English; automatic detection + FR/EN switch; built so more languages can be added later. → dictionary in `public/i18n.js`; SQL `supabase-phase8b.sql` (column `profiles.language`) to run in Supabase.
 - [ ] **Phase 9 – Animated Buddy (Rive)**: the owner makes a real animated character in Rive (`.riv` file with a state machine: signals "réflexion" and "idée"); Claude swaps it in for the static poses. Owner wants to do this at the very end.
+- [ ] **Admin / CRM** (owner's request 2026-10-08): step 1 = admin page `buddycoach.app/admin` (`public/admin.html` + route `GET /api/admin/users` in server.js, reserved to the e-mails in `ADMIN_EMAILS`): key numbers, sign-ups per source (`?src=` links), sign-ups over 30 days, list of all users with filters + CSV export. Code written; owner fills `ADMIN_EMAILS` in `.env` and in Vercel, then tests. Step 2 (later) = a real standalone CRM built from scratch (notes, follow-ups…).
 
 ## Rules we follow
 
@@ -295,6 +296,13 @@ Known gotchas:
 - Mes objectifs: all category filters on ONE scrollable row; category emojis replaced everywhere by the home page category icons (`catIcon`): filters, goal category picker, chat topic chips, chat topic label; plain text in <select> options; no emojis in "Bilan de la semaine" / "Nouvel objectif" chips.
 - Home page: Vide-tête card (`#home-dump`) between "Cette semaine" and "Mes catégories" (desktop: next to the week card; categories now full width, 7 per row) — free: blurred example + Premium badge + "Débloquer avec Premium"; Premium: write → goes to Outils and Buddy proposes the tasks (confirmation as before).
 - Chat: "Nouvelle conversation" (and the after-a-break topics) now starts on an EMPTY screen like ChatGPT; older messages stay saved (Buddy remembers) and "Voir la conversation précédente" shows them again (`buddy-chat-start` in the browser). The "On reprend…" home card reopens the whole conversation.
+
+## Google Play — status (2026-10-08)
+- Play Console account "Buddy Coach" (Organisation, D-U-N-S) created; waiting for Google: identity check (ID uploaded), website check (Search Console TXT record google-site-verification in Vercel DNS ✓), then phone check.
+- contact@buddycoach.app works (ImprovMX catch-all → Gmail; MX + SPF in Vercel DNS).
+- Android package built with PWABuilder: package **app.buddycoach.buddy**, start URL /?src=play, notification delegation on. The zip (aab, apk, signing.keystore, signing-key-info) belongs to the owner and must be kept safe (2 copies). assetlinks.json is served with the PWABuilder key SHA-256; the Play App Signing SHA-256 must be ADDED in server.js ANDROID_APP once the app is created.
+- Store listing ready in `store/google-play-fiche.md` (FR/EN texts, contact, category, content rating, target audience 16+, data safety table) + `store/images/` (10 framed screenshots 1080×1920 FR/EN, banner 1024×500 FR/EN).
+- iOS plan: Capacitor (wrap the site) + Codemagic (cloud Mac build) or a friend's Mac; Apple Developer as "individual" (99 €/year); add native push, widgets and Apple in-app purchase to pass review guideline 4.2.
 
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
