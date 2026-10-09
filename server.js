@@ -740,7 +740,7 @@ const DUMP_FORM = {
         properties: {
           titre: { type: "string", description: "Tâche courte et concrète, qui commence par un verbe (60 caractères maximum)" },
           date: { type: "string", description: "Le jour où la faire, au format AAAA-MM-JJ (aujourd'hui ou plus tard)" },
-          heure: { type: "string", description: "HH:MM si la personne a donné une heure ou si c'est évident, sinon une chaîne vide" },
+          heure: { type: "string", description: "HH:MM UNIQUEMENT si la personne a écrit une heure précise pour CETTE tâche (« à 18h »), sinon une chaîne vide" },
           objectif_id: { type: "integer", description: "Le numéro de l'objectif lié, ou 0 si aucun" },
         },
         required: ["titre", "date", "heure", "objectif_id"],
@@ -787,7 +787,8 @@ Ton travail : transformer ce qui est ACTIONNABLE en tâches concrètes, et les r
 Écris ${en ? "en ANGLAIS (English), sur un ton direct et amical" : "en français, en tutoyant"}.
 Règles :
 - Une tâche = une action concrète et courte qui commence par un verbe (« Appeler la banque », « Réviser le chapitre 3 »). 60 caractères maximum. 12 tâches maximum.
-- Respecte les jours et heures que la personne a donnés (« avant jeudi », « demain matin », « à 18h »). Sinon, choisis un jour réaliste : l'urgent tôt, le reste réparti.
+- Choisis le JOUR de chaque tâche : respecte les jours que la personne a donnés (« avant jeudi », « demain »), sinon un jour réaliste : l'urgent tôt, le reste réparti.
+- N'invente JAMAIS d'heure : laisse l'heure vide, la personne la choisira elle-même. Seule exception : elle a écrit une heure précise pour cette tâche (« à 18h »).
 - Maximum ${taskLimitFor(profile)} tâches par jour EN COMPTANT celles déjà prévues (voir la liste des jours). Évite d'en mettre beaucoup le même jour.
 - Jamais de date passée, ni au-delà de 30 jours.
 - Si une tâche correspond clairement à un de ses objectifs, mets son numéro ; sinon 0.

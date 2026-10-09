@@ -2556,19 +2556,46 @@ $("pot-list").addEventListener("submit", async (event) => {
 let dumpProposals = []; // la proposition de Buddy, en attente du "oui"
 let dumpExample = false; // l'exemple flouté est-il affiché (version gratuite) ?
 
+const dumpWhen = (item) => niceDate(item.onDate, { weekday: "short", day: "numeric", month: "short" }) + (item.time ? " · " + item.time : "");
 function renderDumpList(items, message, example = false) {
   $("dump-message").textContent = message;
   $("dump-list").innerHTML = items.map((item, i) => {
     const goal = item.goalId ? goalById(item.goalId) : null;
-    const when = niceDate(item.onDate, { weekday: "short", day: "numeric", month: "short" }) + (item.time ? " · " + item.time : "");
-    return `<li><label>
+    return `<li data-dump-row="${i}"><div class="dump-row"><label>
       <input type="checkbox" data-dump-item="${i}" checked ${example ? "disabled" : ""}>
       ${goal ? `<span class="cat-dot" style="--c:${catOf(goal).color}"></span>` : ""}
-      <span class="dump-title">${esc(item.title)}</span><span class="dump-when">${when}</span>
-    </label></li>`;
+      <span class="dump-title">${esc(item.title)}</span><span class="dump-when">${dumpWhen(item)}</span>
+    </label>${example ? "" : `<button type="button" class="icon-btn dump-edit-btn" data-dump-edit="${i}" title="${t("dump.edit")}" aria-label="${t("dump.edit")}"><i data-lucide="pencil"></i></button>`}</div>
+    ${example ? "" : `<div class="dump-edit hidden">
+      <label class="dump-edit-title">${t("dump.editTitle")}<input type="text" maxlength="80" data-dump-field="title" value="${esc(item.title)}"></label>
+      <label>${t("dump.editDay")}<input type="date" data-dump-field="onDate" min="${today()}" max="${addDays(today(), 30)}" value="${item.onDate}"></label>
+      <label>${t("dump.editTime")}<input type="time" data-dump-field="time" value="${item.time || ""}"></label>
+    </div>`}</li>`;
   }).join("");
   $("dump-result").classList.remove("hidden");
 }
+// Modifier une tâche proposée : le crayon ouvre/ferme les champs, chaque changement met la proposition à jour
+$("dump-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-dump-edit]");
+  if (!button) return;
+  const row = button.closest("li");
+  const box = row.querySelector(".dump-edit");
+  box.classList.toggle("hidden");
+  button.classList.toggle("active", !box.classList.contains("hidden"));
+  if (!box.classList.contains("hidden")) box.querySelector("input").focus();
+});
+$("dump-list").addEventListener("input", (event) => {
+  const field = event.target.dataset.dumpField;
+  if (!field) return;
+  const row = event.target.closest("li");
+  const item = dumpProposals[Number(row.dataset.dumpRow)];
+  if (!item) return;
+  if (field === "title") item.title = event.target.value.trim() || item.title;
+  if (field === "onDate" && /^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) item.onDate = event.target.value;
+  if (field === "time") item.time = event.target.value || null;
+  row.querySelector(".dump-title").textContent = item.title;
+  row.querySelector(".dump-when").textContent = dumpWhen(item);
+});
 
 // Version gratuite : un exemple (flouté) pour qu'on voie à quoi ça sert, et le bandeau Premium
 function renderDumpLock() {
