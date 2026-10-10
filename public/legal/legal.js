@@ -17,4 +17,10 @@ function showLang(lang) {
   };
   document.title = document.querySelector(`[data-lang="${lang}"] h1`).textContent + " – Buddy";
 }
-showLang(savedLang() || ((navigator.language || "").toLowerCase().startsWith("fr") ? "fr" : "en"));
+// Une adresse peut forcer la langue : …/confidentialite.html?lang=en (utile pour les vérifications
+// de TikTok, Google et Meta, qui demandent un lien direct vers la version anglaise).
+function urlLang() {
+  const l = new URLSearchParams(location.search).get("lang");
+  return l === "fr" || l === "en" ? l : null;
+}
+showLang(urlLang() || savedLang() || ((navigator.language || "").toLowerCase().startsWith("fr") ? "fr" : "en"));
