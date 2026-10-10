@@ -47,6 +47,12 @@ create table if not exists connexions_reseaux (
 -- Verrouillé, aucune règle d'accès : seul le serveur (clé secrète) peut lire ou écrire les jetons.
 alter table connexions_reseaux enable row level security;
 
+-- Les projets Supabase récents ne donnent plus de droits automatiques sur les nouveaux tableaux :
+-- on autorise UNIQUEMENT le serveur (rôle service_role, la clé secrète). Les visiteurs n'ont aucun accès.
+grant select, insert, update, delete on table publications to service_role;
+grant select, insert, update, delete on table connexions_reseaux to service_role;
+grant usage, select on all sequences in schema public to service_role;
+
 -- Le dossier de stockage des vidéos : privé (public = false), 50 Mo maximum par fichier, vidéos MP4 seulement.
 -- Les réseaux récupèrent la vidéo grâce à un lien signé qui expire au bout de quelques heures.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

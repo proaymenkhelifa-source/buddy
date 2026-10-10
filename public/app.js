@@ -603,6 +603,7 @@ async function refresh() {
   data.badges = data.badges || [];
   data.drafts = data.drafts || []; // les objectifs pas encore finis de définir avec Buddy
   state = data;
+  $("admin-card")?.classList.toggle("hidden", !data.admin); // la rubrique Admin, seulement pour le propriétaire
   render();
   if (data.newBadges?.length) celebrateBadges(data.newBadges); // de nouveaux badges viennent d'être gagnés
 }

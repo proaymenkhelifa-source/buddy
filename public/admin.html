@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Buddy Admin</title>
+  <link rel="icon" type="image/svg+xml" href="icons/buddy-bubble.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Les couleurs de la marque (les mêmes que style.css) */
+    :root {
+      --primary: #5fe2c3; --navy: #14284b; --mint: #e8f4f0; --sky: #60a5fa;
+      --bg: #f8fafc; --card: #ffffff; --card-strong: #f1f5f9; --border: #e6ebf1;
+      --text: #14284b; --muted: #64748b; --success: #22c55e; --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Plus Jakarta Sans", sans-serif; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+    h1 { font: 900 28px "Nunito", sans-serif; margin: 0; }
+    h1 span { color: var(--muted); font-weight: 800; }
+    h2 { font: 800 18px "Nunito", sans-serif; margin: 0 0 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+    button, select, input {
+      font: inherit; color: inherit; border: 1px solid var(--border); background: var(--card);
+      border-radius: 12px; padding: 8px 14px;
+    }
+    button { cursor: pointer; font-weight: 700; }
+    button.main { background: var(--primary); border-color: var(--primary); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .muted { color: var(--muted); }
+    .hidden { display: none !important; }
+
+    /* Les chiffres clés */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 14px 16px; }
+    .kpi b { display: block; font: 900 30px "Nunito", sans-serif; }
+    .kpi span { color: var(--muted); font-size: 13px; }
+
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .two { grid-template-columns: 1fr; } }
+
+    /* Les inscriptions des 30 derniers jours (petites barres) */
+    .days { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+    .days div { flex: 1; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 2px; }
+    .days-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    /* Les tableaux */
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td.num, th.num { text-align: right; }
+    tbody tr:hover { background: var(--card-strong); }
+    .bar { height: 8px; background: var(--mint); border-radius: 4px; min-width: 80px; }
+    .bar i { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+    .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--card-strong); }
+    .tag.abonne { background: #dcfce7; color: #166534; }
+    .tag.offert { background: #fef3c7; color: #92400e; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .filters input { flex: 1; min-width: 180px; }
+
+    .message { text-align: center; padding: 60px 16px; }
+    .message a { color: var(--sky); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Buddy <span>· Admin</span></h1>
+      <div class="actions">
+        <button id="refresh">Actualiser</button>
+        <button id="export" class="main">Exporter (CSV)</button>
+      </div>
+    </header>
+
+    <!-- Message (chargement, pas connecté, pas admin…) -->
+    <div id="message" class="card message">Chargement…</div>
+
+    <div id="content" class="hidden">
+      <div class="kpis" id="kpis"></div>
+
+      <div class="two">
+        <section class="card">
+          <h2>D'où viennent les inscrits</h2>
+          <div class="scroll"><table id="sources"></table></div>
+        </section>
+        <section class="card">
+          <h2>Inscriptions des 30 derniers jours</h2>
+          <div class="days" id="days"></div>
+          <div class="days-legend"><span id="days-from"></span><span>aujourd'hui</span></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>Tous les inscrits <span class="muted" id="count"></span></h2>
+        <div class="filters">
+          <input id="search" type="search" placeholder="Chercher un prénom ou un e-mail…">
+          <select id="filter-source"><option value="">Toutes les sources</option></select>
+          <select id="filter-plan">
+            <option value="">Toutes les offres</option>
+            <option value="abonne">Abonnés</option>
+            <option value="offert">Premium offert</option>
+            <option value="gratuit">Gratuit</option>
+          </select>
+        </div>
+        <div class="scroll"><table id="users"></table></div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const DAY = 24 * 60 * 60 * 1000;
+    const PLAN_NAMES = { abonne: "Abonné", offert: "Premium offert", gratuit: "Gratuit" };
+
+    // Même connexion que l'appli : si tu es connecté sur buddycoach.app, tu l'es ici aussi.
+    const config = await (await fetch("/api/config")).json();
+    const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
+
+    let users = [];
+
+    function showMessage(html) {
+      $("message").innerHTML = html;
+      $("message").classList.remove("hidden");
+      $("content").classList.add("hidden");
+    }
+
+    async function load() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        return showMessage('Tu n\'es pas connecté. <a href="/#connexion">Connecte-toi sur Buddy</a>, puis reviens sur cette page.');
+      }
+      const response = await fetch("/api/admin/users", { headers: { Authorization: "Bearer " + data.session.access_token } });
+      const result = await response.json();
+      if (!response.ok) return showMessage(esc(result.error || "Erreur de chargement."));
+      users = result.users;
+      $("message").classList.add("hidden");
+      $("content").classList.remove("hidden");
+      render();
+    }
+
+    // Petites aides pour les dates
+    const ago = (date) => (date ? Date.now() - new Date(date).getTime() : Infinity);
+    const shortDate = (date) => (date ? new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—");
+    function sinceText(date) {
+      if (!date) return "jamais";
+      const days = Math.floor(ago(date) / DAY);
+      return days <= 0 ? "aujourd'hui" : days === 1 ? "hier" : `il y a ${days} j`;
+    }
+    const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+    function render() {
+      const today = startOfToday();
+      const active7 = users.filter((u) => ago(u.lastActive) < 7 * DAY).length;
+
+      // 1. Les chiffres clés
+      const kpis = [
+        ["Inscrits au total", users.length],
+        ["Aujourd'hui", users.filter((u) => new Date(u.createdAt) >= today).length],
+        ["Ces 7 derniers jours", users.filter((u) => ago(u.createdAt) < 7 * DAY).length],
+        ["Actifs (7 jours)", active7],
+        ["Abonnés payants", users.filter((u) => u.plan === "abonne").length],
+        ["Premium offert", users.filter((u) => u.plan === "offert").length],
+      ];
+      $("kpis").innerHTML = kpis.map(([label, value]) => `<div class="kpi"><b>${value}</b><span>${label}</span></div>`).join("");
+
+      // 2. Les sources : combien d'inscrits, combien actifs, combien abonnés
+      const bySource = new Map();
+      for (const u of users) {
+        const s = bySource.get(u.source) || { total: 0, week: 0, active: 0, paid: 0 };
+        s.total++;
+        if (ago(u.createdAt) < 7 * DAY) s.week++;
+        if (ago(u.lastActive) < 7 * DAY) s.active++;
+        if (u.plan === "abonne") s.paid++;
+        bySource.set(u.source, s);
+      }
+      const sources = [...bySource].sort((a, b) => b[1].total - a[1].total);
+      const max = Math.max(1, ...sources.map(([, s]) => s.total));
+      $("sources").innerHTML = `
+        <thead><tr><th>Source</th><th class="num">Inscrits</th><th></th><th class="num">7 j</th><th class="num">Actifs</th><th class="num">Abonnés</th></tr></thead>
+        <tbody>${sources.map(([name, s]) => `
+          <tr>
+            <td><b>${esc(name)}</b></td>
+            <td class="num">${s.total}</td>
+            <td><div class="bar"><i style="width:${(s.total / max) * 100}%"></i></div></td>
+            <td class="num">${s.week}</td>
+            <td class="num">${s.active}</td>
+            <td class="num">${s.paid}</td>
+          </tr>`).join("")}</tbody>`;
+
+      // La liste des sources dans le filtre (en gardant le choix actuel)
+      const chosen = $("filter-source").value;
+      $("filter-source").innerHTML = '<option value="">Toutes les sources</option>' +
+        sources.map(([name]) => `<option ${name === chosen ? "selected" : ""}>${esc(name)}</option>`).join("");
+
+      // 3. Les inscriptions jour par jour (30 derniers jours)
+      const counts = Array(30).fill(0);
+      for (const u of users) {
+        const index = 29 - Math.floor((today - new Date(new Date(u.createdAt).setHours(0, 0, 0, 0))) / DAY);
+        if (index >= 0 && index < 30) counts[index]++;
+      }
+      const top = Math.max(1, ...counts);
+      $("days").innerHTML = counts.map((n, i) => {
+        const day = new Date(today.getTime() - (29 - i) * DAY);
+        return `<div style="height:${(n / top) * 100}%" title="${shortDate(day)} : ${n} inscrit(s)"></div>`;
+      }).join("");
+      $("days-from").textContent = shortDate(new Date(today.getTime() - 29 * DAY));
+
+      renderUsers();
+    }
+
+    // Les inscrits qui passent les filtres (recherche, source, offre)
+    function filteredUsers() {
+      const search = $("search").value.trim().toLowerCase();
+      const source = $("filter-source").value;
+      const plan = $("filter-plan").value;
+      return users.filter((u) =>
+        (!search || (u.firstName + " " + u.email).toLowerCase().includes(search)) &&
+        (!source || u.source === source) &&
+        (!plan || u.plan === plan));
+    }
+
+    function renderUsers() {
+      const list = filteredUsers();
+      $("count").textContent = `(${list.length})`;
+      $("users").innerHTML = `
+        <thead><tr>
+          <th>Inscrit le</th><th>Prénom</th><th>E-mail</th><th>Source</th><th>Via</th><th>Langue</th><th>Offre</th>
+          <th class="num">Objectifs</th><th class="num">Tâches</th><th class="num">Cochées</th><th class="num">Messages</th><th>Dernière activité</th>
+        </tr></thead>
+        <tbody>${list.map((u) => `
+          <tr>
+            <td>${shortDate(u.createdAt)}</td>
+            <td>${esc(u.firstName) || '<span class="muted">—</span>'}</td>
+            <td>${esc(u.email)}${u.confirmed ? "" : ' <span class="muted" title="E-mail pas encore confirmé">(non confirmé)</span>'}</td>
+            <td>${esc(u.source)}</td>
+            <td>${esc(u.provider)}</td>
+            <td>${esc(u.language.toUpperCase()) || "—"}</td>
+            <td><span class="tag ${u.plan}">${PLAN_NAMES[u.plan]}</span></td>
+            <td class="num">${u.goals}</td>
+            <td class="num">${u.tasks}</td>
+            <td class="num">${u.tasksDone}</td>
+            <td class="num">${u.messages}</td>
+            <td>${sinceText(u.lastActive)}</td>
+          </tr>`).join("")}</tbody>`;
+    }
+
+    // Exporter la liste filtrée en fichier CSV (s'ouvre dans Excel / Google Sheets)
+    function exportCsv() {
+      const columns = ["createdAt", "firstName", "email", "source", "provider", "language", "plan", "goals", "tasks", "tasksDone", "messages", "lastActive"];
+      const cell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const lines = [columns.join(";"), ...filteredUsers().map((u) => columns.map((c) => cell(u[c])).join(";"))];
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" }); // ﻿ = les accents passent dans Excel
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `buddy-inscrits-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    }
+
+    $("refresh").addEventListener("click", load);
+    $("export").addEventListener("click", exportCsv);
+    for (const id of ["search", "filter-source", "filter-plan"]) $(id).addEventListener("input", renderUsers);
+
+    load();
+  </script>
+</body>
+</html>

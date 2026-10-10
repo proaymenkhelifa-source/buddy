@@ -20,6 +20,7 @@ import {
 import { t, cleanLang, dayLong } from "./public/i18n.js";
 import { startEmailScheduler, sendTestEmail, runEmailTick } from "./emails.js";
 import { sendPush, pushReady, apnsReady, vapidPublicKey } from "./push.js";
+import { installerPublications } from "./publications/routes.js";
 import { paymentsReady, TRIAL_DAYS, createCheckout, createPortal, subscriptionState, needsSync, cancelEverything } from "./stripe.js";
 
 // Sommes-nous en ligne sur Vercel ? (Vercel remplit tout seul cette variable)
@@ -264,7 +265,8 @@ app.get("/api/state", requireUser, async (req, res) => {
       }
     }
     const { badges, newBadges } = await updateBadges(req.user.id, data, today);
-    res.json({ ...data, badges, newBadges, maxMessages: messageLimitFor(data.profile), version: APP_VERSION, payments: paymentsReady, trialDays: TRIAL_DAYS });
+    res.json({ ...data, badges, newBadges, maxMessages: messageLimitFor(data.profile), version: APP_VERSION, payments: paymentsReady, trialDays: TRIAL_DAYS,
+      admin: ADMIN_EMAILS.includes((req.user.email || "").toLowerCase()) }); // admin : affiche la rubrique « Admin » (seulement pour le propriétaire)
   } catch (error) {
     fail(res, error, "err.loadState");
   }
@@ -1404,6 +1406,10 @@ app.all("/api/cron/tick", async (req, res) => {
     fail(res, error);
   }
 });
+
+// LE ROBOT DE PUBLICATION (vidéos → TikTok, Instagram, YouTube) : tout est rangé dans le dossier publications/.
+// Page admin /admin/publications, boutons /api/admin/publications/…, sonnette /api/cron/publish.
+installerPublications(app, { supabase, requireUser, requireAdmin });
 
 // Sur ton ordinateur : on démarre le serveur nous-mêmes, avec sa minuterie d'e-mails.
 // En ligne (Vercel) : c'est Vercel qui démarre le serveur à chaque visite, et la "sonnette" remplace la minuterie.

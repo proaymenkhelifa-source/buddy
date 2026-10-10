@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Buddy · Publications</title>
+  <link rel="icon" type="image/svg+xml" href="/icons/buddy-bubble.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Les couleurs de la marque (les mêmes que la page admin) */
+    :root {
+      --primary: #5fe2c3; --navy: #14284b; --mint: #e8f4f0; --sky: #60a5fa;
+      --bg: #f8fafc; --card: #ffffff; --card-strong: #f1f5f9; --border: #e6ebf1;
+      --text: #14284b; --muted: #64748b; --success: #22c55e; --warning: #f59e0b; --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Plus Jakarta Sans", sans-serif; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 20px 14px 60px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+    h1 { font: 900 26px "Nunito", sans-serif; margin: 0; }
+    h2 { font: 800 20px "Nunito", sans-serif; margin: 22px 0 10px; }
+    h3 { font: 800 18px "Nunito", sans-serif; margin: 0; }
+    a { color: var(--sky); font-weight: 700; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+    button, select, input, textarea { font: inherit; color: inherit; border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 8px 12px; }
+    button { cursor: pointer; font-weight: 700; }
+    button.main { background: var(--primary); border-color: var(--primary); }
+    button.danger { color: var(--danger); }
+    button:disabled { opacity: .5; cursor: default; }
+    textarea { width: 100%; min-height: 90px; resize: vertical; font-size: 14px; }
+    .muted { color: var(--muted); }
+    .hidden { display: none !important; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .between { justify-content: space-between; }
+    .essai { background: #fef3c7; border: 1px solid #fde68a; border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; }
+    .apercus { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .apercus video { width: 100%; max-height: 360px; background: #000; border-radius: 12px; }
+    .pub { border-top: 1px solid var(--border); padding: 12px 0; }
+    .pub summary { cursor: pointer; list-style: none; }
+    .pub summary::-webkit-details-marker { display: none; }
+    .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--card-strong); }
+    .tag.a_valider { background: #fef3c7; color: #92400e; }
+    .tag.valide { background: #dbeafe; color: #1e40af; }
+    .tag.en_cours { background: #e0e7ff; color: #3730a3; }
+    .tag.publie { background: #dcfce7; color: #166534; }
+    .tag.prive_attente { background: #ffedd5; color: #9a3412; }
+    .tag.erreur { background: #fee2e2; color: #991b1b; }
+    .tag.annule { background: var(--card-strong); color: var(--muted); }
+    .champ { margin-top: 8px; }
+    .champ label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+    .erreur { color: var(--danger); font-size: 14px; margin-top: 6px; }
+    .reporter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .message { text-align: center; padding: 50px 16px; }
+    .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 700; }
+    @media (max-width: 600px) { .apercus { grid-template-columns: 1fr 1fr; } .apercus video { max-height: 260px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🎬 Publications</h1>
+      <div class="row"><a href="/admin">← Admin</a><button id="refresh">Actualiser</button></div>
+    </header>
+    <div id="message" class="card message">Chargement…</div>
+    <div id="content" class="hidden">
+      <div id="essai" class="essai hidden">🧪 <b>Mode essai</b> : le robot fait semblant de publier (journal + e-mail), rien n'est envoyé aux réseaux.</div>
+      <h2>À venir</h2>
+      <div id="avenir"></div>
+      <h2>Historique</h2>
+      <div id="historique"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const RESEAUX = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
+    const STATUTS = { a_valider: "À valider", valide: "Validée", en_cours: "En cours", publie: "Publiée", prive_attente: "Privée (en attente)", erreur: "Erreur", annule: "Annulée" };
+    const CRENEAUX = { midi: "midi (~12 h)", soir: "soir (~19 h 30)" };
+    const DRAPEAUX = { fr: "🇫🇷", en: "🇬🇧" };
+
+    const config = await (await fetch("/api/config")).json();
+    const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
+    let token = null;
+
+    function showMessage(html) { $("message").innerHTML = html; $("message").classList.remove("hidden"); $("content").classList.add("hidden"); }
+    function toast(texte) { $("toast").textContent = texte; $("toast").classList.remove("hidden"); setTimeout(() => $("toast").classList.add("hidden"), 2500); }
+    const jourLisible = (j) => new Date(j + "T12:00:00Z").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+
+    async function api(chemin, corps) {
+      const r = await fetch(chemin, { method: corps ? "POST" : "GET", headers: { Authorization: "Bearer " + token, ...(corps ? { "Content-Type": "application/json" } : {}) }, body: corps ? JSON.stringify(corps) : undefined });
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error || "Erreur.");
+      return json;
+    }
+
+    async function load() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return showMessage('Tu n\'es pas connecté. <a href="/#connexion">Connecte-toi sur Buddy</a>, puis reviens sur cette page.');
+      token = data.session.access_token;
+      try {
+        const d = await api("/api/admin/publications");
+        $("essai").classList.toggle("hidden", !d.essai);
+        $("avenir").innerHTML = d.aVenir.length ? d.aVenir.map((v) => carteVideo(v, true, d.aujourdhui)).join("") : '<div class="card muted">Aucune vidéo à venir. Prépare-en une : <code>node preparer-publication.mjs NN</code></div>';
+        $("historique").innerHTML = d.historique.length ? d.historique.map((v) => carteVideo(v, false)).join("") : '<div class="card muted">Rien pour l\'instant.</div>';
+        $("message").classList.add("hidden");
+        $("content").classList.remove("hidden");
+      } catch (e) {
+        showMessage(esc(e.message));
+      }
+    }
+
+    function carteVideo(v, aVenir, aujourdhui) {
+      const p0 = v.publications[0];
+      const aValider = v.publications.filter((p) => p.statut === "a_valider").length;
+      return `<div class="card">
+        <div class="row between"><h3>Vidéo ${esc(v.video)} · ${esc(v.titre || "")}</h3>
+          ${aVenir && aValider ? `<button class="main" data-action="valider_tout" data-video="${esc(v.video)}">✅ Valider tout (${aValider})</button>` : ""}</div>
+        <div class="muted">${esc(jourLisible(p0.date_prevue))} · créneau ${esc(CRENEAUX[p0.creneau])}</div>
+        ${aVenir ? `<div class="apercus">${["fr", "en"].map((l) => v.apercus?.[l] ? `<div><div class="muted">${DRAPEAUX[l]} ${l.toUpperCase()}</div><video src="${esc(v.apercus[l])}" controls playsinline preload="metadata"></video></div>` : `<div class="muted">${DRAPEAUX[l]} aperçu indisponible</div>`).join("")}</div>
+          <details><summary><b>📅 Reporter</b></summary><div class="reporter">
+            <input type="date" id="date-${esc(v.video)}" value="${esc(p0.date_prevue)}" min="${esc(aujourdhui)}">
+            <select id="creneau-${esc(v.video)}"><option value="midi" ${p0.creneau === "midi" ? "selected" : ""}>midi</option><option value="soir" ${p0.creneau === "soir" ? "selected" : ""}>soir</option></select>
+            <button data-action="reporter" data-video="${esc(v.video)}">Enregistrer</button></div></details>` : ""}
+        ${v.publications.map((p) => lignePub(p, aVenir)).join("")}
+      </div>`;
+    }
+
+    function lignePub(p, aVenir) {
+      const modifiable = ["a_valider", "valide", "erreur"].includes(p.statut);
+      const champ = (cle, label) => `<div class="champ"><label>${label}</label><textarea data-champ="${cle}" data-id="${p.id}" ${modifiable ? "" : "readonly"}>${esc(p[cle] || "")}</textarea></div>`;
+      return `<details class="pub" ${p.statut === "erreur" ? "open" : ""}>
+        <summary class="row between"><span>${DRAPEAUX[p.langue]} <b>${RESEAUX[p.reseau]}</b> ${p.langue.toUpperCase()}</span>
+          <span class="row"><span class="tag ${p.statut}">${STATUTS[p.statut]}</span>${p.url ? `<a href="${esc(p.url)}" target="_blank">voir ↗</a>` : ""}</span></summary>
+        ${p.erreur ? `<div class="erreur">${esc(p.erreur)}</div>` : ""}
+        ${p.reseau === "youtube" ? champ("titre_youtube", "Titre YouTube") : ""}
+        ${champ("legende", p.reseau === "youtube" ? "Description" : "Légende")}
+        ${champ("commentaire", "Commentaire")}
+        ${aVenir ? `<div class="row" style="margin-top:8px">
+          ${modifiable ? `<button data-action="modifier" data-id="${p.id}">💾 Enregistrer les textes</button>` : ""}
+          ${p.statut === "a_valider" ? `<button class="main" data-action="valider" data-id="${p.id}">Valider</button>` : ""}
+          ${["erreur", "annule"].includes(p.statut) ? `<button class="main" data-action="reessayer" data-id="${p.id}">🔁 Réessayer</button>` : ""}
+          ${["a_valider", "valide", "erreur"].includes(p.statut) ? `<button class="danger" data-action="annuler" data-id="${p.id}">Annuler</button>` : ""}
+        </div>` : ""}
+      </details>`;
+    }
+
+    // Tous les boutons passent par ici
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("button[data-action]");
+      if (!b) return;
+      const { action, id, video } = b.dataset;
+      const corps = { action, id: id ? +id : undefined, video };
+      if (action === "reporter") { corps.date = $("date-" + video).value; corps.creneau = $("creneau-" + video).value; }
+      if (action === "modifier") {
+        corps.champs = {};
+        for (const t of document.querySelectorAll(`textarea[data-id="${id}"]`)) corps.champs[t.dataset.champ] = t.value;
+      }
+      if (action === "annuler" && !confirm("Annuler cette publication ?")) return;
+      b.disabled = true;
+      try {
+        await api("/api/admin/publications/action", corps);
+        toast({ valider_tout: "Vidéo validée ✅", valider: "Validée ✅", annuler: "Annulée", reessayer: "Remise dans la file 🔁", reporter: "Reportée 📅", modifier: "Textes enregistrés 💾" }[action]);
+        await load();
+      } catch (err) {
+        toast("❌ " + err.message);
+        b.disabled = false;
+      }
+    });
+    $("refresh").onclick = load;
+    load();
+  </script>
+</body>
+</html>

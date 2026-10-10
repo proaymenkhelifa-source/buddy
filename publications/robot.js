@@ -1,0 +1,99 @@
+// publications/robot.js – le robot qui publie. Appelé par /api/cron/publish?creneau=midi|soir.
+// Pour chaque publication VALIDÉE du jour (heure de Paris) et du créneau :
+//   publie (ou fait semblant en mode essai) → « publie », « prive_attente » ou « erreur » ;
+//   quand toutes les publications d'un fichier sont terminées, le fichier est supprimé du stockage (coût zéro) ;
+//   puis un e-mail de compte rendu est envoyé à Aymen.
+// Mode essai : PUBLICATION_DRY_RUN=true (c'est la valeur par défaut tant que rien d'autre n'est écrit) → RIEN n'est envoyé aux réseaux.
+import { Resend } from "resend";
+import { BUCKET, TERMINES, MAX_PAR_JOUR, maintenantParis, lienSigne, adresseAymen, emailSimple, esc, NOMS_RESEAUX, DRAPEAUX, NOMS_CRENEAUX } from "./commun.js";
+
+// Le mode essai est ACTIF sauf si PUBLICATION_DRY_RUN vaut exactement "false"
+export const modeEssai = () => process.env.PUBLICATION_DRY_RUN !== "false";
+
+// Les modules par réseau (ajoutés étape par étape : Instagram, puis YouTube, puis TikTok)
+const MODULES = {};
+export function brancherReseau(reseau, module) { MODULES[reseau] = module; }
+
+// Publier UNE ligne. Renvoie { statut, id_externe?, url?, erreur? }
+async function publierLigne(supabase, ligne, essai) {
+  const video = await lienSigne(supabase, ligne.fichier); // vérifie aussi que le fichier existe bien
+  if (essai) {
+    await new Promise((r) => setTimeout(r, 300)); // on fait semblant d'envoyer
+    return { statut: "publie", id_externe: "ESSAI", url: null, essai: true, lien: video };
+  }
+  const module = MODULES[ligne.reseau];
+  if (!module) return { statut: "erreur", erreur: `La publication sur ${NOMS_RESEAUX[ligne.reseau]} n'est pas encore branchée.` };
+  const { data: connexion } = await supabase.from("connexions_reseaux").select("*").eq("reseau", ligne.reseau).eq("langue", ligne.langue).maybeSingle();
+  if (!connexion?.access_token) return { statut: "erreur", erreur: `Le compte ${NOMS_RESEAUX[ligne.reseau]} ${ligne.langue.toUpperCase()} n'est pas connecté (page Connexions).` };
+  return module.publier({ supabase, ligne, connexion, video });
+}
+
+// Le passage du robot pour un créneau
+// jourForce (AAAA-MM-JJ) : seulement en mode essai, pour tester tout de suite une vidéo prévue un autre jour
+export async function publierCreneau(supabase, creneau, { maintenant = new Date(), jourForce = null } = {}) {
+  const essai = modeEssai();
+  const jour = essai && /^\d{4}-\d{2}-\d{2}$/.test(jourForce || "") ? jourForce : maintenantParis(maintenant).jour;
+  const { data: lignes, error } = await supabase.from("publications").select("*")
+    .eq("date_prevue", jour).eq("creneau", creneau).eq("statut", "valide").order("video").order("langue").order("reseau");
+  if (error) throw error;
+
+  const resultats = [];
+  for (const ligne of lignes) {
+    // règle : maximum 2 publications par compte et par jour
+    const { count } = await supabase.from("publications").select("id", { count: "exact", head: true })
+      .eq("date_prevue", jour).eq("reseau", ligne.reseau).eq("langue", ligne.langue).in("statut", ["publie", "prive_attente", "en_cours"]);
+    if ((count || 0) >= MAX_PAR_JOUR) {
+      await supabase.from("publications").update({ statut: "erreur", erreur: `Déjà ${MAX_PAR_JOUR} publications aujourd'hui sur ce compte : reporte-la.` }).eq("id", ligne.id);
+      resultats.push({ ligne, statut: "erreur", erreur: `Déjà ${MAX_PAR_JOUR} publications aujourd'hui sur ce compte.` });
+      continue;
+    }
+    await supabase.from("publications").update({ statut: "en_cours", erreur: null }).eq("id", ligne.id);
+    let r;
+    try {
+      r = await publierLigne(supabase, ligne, essai);
+    } catch (e) {
+      r = { statut: "erreur", erreur: e.message || String(e) };
+    }
+    await supabase.from("publications").update({
+      statut: r.statut, id_externe: r.id_externe ?? null, url: r.url ?? null, erreur: r.erreur ?? null,
+      publie_le: ["publie", "prive_attente"].includes(r.statut) ? new Date().toISOString() : null,
+    }).eq("id", ligne.id);
+    resultats.push({ ligne, ...r });
+  }
+
+  // Ménage : on supprime les fichiers dont toutes les publications sont terminées
+  const supprimes = [];
+  for (const fichier of [...new Set(lignes.map((l) => l.fichier))]) {
+    const { data: toutes } = await supabase.from("publications").select("statut").eq("fichier", fichier);
+    if (toutes.length && toutes.every((t) => TERMINES.includes(t.statut))) {
+      const { error: e } = await supabase.storage.from(BUCKET).remove([fichier]);
+      if (!e) supprimes.push(fichier);
+    }
+  }
+
+  if (resultats.length) await emailCompteRendu({ jour, creneau, essai, resultats, supprimes });
+  return { jour, creneau, essai, publiees: resultats.length, supprimes, resultats: resultats.map((r) => ({ id: r.ligne.id, video: r.ligne.video, reseau: r.ligne.reseau, langue: r.ligne.langue, statut: r.statut, url: r.url ?? null, erreur: r.erreur ?? null })) };
+}
+
+// L'e-mail de compte rendu
+async function emailCompteRendu({ jour, creneau, essai, resultats, supprimes }) {
+  const a = adresseAymen();
+  if (!process.env.RESEND_API_KEY || !a) return;
+  const app = process.env.APP_URL || "https://buddycoach.app";
+  const nom = (r) => `${DRAPEAUX[r.ligne.langue]} ${NOMS_RESEAUX[r.ligne.reseau]} ${r.ligne.langue.toUpperCase()} · vidéo ${esc(r.ligne.video)}`;
+  const ok = resultats.filter((r) => r.statut === "publie");
+  const prive = resultats.filter((r) => r.statut === "prive_attente");
+  const ko = resultats.filter((r) => r.statut === "erreur");
+  const li = (r, extra) => `<li style="margin:4px 0">${nom(r)}${extra}</li>`;
+  const html = emailSimple(`${essai ? "🧪 ESSAI · " : ""}Publications du ${esc(jour)} (${esc(NOMS_CRENEAUX[creneau])})`, `
+    ${essai ? `<p style="background:#fef3c7;padding:10px 12px;border-radius:10px"><b>Mode essai</b> : rien n'a été envoyé aux réseaux. Tout le reste s'est passé comme en vrai.</p>` : ""}
+    ${ok.length ? `<p><b>✅ Publié (${ok.length})</b></p><ul>${ok.map((r) => li(r, r.url ? ` — <a href="${esc(r.url)}">voir</a>` : essai ? " — (essai)" : "")).join("")}</ul>` : ""}
+    ${prive.length ? `<p><b>⏳ Privé en attente (${prive.length})</b> : à passer en public à la main sur le réseau, tant que l'audit n'est pas validé.</p><ul>${prive.map((r) => li(r, r.url ? ` — <a href="${esc(r.url)}">ouvrir</a>` : "")).join("")}</ul>` : ""}
+    ${ko.length ? `<p><b>❌ Erreur (${ko.length})</b></p><ul>${ko.map((r) => li(r, `<br><span style="color:#b91c1c">${esc(r.erreur)}</span>`)).join("")}</ul>
+      <p><a href="${app}/admin/publications" style="display:inline-block;background:#5fe2c3;color:#14284b;padding:12px 20px;border-radius:12px;font-weight:700;text-decoration:none">Réessayer depuis la page admin</a></p>` : ""}
+    ${supprimes.length ? `<p style="color:#64748b">🧹 Vidéos supprimées du stockage : ${supprimes.map(esc).join(", ")}</p>` : ""}`);
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const sujet = `${essai ? "🧪 ESSAI · " : ""}${ko.length ? "❌" : prive.length ? "⏳" : "✅"} Publications ${creneau} du ${jour}`;
+  const { error } = await resend.emails.send({ from: process.env.EMAIL_FROM || "Buddy <buddy@buddycoach.app>", to: a, subject: sujet, html });
+  if (error) console.error("Robot de publication : e-mail de compte rendu non envoyé :", error.message);
+}
