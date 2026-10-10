@@ -24,10 +24,17 @@ export const vapidPublicKey = PUBLIC_KEY || null;
 // L'"adresse" d'un iPhone est rangée dans le même tableau, sous la forme "apns:<jeton>".
 // Il faut 3 réglages (dans .env et sur Vercel), donnés par Apple une fois le compte développeur ouvert :
 // APNS_KEY_ID, APNS_TEAM_ID et APNS_KEY (le contenu du fichier .p8). APNS_BUNDLE_ID est facultatif.
+// Le contenu du .p8 peut arriver abîmé selon la façon dont il a été collé (sur une seule ligne, avec des \n,
+// des espaces à la place des retours à la ligne…) : on le remet toujours en forme.
+function pemFromEnv(raw) {
+  const body = String(raw || "").replace(/\\n/g, "\n").replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "").replace(/\s+/g, "");
+  if (!body) return "";
+  return "-----BEGIN PRIVATE KEY-----\n" + body.match(/.{1,64}/g).join("\n") + "\n-----END PRIVATE KEY-----\n";
+}
 const APNS = {
   keyId: process.env.APNS_KEY_ID,
   teamId: process.env.APNS_TEAM_ID,
-  key: (process.env.APNS_KEY || "").replace(/\\n/g, "\n"), // le .p8 peut être collé sur une seule ligne avec des \n
+  key: pemFromEnv(process.env.APNS_KEY),
   topic: process.env.APNS_BUNDLE_ID || "app.buddycoach.buddy",
 };
 export const apnsReady = Boolean(APNS.keyId && APNS.teamId && APNS.key);
