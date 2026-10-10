@@ -2,16 +2,18 @@
   "appId": "app.buddycoach.buddy",
   "appName": "Buddy",
   "webDir": "www",
-  "server": {
-    "url": "https://buddycoach.app/?src=ios",
-    "allowNavigation": ["buddycoach.app", "*.supabase.co"]
-  },
   "ios": {
     "appendUserAgent": "BuddyiOS",
     "contentInset": "never",
     "backgroundColor": "#14284B"
   },
   "plugins": {
-    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
   }
 }

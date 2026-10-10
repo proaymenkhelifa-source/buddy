@@ -1611,3 +1611,29 @@ html:has(dialog[open]) { overflow: hidden; }
 .cats-card .categories { grid-template-columns: repeat(7, 1fr); }
 @media (max-width: 1200px) { .cats-card .categories { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 700px) { .cats-card .categories { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- 19. L'APPLI IPHONE (App Store) : la page est rangée dans l'appli ----------
+   (classe "native-app" posée par app.js seulement dans l'appli : le site n'est pas concerné)
+   L'écran va jusque sous l'heure (en haut) et la barre d'accueil (en bas) : on garde ces zones libres. */
+.native-app .nav { padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
+.native-app .sidebar { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+.native-app .auth-screen { padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
+.native-app .drawer { padding-top: calc(20px + env(safe-area-inset-top, 0px)); padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+.native-app .buddy-fab { bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
+.native-app .toast { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+.native-app #app { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Pas de connexion internet (au démarrage de l'appli) */
+.native-offline {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  padding: 32px; text-align: center; background: var(--bg); color: var(--text);
+}
+.native-offline p { margin: 0; max-width: 320px; line-height: 1.5; }
+/* Le bouton "Partager ma série" (dans la tuile de la série) */
+.native-app .stat-tile { position: relative; }
+.stat-share {
+  position: absolute; top: 8px; right: 8px; width: 34px; height: 34px;
+  display: grid; place-items: center; padding: 0; border: none; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-ink); cursor: pointer;
+}
+.stat-share .lucide { font-size: 18px; }

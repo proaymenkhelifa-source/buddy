@@ -24,8 +24,9 @@ workflows:
     scripts:
       - name: Installer Capacitor
         script: npm ci
+      # Copie la page de Buddy (public/) dans l'appli (mobile/www), puis prépare le projet iPhone
       - name: Préparer le projet iPhone
-        script: npx cap sync ios
+        script: npm run sync
       - name: Appliquer les profils de signature
         script: xcode-project use-profiles --project ios/App/App.xcodeproj
       - name: Numéro de version (toujours +1 par rapport au dernier envoi)

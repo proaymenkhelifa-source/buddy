@@ -60,6 +60,23 @@ function claudeErrorMessage(error) {
 // Le "passe-partout" du classeur Supabase (clé secrète : reste sur le serveur).
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
+// L'appli iPhone (App Store) contient la page elle-même, à l'adresse "capacitor://localhost" :
+// on l'autorise à parler au serveur, ELLE SEULE. (Le site, lui, est à la même adresse que le serveur : rien ne change.)
+const APP_ORIGINS = ["capacitor://localhost"];
+app.use("/api", (req, res, next) => {
+  const origin = req.headers.origin;
+  if (!APP_ORIGINS.includes(origin)) return next();
+  res.set({
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Lang",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  });
+  if (req.method === "OPTIONS") return res.sendStatus(204); // la question préalable du navigateur ("j'ai le droit ?")
+  next();
+});
+
 // Permet de lire les messages envoyés par la page (au format JSON).
 app.use(express.json());
 

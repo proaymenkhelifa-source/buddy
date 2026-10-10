@@ -140,8 +140,23 @@ function clearAllDrafts() {
   try { for (const k of Object.keys(localStorage)) if (k.startsWith(DRAFT_PREFIX)) localStorage.removeItem(k); } catch (e) {}
 }
 
-// LES APPLIS DES STORES : Android (Google Play) ouvre Buddy avec ?src=play, l'appli iPhone (App Store) avec ?src=ios
-// (et l'iPhone ajoute "BuddyiOS" à son identité de navigateur).
+// L'APPLI IPHONE (App Store) : la page est rangée DANS l'appli (Capacitor) et s'ouvre à l'adresse "capacitor://localhost".
+// Elle parle alors au serveur en ligne (API_BASE = https://buddycoach.app). Sur le site, API_BASE est vide
+// (la page et le serveur sont à la même adresse) : rien ne change pour le site.
+const NATIVE = window.Capacitor?.isNativePlatform?.() === true;
+const SITE = "https://buddycoach.app";
+const API_BASE = NATIVE ? SITE : "";
+// Les modules natifs de l'iPhone (vibrations, partage, barre d'état…) : null sur le site
+const nativePlugin = (name) => (NATIVE ? window.Capacitor.registerPlugin(name) : null);
+const NativeHaptics = nativePlugin("Haptics");
+const NativeShare = nativePlugin("Share");
+const NativeBrowser = nativePlugin("Browser");
+const NativeStatusBar = nativePlugin("StatusBar");
+const NativeApp = nativePlugin("App");
+document.documentElement.classList.toggle("native-app", NATIVE);
+
+// LES APPLIS DES STORES : Android (Google Play) ouvre Buddy avec ?src=play, l'appli iPhone (App Store) contient la page
+// (NATIVE ; ses anciennes versions ouvraient le site avec ?src=ios et ajoutaient "BuddyiOS" à leur identité de navigateur).
 // Google et Apple interdisent de vendre un abonnement autrement qu'avec leur propre système : dans ce "mode store",
 // on n'affiche ni prix ni bouton de paiement. Les abonnés du site gardent bien sûr Premium en se connectant.
 // Lu AVANT que l'étiquette ?src= soit retirée de l'adresse (juste en dessous).
@@ -150,9 +165,9 @@ const STORE_MODE = (() => {
   try {
     const src = new URLSearchParams(location.search).get("src");
     if (src === "play" || document.referrer.startsWith("android-app://")) sessionStorage.setItem("buddy-store", "play");
-    if (src === "ios" || /BuddyiOS/.test(navigator.userAgent)) sessionStorage.setItem("buddy-store", "ios");
+    if (src === "ios" || NATIVE || /BuddyiOS/.test(navigator.userAgent)) sessionStorage.setItem("buddy-store", "ios");
     return Boolean(sessionStorage.getItem("buddy-store"));
-  } catch (e) { return false; }
+  } catch (e) { return NATIVE; }
 })();
 document.documentElement.classList.toggle("store-mode", STORE_MODE);
 
@@ -175,6 +190,8 @@ const cleanSource = (v) => { const s = String(v || "").toLowerCase().trim(); ret
     history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
   }
 }
+// L'appli iPhone n'a pas d'adresse avec ?src= : on la note "ios" (si la personne n'avait pas déjà une étiquette)
+if (NATIVE) try { if (!localStorage.getItem(SOURCE_KEY)) localStorage.setItem(SOURCE_KEY, "ios"); } catch (e) {}
 const visitorSource = () => { try { return localStorage.getItem(SOURCE_KEY); } catch (e) { return null; } };
 
 // On arrive depuis le lien "choisir un nouveau mot de passe" reçu par e-mail ?
@@ -187,7 +204,25 @@ const OAUTH_RETURN = (() => {
 })();
 
 // On demande au serveur l'adresse Supabase et la clé PUBLIQUE.
-const config = await (await fetch("/api/config")).json();
+const config = await loadConfig();
+async function loadConfig() {
+  if (!NATIVE) return (await fetch("/api/config")).json();
+  // Appli iPhone sans internet : un petit écran "Pas de connexion" + "Réessayer" (au lieu d'une page blanche)
+  for (;;) {
+    try { return await (await fetch(API_BASE + "/api/config")).json(); } catch (e) { await offlineScreen(); }
+  }
+}
+function offlineScreen() {
+  return new Promise((resolve) => {
+    const box = document.createElement("div");
+    box.className = "native-offline";
+    box.innerHTML = `<img src="icons/buddy-bubble.svg" width="72" height="72" alt=""><p>${t("native.offline")}</p><button class="btn btn-primary">${t("native.retry")}</button>`;
+    const retry = () => { window.removeEventListener("online", retry); box.remove(); resolve(); };
+    box.querySelector("button").addEventListener("click", retry);
+    window.addEventListener("online", retry);
+    document.body.append(box);
+  });
+}
 const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
 
 // Toutes les données de la personne connectée (remplies par refresh())
@@ -201,11 +236,17 @@ let session = null;
 // et le thème clair (celui de la marque) reste la règle.
 function setTheme(theme, remember = false) {
   document.documentElement.dataset.theme = theme;
+  nativeStatusBar(theme);
   if (remember) try { localStorage.setItem("buddy-theme-choice", theme); } catch (e) {}
   for (const b of document.querySelectorAll("[data-theme-choice]")) {
     b.classList.toggle("active", b.dataset.themeChoice === theme);
   }
 }
+// Appli iPhone : l'heure et la batterie en foncé sur le thème clair, en clair sur le thème sombre
+function nativeStatusBar(theme) {
+  NativeStatusBar?.setStyle({ style: theme === "dark" ? "DARK" : "LIGHT" }).catch(() => {});
+}
+nativeStatusBar(document.documentElement.dataset.theme);
 for (const button of document.querySelectorAll(".theme-toggle")) {
   button.addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true));
 }
@@ -259,8 +300,9 @@ let authMode = "signup";
 
 // --- Se connecter avec Google / Apple ---
 // On demande à Supabase quels services sont activés (Authentication → Providers) : seuls leurs boutons s'affichent.
+// (Pas dans l'appli iPhone : Google / Apple renverraient la personne sur le site, pas dans l'appli.)
 let oauthProviders = [];
-fetch(config.supabaseUrl + "/auth/v1/settings", { headers: { apikey: config.supabasePublishableKey } })
+if (!NATIVE) fetch(config.supabaseUrl + "/auth/v1/settings", { headers: { apikey: config.supabasePublishableKey } })
   .then((r) => r.json())
   .then((settings) => { oauthProviders = ["google", "apple"].filter((p) => settings.external?.[p]); showProviders(); })
   .catch(() => {});
@@ -450,7 +492,7 @@ $("auth-submit").addEventListener("click", async () => {
     if (authMode === "signup") result = await supabase.auth.signUp({ email, password, options: { data: visitorSource() ? { source: visitorSource() } : {} } });
     else if (authMode === "login") result = await supabase.auth.signInWithPassword({ email, password });
     // Mot de passe oublié : Supabase envoie un e-mail avec un lien qui ramène ici
-    else if (authMode === "forgot") result = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/" });
+    else if (authMode === "forgot") result = await supabase.auth.resetPasswordForEmail(email, { redirectTo: (NATIVE ? SITE : location.origin) + "/" });
     // Le nouveau mot de passe (on est connecté grâce au lien de l'e-mail)
     else result = await supabase.auth.updateUser({ password });
   } catch (e) {
@@ -531,7 +573,7 @@ $("logout-button-2").addEventListener("click", logout);
 // =============================================================
 async function api(method, url, body) {
   const { data } = await supabase.auth.getSession(); // badge à jour (renouvelé si besoin)
-  const response = await fetch(url, {
+  const response = await fetch(API_BASE + url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -554,7 +596,8 @@ async function refresh() {
   const data = await api("GET", "/api/state?today=" + today() + (stripeReturn ? "&sync=1" : "") + (src ? "&src=" + encodeURIComponent(src) : ""));
   if (data.error) return toast(data.error, "error");
   // Le serveur tourne-t-il avec le même code que la page ? Sinon, des choses peuvent ne pas s'enregistrer.
-  if (data.version !== APP_VERSION) {
+  // (L'appli iPhone garde la page de SA version : elle peut avoir un peu de retard sur le serveur, c'est normal.)
+  if (data.version !== APP_VERSION && !NATIVE) {
     toast(t("toast.serverOld"), "error");
   }
   data.badges = data.badges || [];
@@ -1078,10 +1121,11 @@ function renderSuivi() {
       // 0 % cette semaine (lundi matin, par exemple) : "ta semaine démarre" plutôt que 0 %
       w.done ? [`${w.rate}%`, t("tile.success")] : ["💪", t("tile.fresh")],
       [`${w.activeDays}/${w.daysSoFar}`, t("tile.activeDays")],
-      stats.streak ? [`${stats.streak} 🔥`, t("tile.streak")] : ["🚀", t("tile.streakZero")],
+      // (Appli iPhone : un bouton "Partager" sur la série)
+      stats.streak ? [`${stats.streak} 🔥`, t("tile.streak"), NATIVE ? `<button class="stat-share" data-share-streak title="${t("share.streak")}" aria-label="${t("share.streak")}"><i data-lucide="export"></i></button>` : ""] : ["🚀", t("tile.streakZero")],
       [`${stats.best}`, t("tile.best")],
       [t(stats.jokerUsedOn ? "tile.jokerUsed" : "tile.jokerFree"), `🛡️ ${t("tile.joker")}${stats.jokerUsedOn ? ", " + niceDate(stats.jokerUsedOn, { weekday: "long" }) : ""}${bonusText()}`],
-    ].map(([value, label]) => `<div class="card stat-tile"><strong>${value}</strong><span>${label}</span></div>`).join("");
+    ].map(([value, label, extra = ""]) => `<div class="card stat-tile"><strong>${value}</strong><span>${label}</span>${extra}</div>`).join("");
 
   // Les 7 derniers jours, tâche par tâche
   const last7 = [];
@@ -1142,6 +1186,7 @@ function celebrateBadges(ids) {
     <div class="badge-won"><span class="badge-emoji big">${b.emoji}</span>
       <div><h2>${esc(b.name)}</h2><p class="muted">${esc(b.desc)}</p></div></div>`).join("");
   $("badge-dialog").showModal();
+  haptic("success");
   setBuddy("bravo", "saute", t("badge.newStatus"));
   setTimeout(() => showEmotion(currentEmotion, false), 3000);
 }
@@ -1271,8 +1316,10 @@ for (const b of document.querySelectorAll("[data-style]")) {
 // on regarde simplement quel bouton a été cliqué grâce à ses attributs data-…
 // =============================================================
 document.addEventListener("click", async (event) => {
-  const el = event.target.closest("[data-check], [data-edit-task], [data-new-task], [data-edit-goal], [data-new-goal], [data-cat], [data-filter], [data-talk-goal], [data-talk-category], [data-review], [data-continue-draft], [data-drop-draft]");
+  const el = event.target.closest("[data-check], [data-edit-task], [data-new-task], [data-edit-goal], [data-new-goal], [data-cat], [data-filter], [data-talk-goal], [data-talk-category], [data-review], [data-continue-draft], [data-drop-draft], [data-share-streak]");
   if (!el || !state) return;
+
+  if ("shareStreak" in el.dataset) return shareStreak();
 
   if (el.dataset.continueDraft) return continueDraft(Number(el.dataset.continueDraft));
   if (el.dataset.dropDraft) return dropDraft(Number(el.dataset.dropDraft));
@@ -1328,6 +1375,7 @@ async function toggleTask(taskId) {
   else state.logs = state.logs.filter((l) => !(l.task_id === taskId && l.day === today()));
   render();
   if (done) {
+    haptic();
     const allDone = stats.today.done === stats.today.planned;
     setBuddy(allDone ? "bravo" : "content", "saute", t(allDone ? "buddy.dayDone" : "buddy.nice"));
     setTimeout(() => showEmotion(currentEmotion, false), 2500);
@@ -2220,8 +2268,7 @@ document.addEventListener("keydown", (e) => {
 // =============================================================
 // L'APPLI IPHONE (App Store) : la page tourne dans une coquille native (Capacitor) qui donne accès
 // aux vraies notifications de l'iPhone. L'"adresse" envoyée au serveur est alors "apns:<jeton>".
-const NATIVE = window.Capacitor?.isNativePlatform?.() === true;
-const NativePush = NATIVE ? window.Capacitor.registerPlugin("PushNotifications") : null;
+const NativePush = nativePlugin("PushNotifications");
 const PUSH_OK = NATIVE || ("serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const IS_INSTALLED = NATIVE || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -2249,7 +2296,53 @@ if (NATIVE) {
     if (typeof url === "string" && url.startsWith("/")) location.href = url;
   });
 }
-const swReady = "serviceWorker" in navigator
+
+// LES PETITS PLUS DE L'APPLI IPHONE (rien de tout ça ne tourne sur le site)
+// Les liens vers les pages légales (et les autres sites) s'ouvrent dans une fenêtre Safari par-dessus l'appli
+if (NATIVE) {
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest?.("a[href]");
+    const href = link?.getAttribute("href") || "";
+    if (!href.startsWith("/legal/") && !/^https?:\/\//.test(href)) return;
+    e.preventDefault();
+    NativeBrowser.open({ url: href.startsWith("/") ? SITE + href : href }).catch(() => {});
+  });
+}
+// Une petite vibration : "tap" quand on coche une tâche, "success" pour un badge gagné
+function haptic(kind = "tap") {
+  if (!NativeHaptics) return;
+  (kind === "success" ? NativeHaptics.notification({ type: "SUCCESS" }) : NativeHaptics.impact({ style: "MEDIUM" })).catch(() => {});
+}
+// Partager sa série avec la fenêtre "Partager" de l'iPhone (Messages, WhatsApp, Instagram…)
+async function shareStreak() {
+  const n = stats?.streak || 0;
+  await NativeShare?.share({ title: "Buddy", text: t("share.streakText", { n }), url: SITE + "/?src=share-ios" }).catch(() => {});
+}
+// Les raccourcis de l'icône (appui long sur Buddy sur l'écran d'accueil) : l'appli reçoit "buddy://new-task" ou "buddy://chat"
+// (voir SceneDelegate.swift). Si la page n'est pas encore prête, on attend la fin du chargement (loadMyBuddy).
+const QUICK_ACTIONS = { "new-task": () => openTaskDialog(null), chat: () => openChat() };
+let pendingQuickAction = null;
+function quickAction(url) {
+  const run = QUICK_ACTIONS[String(url || "").replace("buddy://", "")];
+  if (!run) return;
+  try { sessionStorage.setItem("buddy-quick", "1"); } catch (e) {}
+  if (state && session) run(); else pendingQuickAction = run;
+}
+function runPendingQuickAction() {
+  const run = pendingQuickAction;
+  pendingQuickAction = null;
+  if (run && state) run();
+}
+if (NATIVE) {
+  NativeApp.addListener("appUrlOpen", (e) => quickAction(e.url));
+  // L'appli était fermée : le raccourci est le "lien de lancement" (une seule fois, pas à chaque rechargement)
+  let launched = false;
+  try { launched = sessionStorage.getItem("buddy-quick") === "1"; } catch (e) {}
+  if (!launched) NativeApp.getLaunchUrl().then((r) => quickAction(r?.url)).catch(() => {});
+}
+
+// (Pas de "facteur" dans l'appli iPhone : les notifications y passent par Apple, et la page est déjà dans l'appli.)
+const swReady = "serviceWorker" in navigator && !NATIVE
   ? navigator.serviceWorker.register("/sw.js").catch((e) => { console.error("Facteur (service worker) :", e); return null; })
   : Promise.resolve(null);
 
@@ -2876,6 +2969,7 @@ async function loadMyBuddy(newSession) {
     if (tourSeen()) hello();
     else startTour(hello);
   }
+  if (lastReply) runPendingQuickAction(); // appli iPhone ouverte par un raccourci de l'icône ("Nouvelle tâche", "Parler à Buddy")
 }
 
 // Au chargement : on écrit la page dans la bonne langue…

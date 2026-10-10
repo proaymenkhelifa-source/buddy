@@ -45,6 +45,25 @@
       </array>
     </dict>
 	</dict>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>new-task</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Nouvelle tâche</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>plus.circle.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>chat</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Parler à Buddy</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>bubble.left.and.bubble.right.fill</string>
+		</dict>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
