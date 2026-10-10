@@ -19,7 +19,7 @@ import {
 } from "./public/shared.js";
 import { t, cleanLang, dayLong } from "./public/i18n.js";
 import { startEmailScheduler, sendTestEmail, runEmailTick } from "./emails.js";
-import { sendPush, pushReady, vapidPublicKey } from "./push.js";
+import { sendPush, pushReady, apnsReady, vapidPublicKey } from "./push.js";
 import { paymentsReady, TRIAL_DAYS, createCheckout, createPortal, subscriptionState, needsSync, cancelEverything } from "./stripe.js";
 
 // Sommes-nous en ligne sur Vercel ? (Vercel remplit tout seul cette variable)
@@ -419,8 +419,10 @@ app.post("/api/email/test", requireUser, async (req, res) => {
 // La page nous donne l'"adresse" de l'appareil qui vient d'accepter les notifications : on la range.
 app.post("/api/push/subscribe", requireUser, async (req, res) => {
   const s = req.body.subscription || {};
-  const valid = typeof s.endpoint === "string" && s.endpoint.startsWith("https://") && s.endpoint.length < 1000 &&
-    typeof s.keys?.p256dh === "string" && typeof s.keys?.auth === "string" && s.keys.p256dh.length < 200 && s.keys.auth.length < 100;
+  // Appli iPhone : l'adresse est "apns:" + le jeton que l'iPhone a reçu d'Apple (voir push.js)
+  const iphone = typeof s.endpoint === "string" && /^apns:[0-9a-f]{64,200}$/i.test(s.endpoint);
+  const valid = iphone || (typeof s.endpoint === "string" && s.endpoint.startsWith("https://") && s.endpoint.length < 1000 &&
+    typeof s.keys?.p256dh === "string" && typeof s.keys?.auth === "string" && s.keys.p256dh.length < 200 && s.keys.auth.length < 100);
   if (!valid) return res.status(400).json({ error: tr(req, "err.generic") });
   try {
     // upsert : si l'appareil était déjà connu (même sous un autre compte), il passe à la personne connectée
@@ -448,7 +450,7 @@ app.post("/api/push/unsubscribe", requireUser, async (req, res) => {
 
 // "Envoie-moi une notification de test" (texte fixe : ça ne coûte rien)
 app.post("/api/push/test", requireUser, async (req, res) => {
-  if (!pushReady) return res.status(500).json({ error: tr(req, "err.pushOff") });
+  if (!pushReady && !apnsReady) return res.status(500).json({ error: tr(req, "err.pushOff") });
   try {
     const sent = await sendPush(supabase, req.user.id, { title: "Buddy", body: tr(req, "push.testBody"), url: "/#accueil", tag: "test", ttl: 600 });
     if (!sent) return res.status(400).json({ error: tr(req, "err.pushNone") });

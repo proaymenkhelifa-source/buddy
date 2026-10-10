@@ -140,17 +140,18 @@ function clearAllDrafts() {
   try { for (const k of Object.keys(localStorage)) if (k.startsWith(DRAFT_PREFIX)) localStorage.removeItem(k); } catch (e) {}
 }
 
-// L'APPLI ANDROID (Google Play) : Buddy y est ouvert par l'appli du store, avec ?src=play.
-// Là-bas, Google interdit de vendre un abonnement autrement qu'avec son propre système : dans ce "mode store",
+// LES APPLIS DES STORES : Android (Google Play) ouvre Buddy avec ?src=play, l'appli iPhone (App Store) avec ?src=ios
+// (et l'iPhone ajoute "BuddyiOS" à son identité de navigateur).
+// Google et Apple interdisent de vendre un abonnement autrement qu'avec leur propre système : dans ce "mode store",
 // on n'affiche ni prix ni bouton de paiement. Les abonnés du site gardent bien sûr Premium en se connectant.
 // Lu AVANT que l'étiquette ?src= soit retirée de l'adresse (juste en dessous).
 // (Mémorisé pour la session seulement : le site ouvert dans Chrome, lui, n'est jamais concerné.)
 const STORE_MODE = (() => {
   try {
-    if (new URLSearchParams(location.search).get("src") === "play" || document.referrer.startsWith("android-app://")) {
-      sessionStorage.setItem("buddy-store", "play");
-    }
-    return sessionStorage.getItem("buddy-store") === "play";
+    const src = new URLSearchParams(location.search).get("src");
+    if (src === "play" || document.referrer.startsWith("android-app://")) sessionStorage.setItem("buddy-store", "play");
+    if (src === "ios" || /BuddyiOS/.test(navigator.userAgent)) sessionStorage.setItem("buddy-store", "ios");
+    return Boolean(sessionStorage.getItem("buddy-store"));
   } catch (e) { return false; }
 })();
 document.documentElement.classList.toggle("store-mode", STORE_MODE);
@@ -2217,9 +2218,37 @@ document.addEventListener("keydown", (e) => {
 // le téléphone demande la permission, puis nous donne une "adresse" qu'on range sur le serveur.
 // Sur iPhone : ça ne marche que si Buddy est installé sur l'écran d'accueil (on explique comment).
 // =============================================================
-const PUSH_OK = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+// L'APPLI IPHONE (App Store) : la page tourne dans une coquille native (Capacitor) qui donne accès
+// aux vraies notifications de l'iPhone. L'"adresse" envoyée au serveur est alors "apns:<jeton>".
+const NATIVE = window.Capacitor?.isNativePlatform?.() === true;
+const NativePush = NATIVE ? window.Capacitor.registerPlugin("PushNotifications") : null;
+const PUSH_OK = NATIVE || ("serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const IS_INSTALLED = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const IS_INSTALLED = NATIVE || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const NATIVE_TOKEN_KEY = "buddy-apns-token";
+const nativeToken = () => { try { return localStorage.getItem(NATIVE_TOKEN_KEY); } catch (e) { return null; } };
+// Le jeton de l'iPhone, présenté comme un abonnement du navigateur (même forme pour le reste du code)
+const nativeSubscription = (token) => ({
+  endpoint: "apns:" + token,
+  toJSON: () => ({ endpoint: "apns:" + token, keys: { p256dh: "apns", auth: "apns" } }),
+  unsubscribe: async () => { try { localStorage.removeItem(NATIVE_TOKEN_KEY); } catch (e) {} await NativePush.unregister().catch(() => {}); },
+});
+// Demande à Apple le jeton de cet iPhone (après l'accord de la personne)
+function nativeRegister() {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("pas de réponse d'Apple")), 20000);
+    NativePush.addListener("registration", (t) => { clearTimeout(timer); resolve(t.value); });
+    NativePush.addListener("registrationError", (e) => { clearTimeout(timer); reject(new Error(e.error)); });
+    NativePush.register();
+  });
+}
+// Toucher une notification ouvre la bonne page de Buddy
+if (NATIVE) {
+  NativePush.addListener("pushNotificationActionPerformed", (action) => {
+    const url = action.notification?.data?.url;
+    if (typeof url === "string" && url.startsWith("/")) location.href = url;
+  });
+}
 const swReady = "serviceWorker" in navigator
   ? navigator.serviceWorker.register("/sw.js").catch((e) => { console.error("Facteur (service worker) :", e); return null; })
   : Promise.resolve(null);
@@ -2238,6 +2267,7 @@ function base64ToBytes(b64) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 async function currentSubscription() {
+  if (NATIVE) return nativeToken() ? nativeSubscription(nativeToken()) : null;
   const reg = await swReady;
   return reg ? reg.pushManager.getSubscription() : null;
 }
@@ -2245,6 +2275,11 @@ async function currentSubscription() {
 // L'état des notifications sur CET appareil
 async function pushStatus() {
   if (IS_IOS && !IS_INSTALLED) return "ios";          // iPhone : il faut d'abord installer Buddy
+  if (NATIVE) {
+    const { receive } = await NativePush.checkPermissions();
+    if (receive === "denied") return "denied";
+    return receive === "granted" && nativeToken() ? "on" : "off";
+  }
   if (!PUSH_OK || !config.vapidPublicKey) return "unsupported";
   if (Notification.permission === "denied") return "denied";
   return Notification.permission === "granted" && (await currentSubscription()) ? "on" : "off";
@@ -2252,14 +2287,21 @@ async function pushStatus() {
 
 async function enablePush() {
   try {
-    const permission = await Notification.requestPermission();
+    const permission = NATIVE ? (await NativePush.requestPermissions()).receive : await Notification.requestPermission();
     if (permission !== "granted") {
       await renderPush();
       return toast(t(permission === "denied" ? "push.deniedToast" : "push.notNow"), "error");
     }
-    const reg = await swReady;
-    const sub = (await reg.pushManager.getSubscription()) ||
-      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(config.vapidPublicKey) }));
+    let sub;
+    if (NATIVE) {
+      const token = await nativeRegister();
+      try { localStorage.setItem(NATIVE_TOKEN_KEY, token); } catch (e) {}
+      sub = nativeSubscription(token);
+    } else {
+      const reg = await swReady;
+      sub = (await reg.pushManager.getSubscription()) ||
+        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(config.vapidPublicKey) }));
+    }
     const result = await api("POST", "/api/push/subscribe", { subscription: sub.toJSON() });
     if (result.error) return toast(result.error, "error");
     toast(t("push.enabledToast"));
@@ -2683,6 +2725,8 @@ function showLaunchNotice() {
   let seen = false;
   try { seen = localStorage.getItem("buddy-launch-seen") === "1"; } catch (e) {}
   if (!until || seen) return;
+  // Pas dans les applis des stores (le texte parle du prix), ni pour un cadeau long (ex. : compte test de Google / Apple)
+  if (STORE_MODE || new Date(until) - Date.now() > 60 * 24 * 3600 * 1000) return;
   try { localStorage.setItem("buddy-launch-seen", "1"); } catch (e) {}
   $("launch-text").textContent = t("launch.text", { date: niceDate(dayKey(new Date(until)), { day: "numeric", month: "long" }) });
   $("launch-dialog").showModal();

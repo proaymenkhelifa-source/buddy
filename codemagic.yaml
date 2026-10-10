@@ -1,0 +1,43 @@
+# Codemagic : fabrique l'appli iPhone de Buddy sur un Mac dans le cloud (pas besoin d'avoir un Mac),
+# la signe avec le compte Apple Developer, puis l'envoie sur App Store Connect (TestFlight).
+# Le projet iPhone est dans le dossier mobile/ (Capacitor). Guide pas à pas : store/app-store-guide.md
+#
+# À régler une seule fois dans Codemagic (Teams → Integrations → App Store Connect) :
+# une clé API App Store Connect nommée exactement "Buddy App Store Connect".
+workflows:
+  ios-app-store:
+    name: Buddy iPhone → App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    working_directory: mobile
+    integrations:
+      app_store_connect: Buddy App Store Connect
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.buddycoach.buddy
+      vars:
+        # Le numéro de l'appli dans App Store Connect (Infos sur l'app → Identifiant Apple), à remplir
+        APP_STORE_APPLE_ID: 0
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Installer Capacitor
+        script: npm ci
+      - name: Préparer le projet iPhone
+        script: npx cap sync ios
+      - name: Appliquer les profils de signature
+        script: xcode-project use-profiles --project ios/App/App.xcodeproj
+      - name: Numéro de version (toujours +1 par rapport au dernier envoi)
+        script: |
+          LAST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          cd ios/App && agvtool new-version -all $(($LAST + 1))
+      - name: Fabriquer l'appli (.ipa)
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - "**/build/ios/ipa/*.ipa"
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
