@@ -29,10 +29,9 @@ workflows:
         script: npm run sync
       - name: Appliquer les profils de signature
         script: xcode-project use-profiles --project ios/App/App.xcodeproj
-      - name: Numéro de version (toujours +1 par rapport au dernier envoi)
-        script: |
-          LAST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" || echo 0)
-          cd ios/App && agvtool new-version -all $(($LAST + 1))
+      # Apple refuse deux envois avec le même numéro : on prend le compteur de Codemagic (1, 2, 3… toujours plus grand)
+      - name: Numéro de version (compteur des fabrications Codemagic)
+        script: cd ios/App && agvtool new-version -all $BUILD_NUMBER
       - name: Fabriquer l'appli (.ipa)
         script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
     artifacts:
