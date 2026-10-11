@@ -41,4 +41,5 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        # TestFlight interne (toi + testeurs de l'équipe) : pas besoin d'examen. Les testeurs externes viendront plus tard.
+        submit_to_testflight: false
