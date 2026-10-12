@@ -48,6 +48,15 @@ await esbuild.build({
 });
 fs.writeFileSync(appFile, appJs.replace(CDN_IMPORT, 'import { createClient } from "./vendor/supabase.js";'));
 
+// La partie JavaScript de Capacitor (registerPlugin, qui donne accès aux vibrations, au partage, aux notifications…).
+// L'iPhone ne fournit que le "pont" vers le natif : sans ce fichier, window.Capacitor.registerPlugin n'existe pas.
+await esbuild.build({
+  stdin: { contents: 'import "@capacitor/core";', resolveDir: path.resolve(here, "..") },
+  bundle: true, format: "esm", minify: true, target: "safari15",
+  outfile: path.join(TARGET, "vendor", "capacitor.js"),
+  logLevel: "warning",
+});
+
 // L'écran de l'iPhone va jusque sous l'heure et la barre d'accueil : "viewport-fit=cover" donne à la page
 // la taille de ces zones (env(safe-area-inset-…), utilisées dans la partie 19 de style.css).
 const indexFile = path.join(TARGET, "index.html");
@@ -64,7 +73,7 @@ const BOOT_GUARD = `<script>
 (function () {
   var errors = [];
   window.addEventListener("error", function (e) { errors.push((e.message || "erreur") + (e.filename ? " @ " + e.filename.split("/").pop() + ":" + e.lineno : "") + (e.target && e.target.src ? " [" + e.target.src + "]" : "")); }, true);
-  window.addEventListener("unhandledrejection", function (e) { errors.push("promesse : " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+  window.addEventListener("unhandledrejection", function (e) { var r = e.reason; errors.push("promesse : " + (r && r.name ? r.name + " : " : "") + (r && r.message !== undefined ? r.message : String(r)) + (r && r.stack ? "\\n" + r.stack : "")); });
   setTimeout(function () {
     var shown = ["landing", "auth-screen", "app"].some(function (id) { var el = document.getElementById(id); return el && !el.classList.contains("hidden"); });
     if (shown || document.querySelector(".native-offline")) return;
@@ -77,7 +86,13 @@ const BOOT_GUARD = `<script>
   }, 10000);
 })();
 </script>`;
+const APP_SCRIPT = '<script type="module" src="app.js"></script>';
+if (!html.includes(APP_SCRIPT)) {
+  console.error("La ligne qui charge app.js dans index.html a changé : mets à jour build-www.mjs");
+  process.exit(1);
+}
 fs.writeFileSync(indexFile, html
+  .replace(APP_SCRIPT, '<script type="module" src="vendor/capacitor.js"></script>\n  ' + APP_SCRIPT)
   .replace(viewport, '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">')
   .replace("<head>", "<head>\n" + BOOT_GUARD));
 

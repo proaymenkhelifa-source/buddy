@@ -146,8 +146,20 @@ function clearAllDrafts() {
 const NATIVE = window.Capacitor?.isNativePlatform?.() === true;
 const SITE = "https://buddycoach.app";
 const API_BASE = NATIVE ? SITE : "";
-// Les modules natifs de l'iPhone (vibrations, partage, barre d'état…) : null sur le site
-const nativePlugin = (name) => (NATIVE ? window.Capacitor.registerPlugin(name) : null);
+// Les modules natifs de l'iPhone (vibrations, partage, barre d'état…) : null sur le site.
+// registerPlugin vient de la partie JavaScript de Capacitor (mobile/www/vendor/capacitor.js, ajoutée par build-www.mjs).
+// S'il manque ou qu'un module ne répond pas, on continue SANS lui : un module natif ne doit jamais empêcher Buddy de s'ouvrir.
+const nativePlugin = (name) => {
+  if (!NATIVE) return null;
+  try {
+    const cap = window.Capacitor;
+    if (typeof cap.registerPlugin === "function") return cap.registerPlugin(name);
+    return cap.Plugins?.[name] || null;
+  } catch (e) {
+    console.error("Module natif " + name + " indisponible :", e);
+    return null;
+  }
+};
 const NativeHaptics = nativePlugin("Haptics");
 const NativeShare = nativePlugin("Share");
 const NativeBrowser = nativePlugin("Browser");
@@ -2279,7 +2291,7 @@ const nativeToken = () => { try { return localStorage.getItem(NATIVE_TOKEN_KEY);
 const nativeSubscription = (token) => ({
   endpoint: "apns:" + token,
   toJSON: () => ({ endpoint: "apns:" + token, keys: { p256dh: "apns", auth: "apns" } }),
-  unsubscribe: async () => { try { localStorage.removeItem(NATIVE_TOKEN_KEY); } catch (e) {} await NativePush.unregister().catch(() => {}); },
+  unsubscribe: async () => { try { localStorage.removeItem(NATIVE_TOKEN_KEY); } catch (e) {} await NativePush?.unregister().catch(() => {}); },
 });
 // Demande à Apple le jeton de cet iPhone (après l'accord de la personne)
 function nativeRegister() {
@@ -2291,7 +2303,7 @@ function nativeRegister() {
   });
 }
 // Toucher une notification ouvre la bonne page de Buddy
-if (NATIVE) {
+if (NativePush) {
   NativePush.addListener("pushNotificationActionPerformed", (action) => {
     const url = action.notification?.data?.url;
     if (typeof url === "string" && url.startsWith("/")) location.href = url;
@@ -2305,7 +2317,9 @@ if (NATIVE) {
     const link = e.target.closest?.("a[href]");
     const href = link?.getAttribute("href") || "";
     if (!href.startsWith("/legal/") && !/^https?:\/\//.test(href)) return;
+    if (!NativeBrowser) return;
     e.preventDefault();
+    if (!NativeBrowser) return; // pas de module : le lien s'ouvre normalement
     NativeBrowser.open({ url: href.startsWith("/") ? SITE + href : href }).catch(() => {});
   });
 }
@@ -2334,7 +2348,7 @@ function runPendingQuickAction() {
   pendingQuickAction = null;
   if (run && state) run();
 }
-if (NATIVE) {
+if (NativeApp) {
   NativeApp.addListener("appUrlOpen", (e) => quickAction(e.url));
   // L'appli était fermée : le raccourci est le "lien de lancement" (une seule fois, pas à chaque rechargement)
   let launched = false;
@@ -2370,7 +2384,8 @@ async function currentSubscription() {
 async function pushStatus() {
   if (IS_IOS && !IS_INSTALLED) return "ios";          // iPhone : il faut d'abord installer Buddy
   if (NATIVE) {
-    const { receive } = await NativePush.checkPermissions();
+    if (!NativePush) return "unsupported";
+    const { receive } = await NativePush.checkPermissions().catch(() => ({ receive: "prompt" }));
     if (receive === "denied") return "denied";
     return receive === "granted" && nativeToken() ? "on" : "off";
   }
