@@ -94,6 +94,9 @@ export function installerPublications(app, { supabase, requireUser, requireAdmin
     const secret = process.env.CRON_SECRET;
     const given = (req.headers.authorization || "").replace("Bearer ", "") || req.query.key;
     if (!secret || given !== secret) return res.status(403).json({ error: "Accès refusé." });
+    // Sécurité : tant que le robot est en mode essai, les passages AUTOMATIQUES (crons Vercel) ne font rien,
+    // pour ne jamais « publier pour de faux » une vidéo validée. Un essai se lance à la main (sans être un cron Vercel).
+    if (modeEssai() && /vercel-cron/i.test(req.headers["user-agent"] || "")) return res.json({ ignore: "mode essai : passage automatique ignoré" });
     const creneau = req.query.creneau;
     if (!CRENEAUX.includes(creneau)) return res.status(400).json({ error: "Paramètre creneau=midi ou creneau=soir obligatoire." });
     try {

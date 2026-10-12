@@ -31,16 +31,25 @@ export function plusJours(jour, n) {
   return d.toISOString().slice(0, 10);
 }
 
-// Le prochain créneau libre pour une nouvelle vidéo (FR et EN le même jour, au même créneau) :
-// un créneau est libre s'il n'a encore aucune publication active (tout sauf « annule »).
-export async function prochainCreneauLibre(supabase, { depuis = new Date() } = {}) {
+// Le créneau habituel : 1 vidéo par jour (choix d'Aymen), au soir (~19 h–20 h à Paris, début d'après-midi à New York).
+// Réglable avec PUBLICATION_CRENEAU=midi ; PUBLICATION_PAR_JOUR=2 pour publier midi ET soir.
+export const CRENEAU_HABITUEL = (env = process.env) => (CRENEAUX.includes(env.PUBLICATION_CRENEAU) ? env.PUBLICATION_CRENEAU : "soir");
+const PAR_JOUR = (env = process.env) => (env.PUBLICATION_PAR_JOUR === "2" ? 2 : 1);
+
+// Le prochain créneau libre pour une nouvelle vidéo (FR et EN le même jour, au même créneau).
+// Avec 1 vidéo par jour : un jour est libre s'il n'a encore aucune publication active (tout sauf « annule »).
+export async function prochainCreneauLibre(supabase, { depuis = new Date(), env = process.env } = {}) {
+  const habituel = CRENEAU_HABITUEL(env), parJour = PAR_JOUR(env);
   const { jour, minutes } = maintenantParis(depuis);
   const { data, error } = await supabase.from("publications").select("date_prevue, creneau").gte("date_prevue", jour).neq("statut", "annule");
   if (error) throw error;
   const pris = new Set(data.map((r) => `${r.date_prevue}|${r.creneau}`));
+  const joursPris = new Set(data.map((r) => r.date_prevue));
+  const ordre = parJour === 2 ? CRENEAUX : [habituel];
   for (let i = 0; i < 365; i++) {
     const j = plusJours(jour, i);
-    for (const c of CRENEAUX) {
+    if (parJour === 1 && joursPris.has(j)) continue;
+    for (const c of ordre) {
       if (i === 0 && minutes >= LIMITE_CRENEAU[c]) continue; // déjà trop tard aujourd'hui
       if (!pris.has(`${j}|${c}`)) return { date: j, creneau: c };
     }
@@ -73,7 +82,7 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 
 // Les noms affichés
 export const NOMS_RESEAUX = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
-export const NOMS_CRENEAUX = { midi: "midi (~12 h)", soir: "soir (~19 h 30)" };
+export const NOMS_CRENEAUX = { midi: "midi (entre 11 h et 13 h)", soir: "soir (entre 18 h et 20 h)" };
 export const DRAPEAUX = { fr: "🇫🇷", en: "🇬🇧" };
 
 // Un petit e-mail simple aux couleurs de Buddy

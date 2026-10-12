@@ -1,3 +1,7 @@
 {
-  "regions": ["cdg1"]
+  "regions": ["cdg1"],
+  "crons": [
+    { "path": "/api/cron/publish?creneau=midi", "schedule": "0 10 * * *" },
+    { "path": "/api/cron/publish?creneau=soir", "schedule": "0 17 * * *" }
+  ]
 }

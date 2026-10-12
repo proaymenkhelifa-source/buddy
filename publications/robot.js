@@ -5,7 +5,7 @@
 //   puis un e-mail de compte rendu est envoyé à Aymen.
 // Mode essai : PUBLICATION_DRY_RUN=true (c'est la valeur par défaut tant que rien d'autre n'est écrit) → RIEN n'est envoyé aux réseaux.
 import { Resend } from "resend";
-import { BUCKET, TERMINES, MAX_PAR_JOUR, maintenantParis, lienSigne, adresseAymen, emailSimple, esc, NOMS_RESEAUX, DRAPEAUX, NOMS_CRENEAUX } from "./commun.js";
+import { BUCKET, TERMINES, MAX_PAR_JOUR, maintenantParis, plusJours, lienSigne, adresseAymen, emailSimple, esc, NOMS_RESEAUX, DRAPEAUX, NOMS_CRENEAUX } from "./commun.js";
 
 // Le mode essai est ACTIF sauf si PUBLICATION_DRY_RUN vaut exactement "false"
 export const modeEssai = () => process.env.PUBLICATION_DRY_RUN !== "false";
@@ -88,6 +88,15 @@ export async function publierCreneau(supabase, creneau, { maintenant = new Date(
   // les envois partent tous en même temps (le traitement d'une vidéo par un réseau peut prendre 1 à 2 minutes)
   resultats.push(...(await Promise.all(aPublier.map((l) => publierUneLigne(supabase, l, { essai })))));
   const supprimes = await menage(supabase, lignes.map((l) => l.fichier));
+  // le grand ménage : tout fichier prévu il y a plus de 7 jours est effacé, même s'il n'a pas été publié
+  const { data: vieux } = await supabase.from("publications").select("fichier").lt("date_prevue", plusJours(jour, -7));
+  const aEffacer = [...new Set((vieux || []).map((v) => v.fichier))];
+  if (aEffacer.length) {
+    const { data: restants } = await supabase.storage.from(BUCKET).list("", { limit: 1000 });
+    const dossiers = new Set((restants || []).map((x) => x.name));
+    const vraiment = aEffacer.filter((f) => dossiers.has(f.split("/")[0]));
+    if (vraiment.length && !(await supabase.storage.from(BUCKET).remove(vraiment)).error) supprimes.push(...vraiment);
+  }
 
   if (resultats.length) await emailCompteRendu({ jour, creneau, essai, resultats, supprimes });
   return { jour, creneau, essai, publiees: resultats.length, supprimes, resultats: resultats.map((r) => ({ id: r.ligne.id, video: r.ligne.video, reseau: r.ligne.reseau, langue: r.ligne.langue, statut: r.statut, url: r.url ?? null, erreur: r.erreur ?? null })) };
