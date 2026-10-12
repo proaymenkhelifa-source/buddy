@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Buddy · Connexions</title>
+  <link rel="icon" type="image/svg+xml" href="/icons/buddy-bubble.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #5fe2c3; --navy: #14284b; --bg: #f8fafc; --card: #ffffff; --card-strong: #f1f5f9; --border: #e6ebf1; --text: #14284b; --muted: #64748b; --danger: #dc2626; --sky: #60a5fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Plus Jakarta Sans", sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 20px 14px 60px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+    h1 { font: 900 26px "Nunito", sans-serif; margin: 0; }
+    h2 { font: 800 18px "Nunito", sans-serif; margin: 0 0 8px; }
+    a { color: var(--sky); font-weight: 700; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+    .compte { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); }
+    .compte:first-of-type { border-top: 0; }
+    button { font: inherit; font-weight: 700; color: inherit; border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 8px 14px; cursor: pointer; }
+    button.main { background: var(--primary); border-color: var(--primary); }
+    button:disabled { opacity: .5; cursor: default; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--card-strong); color: var(--muted); }
+    .tag.connecte { background: #dcfce7; color: #166534; }
+    .tag.bientot { background: #fef3c7; color: #92400e; }
+    .tag.expire { background: #fee2e2; color: #991b1b; }
+    .bandeau { padding: 12px 14px; border-radius: 14px; margin-bottom: 14px; background: #ecfdf5; border: 1px solid #a7f3d0; font-weight: 700; }
+    .bandeau.ko { background: #fef2f2; border-color: #fecaca; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🔌 Connexions</h1>
+      <div><a href="/admin/publications">🎬 Publications</a> · <a href="/admin">Admin</a></div>
+    </header>
+    <div id="bandeau" class="bandeau hidden"></div>
+    <div id="message" class="card">Chargement…</div>
+    <div id="comptes"></div>
+    <p class="muted">Chaque bouton « Connecter » ouvre la page de connexion du réseau : connecte-toi avec le <b>bon compte</b> (FR ou EN). Si tu es déjà connecté avec l'autre compte, déconnecte-toi d'abord sur le réseau.</p>
+  </div>
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const NOMS = { instagram: "Instagram", youtube: "YouTube", tiktok: "TikTok" };
+    const ETATS = { connecte: "Connecté", bientot: "Expire bientôt", expire: "À reconnecter", non_connecte: "Non connecté" };
+
+    // le message de retour après une connexion (?message=…)
+    const retour = new URLSearchParams(location.search).get("message");
+    if (retour) { $("bandeau").textContent = retour; $("bandeau").classList.toggle("ko", retour.startsWith("❌")); $("bandeau").classList.remove("hidden"); history.replaceState(null, "", location.pathname); }
+
+    const config = await (await fetch("/api/config")).json();
+    const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
+    let token = null;
+    async function api(chemin, post) {
+      const r = await fetch(chemin, { method: post ? "POST" : "GET", headers: { Authorization: "Bearer " + token } });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Erreur.");
+      return j;
+    }
+
+    async function load() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) { $("message").innerHTML = 'Tu n\'es pas connecté. <a href="/#connexion">Connecte-toi sur Buddy</a>, puis reviens ici.'; return; }
+      token = data.session.access_token;
+      try {
+        const { comptes } = await api("/api/admin/connexions");
+        $("message").classList.add("hidden");
+        $("comptes").innerHTML = ["instagram", "youtube", "tiktok"].map((r) => `<div class="card"><h2>${NOMS[r]}</h2>${comptes.filter((c) => c.reseau === r).map(ligne).join("")}</div>`).join("");
+      } catch (e) { $("message").textContent = e.message; }
+    }
+
+    function ligne(c) {
+      const exp = c.expire_le ? ` · jusqu'au ${new Date(c.expire_le).toLocaleDateString("fr-FR")}` : "";
+      const bouton = !c.disponible ? '<span class="muted">bientôt</span>'
+        : !c.pret ? '<span class="muted">clés de l\'appli manquantes</span>'
+        : `<button class="${c.etat === "connecte" ? "" : "main"}" data-connecter="${c.reseau}/${c.langue}">${c.etat === "non_connecte" ? "Connecter" : "Reconnecter"}</button>`;
+      return `<div class="compte"><div><b>${c.langue === "fr" ? "🇫🇷 FR" : "🇬🇧 EN"}</b> <span class="tag ${c.etat}">${ETATS[c.etat]}</span>
+        <div class="muted">${c.nom ? "@" + esc(c.nom) : ""}${exp}</div></div><div>${bouton}</div></div>`;
+    }
+
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-connecter]");
+      if (!b) return;
+      b.disabled = true;
+      try {
+        const { url } = await api(`/api/admin/connexions/${b.dataset.connecter}/debut`, true);
+        location.href = url;
+      } catch (err) { alert(err.message); b.disabled = false; }
+    });
+    load();
+  </script>
+</body>
+</html>

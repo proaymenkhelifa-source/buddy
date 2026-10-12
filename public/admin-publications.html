@@ -62,7 +62,7 @@
   <div class="wrap">
     <header>
       <h1>🎬 Publications</h1>
-      <div class="row"><a href="/admin">← Admin</a><button id="refresh">Actualiser</button></div>
+      <div class="row"><a href="/admin/connexions">🔌 Connexions</a><a href="/admin">← Admin</a><button id="refresh">Actualiser</button></div>
     </header>
     <div id="message" class="card message">Chargement…</div>
     <div id="content" class="hidden">
@@ -144,6 +144,7 @@
         ${aVenir ? `<div class="row" style="margin-top:8px">
           ${modifiable ? `<button data-action="modifier" data-id="${p.id}">💾 Enregistrer les textes</button>` : ""}
           ${p.statut === "a_valider" ? `<button class="main" data-action="valider" data-id="${p.id}">Valider</button>` : ""}
+          ${p.statut === "valide" ? `<button data-action="publier_maintenant" data-id="${p.id}">🚀 Publier maintenant</button>` : ""}
           ${["erreur", "annule"].includes(p.statut) ? `<button class="main" data-action="reessayer" data-id="${p.id}">🔁 Réessayer</button>` : ""}
           ${["a_valider", "valide", "erreur"].includes(p.statut) ? `<button class="danger" data-action="annuler" data-id="${p.id}">Annuler</button>` : ""}
         </div>` : ""}
@@ -162,9 +163,12 @@
         for (const t of document.querySelectorAll(`textarea[data-id="${id}"]`)) corps.champs[t.dataset.champ] = t.value;
       }
       if (action === "annuler" && !confirm("Annuler cette publication ?")) return;
+      if (action === "publier_maintenant" && !confirm("Publier MAINTENANT, en vrai, sur ce réseau ?")) return;
+      if (action === "publier_maintenant") b.textContent = "⏳ Envoi… (1 à 3 min)";
       b.disabled = true;
       try {
-        await api("/api/admin/publications/action", corps);
+        const rep = await api("/api/admin/publications/action", corps);
+        if (action === "publier_maintenant") { toast(rep.ok ? "Publié ✅" : "❌ " + (rep.resultat?.erreur || "Erreur")); await load(); return; }
         toast({ valider_tout: "Vidéo validée ✅", valider: "Validée ✅", annuler: "Annulée", reessayer: "Remise dans la file 🔁", reporter: "Reportée 📅", modifier: "Textes enregistrés 💾" }[action]);
         await load();
       } catch (err) {

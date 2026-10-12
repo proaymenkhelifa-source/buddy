@@ -1,18 +1,24 @@
 // publications/routes.js – les adresses du robot de publication, branchées sur le serveur par server.js.
 //   GET  /admin/publications                 → la page admin (le fichier public/admin-publications.html)
 //   GET  /api/admin/publications             → les vidéos à venir + l'historique (admin uniquement)
-//   POST /api/admin/publications/action      → valider tout / valider / annuler / reporter / réessayer / modifier un texte
+//   POST /api/admin/publications/action      → valider tout / valider / annuler / reporter / réessayer / modifier un texte / publier maintenant (test)
+//   + la page Connexions (publications/connexions.js)
 //   ALL  /api/cron/publish?creneau=midi|soir → le passage du robot (protégé par CRON_SECRET, comme /api/cron/tick)
 //        (en mode essai seulement : &jour=AAAA-MM-JJ pour tester une vidéo prévue un autre jour)
 // Rien ici ne modifie les routes existantes de l'appli.
 import fs from "node:fs";
 import { BUCKET, CRENEAUX, lienSigne, creneauLibre, maintenantParis } from "./commun.js";
-import { publierCreneau, modeEssai } from "./robot.js";
+import { publierCreneau, publierUneLigne, modeEssai, brancherReseau } from "./robot.js";
+import { installerConnexions } from "./connexions.js";
+import * as instagram from "./instagram.js";
+
+brancherReseau("instagram", instagram);
 
 const PAGE = new URL("../public/admin-publications.html", import.meta.url);
 const A_VENIR = ["a_valider", "valide", "en_cours", "erreur"];
 
 export function installerPublications(app, { supabase, requireUser, requireAdmin }) {
+  installerConnexions(app, { supabase, requireUser, requireAdmin });
   app.get("/admin/publications", (req, res) => res.type("html").send(fs.readFileSync(PAGE, "utf-8")));
 
   // La liste : à venir (groupé par vidéo, avec un lien d'aperçu signé) + historique
@@ -63,6 +69,12 @@ export function installerPublications(app, { supabase, requireUser, requireAdmin
         if (date < maintenantParis().jour) return res.status(400).json({ error: "Cette date est déjà passée." });
         if (!(await creneauLibre(supabase, date, creneau, String(video)))) return res.status(400).json({ error: "Ce créneau est déjà pris par une autre vidéo (2 publications max par compte et par jour)." });
         r = await maj((q) => q.eq("video", String(video)).in("statut", A_VENIR.filter((s) => s !== "en_cours")), { date_prevue: date, creneau });
+      } else if (action === "publier_maintenant") {
+        // Bouton de test : publie UNE ligne validée tout de suite, en vrai (même si le robot est en mode essai)
+        const { data: ligne } = await supabase.from("publications").select("*").eq("id", id).eq("statut", "valide").maybeSingle();
+        if (!ligne) return res.status(400).json({ error: "Seule une publication « Validée » peut partir maintenant." });
+        const resultat = await publierUneLigne(supabase, ligne, { essai: false });
+        return res.json({ ok: resultat.statut !== "erreur", resultat });
       } else if (action === "modifier") {
         const valeurs = {};
         for (const k of ["legende", "titre_youtube", "commentaire"]) if (typeof champs?.[k] === "string") valeurs[k] = champs[k].slice(0, 5000);

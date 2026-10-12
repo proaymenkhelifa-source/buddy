@@ -28,48 +28,66 @@ async function publierLigne(supabase, ligne, essai) {
   return module.publier({ supabase, ligne, connexion, video });
 }
 
+// Publier UNE ligne et ranger le résultat dans Supabase. Renvoie { ligne, statut, id_externe?, url?, erreur? }
+// (utilisé par le robot, et par le bouton de test « Publier maintenant » de la page admin)
+export async function publierUneLigne(supabase, ligne, { essai = modeEssai() } = {}) {
+  await supabase.from("publications").update({ statut: "en_cours", erreur: null }).eq("id", ligne.id);
+  let r;
+  try {
+    r = await publierLigne(supabase, ligne, essai);
+  } catch (e) {
+    r = { statut: "erreur", erreur: e.message || String(e) };
+  }
+  await supabase.from("publications").update({
+    statut: r.statut, id_externe: r.id_externe ?? null, url: r.url ?? null, erreur: r.erreur ?? null,
+    publie_le: ["publie", "prive_attente"].includes(r.statut) ? new Date().toISOString() : null,
+  }).eq("id", ligne.id);
+  await menage(supabase, [ligne.fichier]);
+  return { ligne, ...r };
+}
+
+// Ménage : on supprime les fichiers dont toutes les publications sont terminées (coût zéro)
+async function menage(supabase, fichiers) {
+  const supprimes = [];
+  for (const fichier of [...new Set(fichiers)]) {
+    const { data: toutes } = await supabase.from("publications").select("statut").eq("fichier", fichier);
+    if (toutes?.length && toutes.every((t) => TERMINES.includes(t.statut))) {
+      const { error: e } = await supabase.storage.from(BUCKET).remove([fichier]);
+      if (!e) supprimes.push(fichier);
+    }
+  }
+  return supprimes;
+}
+
 // Le passage du robot pour un créneau
 // jourForce (AAAA-MM-JJ) : seulement en mode essai, pour tester tout de suite une vidéo prévue un autre jour
 export async function publierCreneau(supabase, creneau, { maintenant = new Date(), jourForce = null } = {}) {
   const essai = modeEssai();
   const jour = essai && /^\d{4}-\d{2}-\d{2}$/.test(jourForce || "") ? jourForce : maintenantParis(maintenant).jour;
+  // au passage : on renouvelle les jetons Instagram qui expirent bientôt (même les jours sans vidéo)
+  if (!essai && MODULES.instagram?.renouvelerSiBesoin) {
+    const { data: cx } = await supabase.from("connexions_reseaux").select("*").eq("reseau", "instagram");
+    for (const c of cx || []) await MODULES.instagram.renouvelerSiBesoin(supabase, c).catch((e) => console.error("Jeton Instagram :", e.message));
+  }
   const { data: lignes, error } = await supabase.from("publications").select("*")
     .eq("date_prevue", jour).eq("creneau", creneau).eq("statut", "valide").order("video").order("langue").order("reseau");
   if (error) throw error;
 
-  const resultats = [];
+  // règle : maximum 2 publications par compte et par jour (vérifiée avant de lancer les envois)
+  const aPublier = [], resultats = [];
   for (const ligne of lignes) {
-    // règle : maximum 2 publications par compte et par jour
     const { count } = await supabase.from("publications").select("id", { count: "exact", head: true })
       .eq("date_prevue", jour).eq("reseau", ligne.reseau).eq("langue", ligne.langue).in("statut", ["publie", "prive_attente", "en_cours"]);
-    if ((count || 0) >= MAX_PAR_JOUR) {
-      await supabase.from("publications").update({ statut: "erreur", erreur: `Déjà ${MAX_PAR_JOUR} publications aujourd'hui sur ce compte : reporte-la.` }).eq("id", ligne.id);
-      resultats.push({ ligne, statut: "erreur", erreur: `Déjà ${MAX_PAR_JOUR} publications aujourd'hui sur ce compte.` });
-      continue;
-    }
-    await supabase.from("publications").update({ statut: "en_cours", erreur: null }).eq("id", ligne.id);
-    let r;
-    try {
-      r = await publierLigne(supabase, ligne, essai);
-    } catch (e) {
-      r = { statut: "erreur", erreur: e.message || String(e) };
-    }
-    await supabase.from("publications").update({
-      statut: r.statut, id_externe: r.id_externe ?? null, url: r.url ?? null, erreur: r.erreur ?? null,
-      publie_le: ["publie", "prive_attente"].includes(r.statut) ? new Date().toISOString() : null,
-    }).eq("id", ligne.id);
-    resultats.push({ ligne, ...r });
+    const dejaPrevues = aPublier.filter((l) => l.reseau === ligne.reseau && l.langue === ligne.langue).length;
+    if ((count || 0) + dejaPrevues >= MAX_PAR_JOUR) {
+      const erreur = `Déjà ${MAX_PAR_JOUR} publications aujourd'hui sur ce compte : reporte-la.`;
+      await supabase.from("publications").update({ statut: "erreur", erreur }).eq("id", ligne.id);
+      resultats.push({ ligne, statut: "erreur", erreur });
+    } else aPublier.push(ligne);
   }
-
-  // Ménage : on supprime les fichiers dont toutes les publications sont terminées
-  const supprimes = [];
-  for (const fichier of [...new Set(lignes.map((l) => l.fichier))]) {
-    const { data: toutes } = await supabase.from("publications").select("statut").eq("fichier", fichier);
-    if (toutes.length && toutes.every((t) => TERMINES.includes(t.statut))) {
-      const { error: e } = await supabase.storage.from(BUCKET).remove([fichier]);
-      if (!e) supprimes.push(fichier);
-    }
-  }
+  // les envois partent tous en même temps (le traitement d'une vidéo par un réseau peut prendre 1 à 2 minutes)
+  resultats.push(...(await Promise.all(aPublier.map((l) => publierUneLigne(supabase, l, { essai })))));
+  const supprimes = await menage(supabase, lignes.map((l) => l.fichier));
 
   if (resultats.length) await emailCompteRendu({ jour, creneau, essai, resultats, supprimes });
   return { jour, creneau, essai, publiees: resultats.length, supprimes, resultats: resultats.map((r) => ({ id: r.ligne.id, video: r.ligne.video, reseau: r.ligne.reseau, langue: r.ligne.langue, statut: r.statut, url: r.url ?? null, erreur: r.erreur ?? null })) };
