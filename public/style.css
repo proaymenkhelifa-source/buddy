@@ -108,6 +108,9 @@
 
 /* ---------- 2. LES BASES ---------- */
 * { box-sizing: border-box; }
+/* Rien ne dépasse sur les côtés : sur iPhone, un élément caché hors de l écran (ex. : le panneau de Buddy)
+   élargissait la page, qu on pouvait alors faire glisser de gauche à droite. "clip" coupe sans créer de barre de défilement. */
+html, body { overflow-x: clip; }
 
 body {
   margin: 0;
@@ -881,9 +884,10 @@ mark.todo { background: #fff3c4; color: #7a4b00; padding: 1px 6px; border-radius
   background: var(--card); border-left: 1px solid var(--border);
   box-shadow: -20px 0 60px rgba(15, 23, 42, 0.12);
   transform: translateX(105%);           /* caché à droite de l'écran */
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  visibility: hidden;                    /* … et vraiment caché une fois sorti (sinon l'iPhone élargit la page) */
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.35s;
 }
-.drawer.open { transform: translateX(0); } /* glisse dans l'écran */
+.drawer.open { transform: translateX(0); visibility: visible; transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s; } /* glisse dans l'écran */
 .drawer-backdrop { position: fixed; inset: 0; z-index: 25; background: rgba(15, 23, 42, 0.28); animation: fade-in 0.2s; }
 .drawer-head { display: flex; align-items: center; gap: 12px; }
 .drawer-head h3 { font-weight: 800; font-size: 1.1rem; }
@@ -1039,7 +1043,7 @@ mark.todo { background: #fff3c4; color: #7a4b00; padding: 1px 6px; border-radius
 .toggles { display: grid; gap: 4px; margin-top: 14px; }
 .toggle-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
 .toggle-row:last-child { border-bottom: none; }
-.toggle-row > input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; }
+.toggle-row > input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; padding: 0; }
 .toggle-row strong { display: block; font-size: 0.95rem; }
 .toggle-row small { color: var(--muted); font-size: 0.82rem; }
 .toggle-row input[type="time"] { width: auto; padding: 8px 10px; }
@@ -1637,3 +1641,6 @@ html:has(dialog[open]) { overflow: hidden; }
   background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-ink); cursor: pointer;
 }
 .stat-share .lucide { font-size: 18px; }
+
+/* Appli iPhone : les champs de texte en 16 px minimum (en dessous, l'iPhone zoome tout seul quand on tape dedans) */
+.native-app input, .native-app textarea, .native-app select { font-size: max(16px, 1em); }

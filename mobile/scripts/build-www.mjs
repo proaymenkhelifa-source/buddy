@@ -93,7 +93,9 @@ if (!html.includes(APP_SCRIPT)) {
 }
 fs.writeFileSync(indexFile, html
   .replace(APP_SCRIPT, '<script type="module" src="vendor/capacitor.js"></script>\n  ' + APP_SCRIPT)
-  .replace(viewport, '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">')
+  // maximum-scale=1 : l'iPhone ne zoome plus tout seul quand on touche un champ de texte (sinon l'écran restait agrandi
+  // et il fallait glisser le doigt pour retrouver les boutons). Uniquement dans l'appli : le site garde le zoom.
+  .replace(viewport, '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">')
   .replace("<head>", "<head>\n" + BOOT_GUARD));
 
 let files = 0;
