@@ -11,8 +11,10 @@ import { BUCKET, CRENEAUX, lienSigne, creneauLibre, maintenantParis } from "./co
 import { publierCreneau, publierUneLigne, modeEssai, brancherReseau } from "./robot.js";
 import { installerConnexions } from "./connexions.js";
 import * as instagram from "./instagram.js";
+import * as youtube from "./youtube.js";
 
 brancherReseau("instagram", instagram);
+brancherReseau("youtube", youtube);
 
 const PAGE = new URL("../public/admin-publications.html", import.meta.url);
 const A_VENIR = ["a_valider", "valide", "en_cours", "erreur"];
@@ -44,7 +46,7 @@ export function installerPublications(app, { supabase, requireUser, requireAdmin
         } else historique.push(v);
       }
       historique.reverse();
-      res.json({ aVenir, historique, essai: modeEssai(), aujourdhui: maintenantParis().jour });
+      res.json({ aVenir, historique, essai: modeEssai(), auto: process.env.PUBLICATION_AUTO_VALIDATION === "true", aujourdhui: maintenantParis().jour });
     } catch (error) {
       res.status(500).json({ error: error.message || "Erreur." });
     }

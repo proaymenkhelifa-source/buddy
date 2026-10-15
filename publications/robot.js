@@ -69,9 +69,18 @@ export async function publierCreneau(supabase, creneau, { maintenant = new Date(
     const { data: cx } = await supabase.from("connexions_reseaux").select("*").eq("reseau", "instagram");
     for (const c of cx || []) await MODULES.instagram.renouvelerSiBesoin(supabase, c).catch((e) => console.error("Jeton Instagram :", e.message));
   }
-  const { data: lignes, error } = await supabase.from("publications").select("*")
-    .eq("date_prevue", jour).eq("creneau", creneau).eq("statut", "valide").order("video").order("langue").order("reseau");
+  // Validation automatique (PUBLICATION_AUTO_VALIDATION=true, choix d'Aymen) : les publications « à valider » du jour partent aussi,
+  // mais seulement sur les comptes déjà connectés (les autres restent « à valider », sans fabriquer d'erreurs).
+  const auto = process.env.PUBLICATION_AUTO_VALIDATION === "true";
+  const { data: brutes, error } = await supabase.from("publications").select("*")
+    .eq("date_prevue", jour).eq("creneau", creneau).in("statut", auto ? ["valide", "a_valider"] : ["valide"]).order("video").order("langue").order("reseau");
   if (error) throw error;
+  let lignes = brutes;
+  if (auto) {
+    const { data: cx } = await supabase.from("connexions_reseaux").select("reseau, langue, access_token");
+    const connectes = new Set((cx || []).filter((c) => c.access_token).map((c) => c.reseau + "|" + c.langue));
+    lignes = brutes.filter((l) => l.statut === "valide" || essai || connectes.has(l.reseau + "|" + l.langue));
+  }
 
   // règle : maximum 2 publications par compte et par jour (vérifiée avant de lancer les envois)
   const aPublier = [], resultats = [];

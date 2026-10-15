@@ -67,6 +67,7 @@
     <div id="message" class="card message">Chargement…</div>
     <div id="content" class="hidden">
       <div id="essai" class="essai hidden">🧪 <b>Mode essai</b> : le robot fait semblant de publier (journal + e-mail), rien n'est envoyé aux réseaux.</div>
+      <div id="auto" class="essai hidden" style="background:#ecfdf5;border-color:#a7f3d0">⚡ <b>Publication automatique</b> : les vidéos partent toutes seules à leur date sur les comptes connectés, sans validation. Tu peux encore modifier un texte, reporter ou annuler avant.</div>
       <h2>À venir</h2>
       <div id="avenir"></div>
       <h2>Historique</h2>
@@ -106,6 +107,7 @@
       try {
         const d = await api("/api/admin/publications");
         $("essai").classList.toggle("hidden", !d.essai);
+        $("auto").classList.toggle("hidden", !d.auto);
         $("avenir").innerHTML = d.aVenir.length ? d.aVenir.map((v) => carteVideo(v, true, d.aujourdhui)).join("") : '<div class="card muted">Aucune vidéo à venir. Prépare-en une : <code>node preparer-publication.mjs NN</code></div>';
         $("historique").innerHTML = d.historique.length ? d.historique.map((v) => carteVideo(v, false)).join("") : '<div class="card muted">Rien pour l\'instant.</div>';
         $("message").classList.add("hidden");

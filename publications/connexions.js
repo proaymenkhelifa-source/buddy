@@ -9,11 +9,15 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { RESEAUX, LANGUES } from "./commun.js";
 import * as instagram from "./instagram.js";
+import * as youtube from "./youtube.js";
 
 const PAGE = new URL("../public/admin-connexions.html", import.meta.url);
-// Les réseaux dont la connexion est déjà codée (YouTube et TikTok arrivent aux étapes 3 et 4)
-const MODULES = { instagram };
-const PRET = { instagram: () => Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET) };
+// Les réseaux dont la connexion est déjà codée (TikTok arrive à l'étape 4)
+const MODULES = { instagram, youtube };
+const PRET = {
+  instagram: () => Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET),
+  youtube: () => Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
+};
 
 const appUrl = () => (process.env.APP_URL || "https://buddycoach.app").replace(/\/$/, "");
 const retour = (reseau) => `${appUrl()}/admin/connexions/${reseau}/callback`;
