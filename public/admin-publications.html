@@ -82,7 +82,7 @@
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const RESEAUX = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
     const STATUTS = { a_valider: "À valider", valide: "Validée", en_cours: "En cours", publie: "Publiée", prive_attente: "Privée (en attente)", erreur: "Erreur", annule: "Annulée" };
-    const CRENEAUX = { midi: "midi (entre 11 h et 13 h)", soir: "soir (entre 18 h et 20 h)" };
+    const CRENEAUX = { midi: "midi (entre 12 h et 13 h)", soir: "soir (entre 19 h et 20 h)" };
     const DRAPEAUX = { fr: "🇫🇷", en: "🇬🇧" };
 
     const config = await (await fetch("/api/config")).json();
