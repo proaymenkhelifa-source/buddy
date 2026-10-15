@@ -1881,6 +1881,9 @@ function renderResume() {
 let currentTopic = null;     // l'objectif dont on parle (ou null)
 let topicsOffered = false;   // a-t-on déjà proposé les sujets depuis l'ouverture de l'app ?
 
+// Téléphone / tablette (écran tactile) : le clavier ne sort que quand la personne touche le champ.
+// Sur ordinateur, on garde le curseur prêt dans le champ (pas de clavier qui cache l'écran).
+const TOUCH = matchMedia("(pointer: coarse)").matches;
 function openChat(skipTopics = false) {
   $("chat-drawer").classList.add("open");
   $("chat-drawer").setAttribute("aria-hidden", "false");
@@ -1888,7 +1891,7 @@ function openChat(skipTopics = false) {
   $("buddy-fab").classList.add("hidden");
   if (!skipTopics && shouldOfferTopics()) offerTopics();
   $("chat").scrollTop = $("chat").scrollHeight;
-  setTimeout(() => $("message").focus(), 300);
+  if (!TOUCH) setTimeout(() => $("message").focus(), 300);
 }
 function closeChat() {
   $("chat-drawer").classList.remove("open");
@@ -2013,12 +2016,18 @@ function renderTopic() {
 const chat = $("chat");
 const sendButton = $("send-button");
 
-function showMessage(text, type) {
+function showMessage(text, type, { reveal = false } = {}) {
   const bubble = document.createElement("div");
   bubble.className = "message " + type;
   bubble.textContent = text;
   chat.appendChild(bubble);
-  chat.scrollTop = chat.scrollHeight; // descend en bas automatiquement
+  if (reveal) {
+    // Nouvelle réponse de Buddy : on montre son début (si elle est longue, on ne saute pas directement à la fin)
+    const top = Math.max(0, bubble.getBoundingClientRect().top - chat.getBoundingClientRect().top + chat.scrollTop - 16);
+    chat.scrollTo({ top: Math.min(top, chat.scrollHeight), behavior: "smooth" });
+  } else {
+    chat.scrollTop = chat.scrollHeight; // descend en bas automatiquement
+  }
   return bubble;
 }
 
@@ -2031,6 +2040,12 @@ function showTyping() {
   chat.scrollTop = chat.scrollHeight;
   return bubble;
 }
+
+// Le clavier s'ouvre (téléphone) : on garde le dernier message visible juste au-dessus du champ
+$("message").addEventListener("focus", () => {
+  if (!TOUCH) return;
+  setTimeout(() => chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" }), 320);
+});
 
 // Pendant que tu écris : Buddy t'écoute calmement (une seule fois, pas à chaque touche).
 let listening = false;
@@ -2064,7 +2079,7 @@ async function sendToBuddy(text, extra = {}, typed = false) {
       giveBack();
     } else {
       if (typed && !$("message").value) clearDraft("chat"); // bien reçu : le brouillon peut partir
-      showMessage(data.reply, "buddy");
+      showMessage(data.reply, "buddy", { reveal: true });
       // L'objectif et le thème dont on parle (d'abord : ce sont eux qui décident de la tenue de Buddy)
       if (data.goalId) currentTopic = data.goalId;
       setChatTheme(data.theme);
@@ -2081,11 +2096,12 @@ async function sendToBuddy(text, extra = {}, typed = false) {
     giveBack();
   }
   sendButton.disabled = false;
-  $("message").focus();
+  if (!TOUCH) $("message").focus();
 }
 
 $("chat-form").addEventListener("submit", (event) => {
   event.preventDefault(); // empêche la page de se recharger
+  if (TOUCH) $("message").blur(); // le clavier se range : on voit la réponse de Buddy arriver
   const text = $("message").value.trim();
   if (!text || sendButton.disabled) return;
   $("message").value = "";

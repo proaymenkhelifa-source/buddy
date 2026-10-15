@@ -1644,3 +1644,16 @@ html:has(dialog[open]) { overflow: hidden; }
 
 /* Appli iPhone : les champs de texte en 16 px minimum (en dessous, l'iPhone zoome tout seul quand on tape dedans) */
 .native-app input, .native-app textarea, .native-app select { font-size: max(16px, 1em); }
+
+/* Écrans tactiles : les boutons réagissent immédiatement au doigt (pas d'attente du "double-tap"),
+   sans le carré gris de Safari, avec un petit enfoncement visible. */
+@media (pointer: coarse) {
+  * { -webkit-tap-highlight-color: transparent; }
+  a, button, label, summary, input, textarea, select, .chip, .side-link, [data-push], [role="button"] { touch-action: manipulation; }
+  button, .btn, .chip, .icon-btn, .side-link { transition: transform 0.08s ease-out, background-color 0.15s, opacity 0.15s; }
+  button:active, .btn:active, .chip:active, .icon-btn:active, .side-link:active { transform: scale(0.96); }
+}
+/* Appli iPhone : changement de page plus vif (comme une appli native), et pas de "rebond" de toute la page sur les côtés */
+.native-app .page { animation-duration: 0.18s; }
+.native-app body { overscroll-behavior-x: none; }
+.native-app .chat { overscroll-behavior: contain; }
