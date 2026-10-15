@@ -82,7 +82,7 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 
 // Les noms affichés
 export const NOMS_RESEAUX = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
-export const NOMS_CRENEAUX = { midi: "midi (entre 12 h et 13 h)", soir: "soir (entre 19 h et 20 h)" };
+export const NOMS_CRENEAUX = { midi: "midi (entre 12 h et 13 h)", soir: "soir (entre 18 h et 19 h)" };
 export const DRAPEAUX = { fr: "🇫🇷", en: "🇬🇧" };
 
 // Un petit e-mail simple aux couleurs de Buddy
