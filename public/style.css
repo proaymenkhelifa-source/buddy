@@ -1657,3 +1657,10 @@ html:has(dialog[open]) { overflow: hidden; }
 .native-app .page { animation-duration: 0.18s; }
 .native-app body { overscroll-behavior-x: none; }
 .native-app .chat { overscroll-behavior: contain; }
+
+/* Petits écrans : la présentation ne dépasse jamais sur les côtés (le téléphone arrive d'en bas, pas de la droite),
+   et la page entière ne peut pas glisser de gauche à droite. */
+@media (max-width: 700px) {
+  .showcase, .shots { overflow-x: clip; }
+  .shot-phone.reveal { transform: translateY(70px) rotate(4deg); }
+}
