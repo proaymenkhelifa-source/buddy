@@ -378,7 +378,8 @@ function openAuth(mode, fresh = true) {
   window.scrollTo(0, 0);
   authInfo("");
   if (location.hash !== screen.hash) history.pushState(null, "", screen.hash);
-  setTimeout(() => $(mode === "reset" ? "password" : "email").focus(), 50);
+  // Sur ordinateur, le curseur est prêt dans le champ. Sur téléphone, pas de clavier d'office (on touche le champ quand on veut)
+  if (!matchMedia("(pointer: coarse)").matches) setTimeout(() => $(mode === "reset" ? "password" : "email").focus(), 50);
 }
 $("auth-forgot").addEventListener("click", () => openAuth("forgot"));
 
