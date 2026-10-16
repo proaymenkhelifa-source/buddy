@@ -598,6 +598,50 @@ async function api(method, url, body) {
   return response.json();
 }
 
+// Pareil, mais la réponse arrive EN DIRECT, ligne par ligne (la discussion avec Buddy).
+// onEvent reçoit chaque morceau ({type:"text"}, {type:"mood"}…) ; on renvoie la dernière ligne
+// ({type:"done"} ou {type:"error"}). Si le serveur répond d'un coup (erreur, limite atteinte…), on renvoie sa réponse.
+async function apiStream(url, body, onEvent) {
+  const { data } = await supabase.auth.getSession();
+  const response = await fetch(API_BASE + url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + data.session.access_token,
+      "X-Lang": getLang(),
+    },
+    body: JSON.stringify({ ...body, stream: true, today: today() }),
+  });
+  const type = response.headers.get("Content-Type") || "";
+  if (!type.includes("ndjson") || !response.body?.getReader) {
+    const result = type.includes("ndjson") ? null : await response.json();
+    if (result) return result;
+    // (navigateur trop ancien pour lire en direct : on lit tout à la fin)
+    const lines = (await response.text()).trim().split("\n").map((l) => JSON.parse(l));
+    lines.forEach(onEvent);
+    return lines[lines.length - 1];
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let last = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: true });
+    let cut;
+    while ((cut = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, cut).trim();
+      buffer = buffer.slice(cut + 1);
+      if (!line) continue;
+      last = JSON.parse(line);
+      onEvent(last);
+    }
+    if (done) break;
+  }
+  if (!last || (last.type !== "done" && last.type !== "error")) throw new Error("Réponse coupée");
+  return last;
+}
+
 // On revient de Stripe ? (?checkout=success / ?checkout=cancel après le paiement, ?portal=1 après "Gérer mon abonnement")
 const returnParams = new URLSearchParams(location.search);
 let stripeReturn = returnParams.get("checkout") || (returnParams.has("portal") ? "portal" : null);
@@ -2070,21 +2114,57 @@ async function sendToBuddy(text, extra = {}, typed = false) {
   setBuddy("reflechit", "reflechit", t("buddy.thinking"));
   const typing = showTyping();
 
+  // La bulle de Buddy, remplie EN DIRECT au fur et à mesure que sa réponse s'écrit
+  let bubble = null;
+  let moodShown = false;
+  let autoTop = -1; // là où on a fait défiler nous-mêmes (si la personne remonte, on la laisse tranquille)
+  const follow = () => {
+    // On descend avec le texte… mais jamais plus bas que le début de la bulle : on lit la réponse depuis son début.
+    if (autoTop >= 0 && chat.scrollTop < autoTop - 8) return;
+    const start = bubble.getBoundingClientRect().top - chat.getBoundingClientRect().top + chat.scrollTop - 16;
+    const target = Math.max(chat.scrollTop, Math.min(start, chat.scrollHeight - chat.clientHeight));
+    chat.scrollTop = target;
+    autoTop = chat.scrollTop;
+  };
+  const onEvent = (event) => {
+    if (event.type === "mood") {
+      // Buddy prend tout de suite l'expression (et la tenue) de sa réponse
+      moodShown = true;
+      setChatTheme(event.theme);
+      showEmotion(event.emotion);
+    } else if (event.type === "text") {
+      if (!bubble) {
+        typing.remove();
+        bubble = document.createElement("div");
+        bubble.className = "message buddy";
+        chat.appendChild(bubble);
+      }
+      bubble.textContent += event.text;
+      follow();
+    }
+  };
+
   try {
-    const data = await api("POST", "/api/chat", { message: text, goalId: currentTopic, ...extra });
+    const data = await apiStream("/api/chat", { message: text, goalId: currentTopic, ...extra }, onEvent);
     typing.remove();
     if (data.error) {
+      bubble?.remove(); // une réponse coupée en plein milieu : on ne garde pas un morceau
       showMessage(data.error, "error");
       if (data.premium) showPremium(data.premium); // limite gratuite atteinte (jamais en mode démo)
       showEmotion(currentEmotion, false);
       giveBack();
     } else {
       if (typed && !$("message").value) clearDraft("chat"); // bien reçu : le brouillon peut partir
-      showMessage(data.reply, "buddy", { reveal: true });
+      if (bubble) {
+        bubble.textContent = data.reply; // le texte final (avec les lignes "✅ Tâche ajoutée…" en dessous)
+        follow();
+      } else {
+        showMessage(data.reply, "buddy", { reveal: true });
+      }
       // L'objectif et le thème dont on parle (d'abord : ce sont eux qui décident de la tenue de Buddy)
       if (data.goalId) currentTopic = data.goalId;
       setChatTheme(data.theme);
-      showEmotion(data.emotion); // Buddy prend l'expression qu'il a choisie
+      showEmotion(data.emotion, !moodShown); // Buddy prend l'expression qu'il a choisie
       // Buddy a peut-être créé un objectif, noté un plan, un prénom… ou AGI (tâches) : on recharge tout
       refresh()
         .then(() => { if (data.acted) toast(t("toast.buddyActed")); })
@@ -2094,7 +2174,7 @@ async function sendToBuddy(text, extra = {}, typed = false) {
     typing.remove();
     showMessage(t("chat.unreachable"), "error");
     showEmotion(currentEmotion, false);
-    giveBack();
+    if (!bubble) giveBack(); // (si Buddy avait commencé à répondre, le serveur a bien reçu le message)
   }
   sendButton.disabled = false;
   if (!TOUCH) $("message").focus();

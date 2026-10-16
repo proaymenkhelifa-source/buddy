@@ -914,6 +914,49 @@ const BUDDY_FORM = {
   additionalProperties: false,
 };
 
+// LA RÉPONSE EN DIRECT : la fiche arrive morceau par morceau (du texte JSON pas encore fini).
+// Ce "lecteur" repère la case "message" dès qu'elle commence et renvoie son texte au fur et à mesure
+// (onText), ainsi que l'émotion et le thème dès qu'ils sont connus (onMood) : Buddy change de tête tout de suite.
+// (Ces cases sont AVANT "message" dans BUDDY_FORM : Claude les remplit dans l'ordre.)
+function replyReader(onText, onMood) {
+  let json = "";       // tout le texte reçu jusqu'ici
+  let pos = -1;        // où on en est dans la case "message" (-1 : pas encore commencée)
+  let finished = false;
+  let moodSent = false;
+  return (piece) => {
+    json += piece;
+    if (!moodSent) {
+      const emotion = json.match(/"emotion"\s*:\s*"(\w+)"/);
+      const theme = json.match(/"theme"\s*:\s*"(\w+)"/);
+      if (emotion && theme) { moodSent = true; onMood(emotion[1], theme[1]); }
+    }
+    if (finished) return;
+    if (pos < 0) {
+      const start = json.match(/"message"\s*:\s*"/);
+      if (!start) return;
+      pos = start.index + start[0].length;
+    }
+    // On lit les caractères de la case, en traduisant les \n, \" … du JSON.
+    let out = "";
+    while (pos < json.length) {
+      const c = json[pos];
+      if (c === '"') { finished = true; break; } // fin de la case
+      if (c !== "\\") { out += c; pos++; continue; }
+      const next = json[pos + 1];
+      if (next === undefined) break; // la suite du \ n'est pas encore arrivée
+      if (next === "u") {
+        if (pos + 6 > json.length) break;
+        out += String.fromCharCode(parseInt(json.slice(pos + 2, pos + 6), 16));
+        pos += 6;
+        continue;
+      }
+      out += { n: "\n", t: "\t", r: "", b: "", f: "" }[next] ?? next; // \" \\ \/ → le caractère lui-même
+      pos += 2;
+    }
+    if (out) onText(out);
+  };
+}
+
 const STYLE_NAMES = {
   military: "militaire (sans excuses)",
   supportive: "bienveillant (encourageant)",
@@ -1101,6 +1144,9 @@ app.post("/api/chat", requireUser, async (req, res) => {
   if (text.length > 2000) return res.status(400).json({ error: tr(req, "err.tooLong") });
   const today = todayFrom(req);
   const topicId = Number(req.body.goalId) || 0;
+  // stream: true → la page veut voir la réponse s'écrire en direct (sinon : tout d'un coup, comme avant)
+  const live = req.body.stream === true;
+  const send = (event) => { if (!res.writableEnded) res.write(JSON.stringify(event) + "\n"); };
 
   try {
     // GARDE-FOU SUR LES COÛTS : un nombre maximum de messages sur les dernières 24 heures, par personne.
@@ -1145,13 +1191,33 @@ app.post("/api/chat", requireUser, async (req, res) => {
     }
     if (text) conversation.push({ role: "user", content: text });
 
-    const response = await claude.messages.create({
+    const request = {
       model: "claude-haiku-4-5", // le modèle Haiku 4.5 : rapide et pas cher
       max_tokens: 2000,
       system,
       messages: conversation,
       output_config: { format: { type: "json_schema", schema: BUDDY_FORM } }, // "remplis ce formulaire"
-    });
+    };
+    let response;
+    if (live) {
+      // EN DIRECT : on envoie la réponse à la page au fur et à mesure qu'elle s'écrit
+      // (une ligne JSON par morceau : {"type":"text"…}, puis {"type":"done"…} à la toute fin).
+      res.writeHead(200, {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no", // aucun intermédiaire ne doit garder les morceaux pour lui
+      });
+      res.flushHeaders();
+      const read = replyReader(
+        (piece) => send({ type: "text", text: piece }),
+        (emotion, theme) => send({ type: "mood", emotion, theme }),
+      );
+      const stream = claude.messages.stream(request);
+      stream.on("text", read);
+      response = await stream.finalMessage();
+    } else {
+      response = await claude.messages.create(request);
+    }
     const u = response.usage;
     console.log(`💰 Tokens : ${u.input_tokens} normaux + ${u.cache_read_input_tokens || 0} lus en cache + ${u.cache_creation_input_tokens || 0} mis en cache, ${u.output_tokens} écrits`);
 
@@ -1227,9 +1293,19 @@ app.post("/api/chat", requireUser, async (req, res) => {
     rows.push({ role: "assistant", content: reply, emotion: buddy.emotion, user_id: userId });
     check(await supabase.from("messages").insert(rows));
 
-    res.json({ reply, emotion: buddy.emotion, theme: buddy.theme, goalId: goalId || null, userText: text, acted: results.length > 0 });
+    const result = { reply, emotion: buddy.emotion, theme: buddy.theme, goalId: goalId || null, userText: text, acted: results.length > 0 };
+    if (live) {
+      send({ type: "done", ...result });
+      res.end();
+    } else {
+      res.json(result);
+    }
   } catch (error) {
-    fail(res, error, claudeErrorMessage(error) || "err.buddyFailed");
+    if (!res.headersSent) return fail(res, error, claudeErrorMessage(error) || "err.buddyFailed");
+    // En direct, la réponse a déjà commencé : on prévient la page par une dernière ligne
+    console.error("Erreur :", error.message);
+    send({ type: "error", error: tr(req, claudeErrorMessage(error) || "err.buddyFailed") });
+    res.end();
   }
 });
 

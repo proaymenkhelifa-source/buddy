@@ -314,5 +314,11 @@ Known gotchas:
 - 2026-10-13: Apple replied "Guideline 2.1 – Information Needed" (new developer account): needs a screen recording on a real iPhone (launch, sign-up, main flow, login with demo account, account deletion) + written answers → ready in store/app-review-reply.md (also to paste in App Review Notes). Owner records the video when he has time.
 - iOS plan: Capacitor (wrap the site) + Codemagic (cloud Mac build) or a friend's Mac; Apple Developer as "individual" (99 €/year); add native push, widgets and Apple in-app purchase to pass review guideline 4.2.
 
+## Buddy's replies appear live, word by word (2026-10-16)
+- [x] `POST /api/chat` with `stream: true` answers in "live" mode (NDJSON: one JSON line per event): `{"type":"mood"}` (emotion + theme, as soon as Claude has written them), `{"type":"text"}` pieces of the reply, then `{"type":"done", reply, emotion, theme, goalId, userText, acted}` (same data as before) or `{"type":"error"}`. Uses `claude.messages.stream` + `replyReader()` in server.js, which pulls the `message` field out of the unfinished JSON (BUDDY_FORM order: analyse, emotion, theme, message… → keep `message` near the top). All actions / goals / plan / messages saving still run after the stream, unchanged.
+- [x] Without `stream: true` (old iPhone build in review, old pages) the endpoint answers in one JSON block exactly as before. Errors before the stream (too long, daily limit) are still normal JSON.
+- [x] `sendToBuddy` (app.js) uses `apiStream()`: the bubble fills in live, Buddy's face changes as soon as the mood arrives, the scroll follows the text but stops at the start of the bubble, no keyboard on touch devices. APP_VERSION 2026-10-16-direct.
+- Tested locally (fake login + fake database, real Claude): first words after ~2.5–3 s instead of the full ~5.5 s wait; task creation, goal, badge and toast still work. The iPhone app gets it with the next Codemagic build (no CORS change needed).
+
 ## Marketing & next steps
 Videos & reels plan: see **PLAN-MARKETING.md** (dedicated marketing conversation). Carousels & launch: see CONTEXTE-MARKETING.md (summary of the Cowork conversation of 2026-09-27/28: carousels, launch plan, waitlist, PWA, Stripe, stores).
