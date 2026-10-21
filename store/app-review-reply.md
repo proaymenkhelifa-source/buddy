@@ -47,3 +47,36 @@ Thank you,
 Aymen Khelifa – Buddy Coach
 contact@buddycoach.app
 ```
+
+---
+
+# Réponse à Apple n°2 (Guidelines 5.1.1(i) et 5.1.2(i) – données envoyées à une IA) – 21 octobre 2026
+
+À coller dans la réponse à Apple ET à la fin des « Remarques » de la fiche (avec le build 9 sélectionné).
+
+```
+Hello App Review team,
+
+Thank you for your feedback. We have updated the app (build 9) to comply with guidelines 5.1.1(i) and 5.1.2(i):
+
+1. In-app disclosure and permission BEFORE any data is sent to the AI service
+Before Buddy's AI is used for the first time (first chat message, Brain dump), the app shows a dedicated screen "Buddy uses artificial intelligence" that explains:
+- WHO the data is sent to: Claude, an AI service by Anthropic, PBC.
+- WHAT is sent: the user's messages to Buddy, first name, goals, tasks, progress (streak, completed tasks) and what they write in the Brain dump.
+- WHY: only to generate Buddy's replies, daily quotes and reminders. Anthropic does not use this data to train its models or for advertising.
+The user must tap "I agree" to continue. If they tap "No thanks", nothing is sent to the AI service.
+
+2. Enforced on our server
+Our server checks this consent before every AI request. Without consent, no personal data is sent to Anthropic: the chat and Brain dump are unavailable, and daily quotes and reminders use pre-written texts instead.
+
+3. Consent can be withdrawn at any time
+Settings > "AI coach (Claude, by Anthropic)" > "Withdraw my consent".
+
+4. Privacy policy
+Our privacy policy (https://buddycoach.app/legal/confidentialite.html) lists the data collected, how it is collected, all its uses, and names Anthropic (Claude) as the AI provider, with the same level of protection (data not used for training).
+
+To see the consent screen with the demo account, open the chat (round Buddy button) and send a message.
+
+Thank you,
+Aymen Khelifa – Buddy Coach
+```
