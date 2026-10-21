@@ -705,6 +705,11 @@
               <a class="chip" href="/legal/confidentialite.html"><i data-lucide="shield-check"></i> <span data-i18n="legal.privacy">Politique de confidentialité</span></a>
             </div>
           </section>
+          <section class="card" id="ai-settings">
+            <h3 data-i18n="ai.settingsTitle">Coach IA (Claude, d'Anthropic)</h3>
+            <p class="muted" id="ai-settings-text"></p>
+            <button type="button" class="btn btn-ghost" id="ai-settings-btn"></button>
+          </section>
           <section class="card danger-zone">
             <h3 data-i18n="settings.deleteTitle">Supprimer mon compte</h3>
             <p class="muted small" data-i18n="settings.deleteHint">Supprime définitivement ton compte et TOUTES tes données : objectifs, tâches, suivi, conversations avec Buddy, badges. C'est irréversible.</p>
@@ -783,6 +788,25 @@
   </dialog>
 
   <!-- "Je te préviens 5 minutes avant ?" (juste après avoir créé une tâche avec une heure) -->
+  <!-- L'ACCORD POUR L'IA (Apple 5.1.1 / 5.1.2) : demandé AVANT le premier envoi de données à Claude (Anthropic) -->
+  <dialog id="ai-consent-dialog" class="dialog ai-consent">
+    <form method="dialog">
+      <div class="push-ask-icon"><i data-lucide="sparkle"></i></div>
+      <h2 data-i18n="ai.title">Buddy utilise une intelligence artificielle</h2>
+      <p data-i18n="ai.intro"></p>
+      <h3 data-i18n="ai.whatTitle">Ce qui est envoyé à Anthropic</h3>
+      <p class="muted" data-i18n="ai.what"></p>
+      <h3 data-i18n="ai.whyTitle">Pourquoi</h3>
+      <p class="muted" data-i18n="ai.why"></p>
+      <p class="muted small" data-i18n="ai.change"></p>
+      <p class="small"><a href="/legal/confidentialite.html" target="_blank" rel="noopener" data-i18n="ai.privacy">Politique de confidentialité</a></p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" value="no" data-i18n="ai.decline">Non merci</button>
+        <button class="btn btn-primary" value="yes" data-i18n="ai.accept">J'accepte</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="push-ask" class="dialog push-ask">
     <form method="dialog">
       <div class="push-ask-icon"><i data-lucide="bell-ringing"></i></div>

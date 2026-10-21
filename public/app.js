@@ -728,6 +728,7 @@ function renderPushLater() {
 }
 
 function renderProfile() {
+  renderAiSettings(); // le réglage « Coach IA » (accord pour l'IA)
   const email = session.user.email;
   const name = state.profile.firstName || email.split("@")[0];
   $("user-name").textContent = name;
@@ -2105,7 +2106,49 @@ $("message").addEventListener("input", () => {
 // Envoie un message à Buddy (ou rien du tout : Buddy parle alors en premier).
 // extra : des informations en plus pour le serveur (ex : { review: true } pour le bilan de la semaine)
 // typed = true : le texte vient du champ de saisie (son brouillon s'efface seulement si Buddy a bien reçu le message)
+// L'ACCORD POUR L'IA (Apple 5.1.1 / 5.1.2) : la fenêtre explique ce qui est envoyé, à qui, et pourquoi.
+// Rien ne part chez Claude (Anthropic) tant que la personne n'a pas touché « J'accepte » (le serveur vérifie aussi).
+function ensureAiConsent() {
+  if (state?.profile?.aiConsent) return Promise.resolve(true);
+  const dialog = $("ai-consent-dialog");
+  return new Promise((resolve) => {
+    dialog.returnValue = "";
+    dialog.addEventListener("close", async () => {
+      const yes = dialog.returnValue === "yes";
+      if (yes) {
+        const result = await api("POST", "/api/ai-consent", { accept: true }).catch(() => ({}));
+        if (!result.ok) { toast(t("err.generic"), "error"); return resolve(false); }
+        state.profile.aiConsent = true;
+        renderAiSettings();
+      } else {
+        toast(t("ai.declined"));
+      }
+      resolve(yes);
+    }, { once: true });
+    dialog.showModal();
+  });
+}
+function renderAiSettings() {
+  if (!state) return;
+  const on = Boolean(state.profile.aiConsent);
+  $("ai-settings-text").textContent = t(on ? "ai.settingsOn" : "ai.settingsOff");
+  $("ai-settings-btn").textContent = t(on ? "ai.turnOff" : "ai.turnOn");
+}
+$("ai-settings-btn").addEventListener("click", async () => {
+  if (state.profile.aiConsent) {
+    const result = await api("POST", "/api/ai-consent", { accept: false }).catch(() => ({}));
+    if (result.ok) state.profile.aiConsent = false;
+    renderAiSettings();
+  } else {
+    await ensureAiConsent();
+  }
+});
+
 async function sendToBuddy(text, extra = {}, typed = false) {
+  if (!(await ensureAiConsent())) {
+    if (!chat.querySelector(".message")) showMessage(t("ai.needConsent"), "buddy");
+    return;
+  }
   if (text) showMessage(text, "user");
   // Le message n'est pas parti (erreur) : on le remet dans le champ pour pouvoir réessayer, rien n'est perdu
   const giveBack = () => { if (typed && !$("message").value) { $("message").value = text; saveDraft("chat", text); } };
@@ -2151,6 +2194,7 @@ async function sendToBuddy(text, extra = {}, typed = false) {
       bubble?.remove(); // une réponse coupée en plein milieu : on ne garde pas un morceau
       showMessage(data.error, "error");
       if (data.premium) showPremium(data.premium); // limite gratuite atteinte (jamais en mode démo)
+      if (data.aiConsent) { state.profile.aiConsent = false; renderAiSettings(); }
       showEmotion(currentEmotion, false);
       giveBack();
     } else {
@@ -2888,6 +2932,7 @@ $("dump-go").addEventListener("click", async () => {
   if (!hasPremium(state.profile)) return showPremium("braindump");
   const text = $("dump-text").value.trim();
   if (!text) return $("dump-text").focus();
+  if (!(await ensureAiConsent())) return; // le Vide-tête passe par l'IA : il faut l'accord
   const button = $("dump-go");
   button.disabled = true;
   button.querySelector("span").textContent = t("dump.thinking");

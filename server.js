@@ -184,6 +184,7 @@ async function loadAll(userId, today) {
       language: profile?.language || null, // "fr" ou "en"
       source: profile?.source || null,     // d'où vient la personne (ex : "insta-fr"), null = inconnu / lien direct
       plan: profile?.plan || null,         // "premium" ou "free" (choisi sur l'écran Premium), null = pas encore choisi
+      aiConsent: Boolean(profile?.ai_consent_at), // a accepté que ses données soient envoyées à l'IA (Claude, Anthropic)
       planChosenAt: profile?.plan_chosen_at || null,
       // L'abonnement Stripe (voir stripe.js) : rempli seulement quand les paiements sont branchés
       subscriptionStatus: profile?.subscription_status || null, // "trialing" (essai), "active", "canceled"…
@@ -431,6 +432,18 @@ app.post("/api/email/test", requireUser, async (req, res) => {
   } catch (error) {
     console.error("E-mail de test :", error.message);
     res.status(500).json({ error: tr(req, "err.emailNotSent", { msg: error.message }) });
+  }
+});
+
+// --- L'ACCORD POUR L'IA (exigé par Apple, règles 5.1.1 et 5.1.2) ---
+// Buddy répond grâce à Claude (Anthropic) : on n'envoie RIEN à l'IA sans l'accord de la personne.
+// accept = true : on note la date de l'accord. accept = false : on le retire (Buddy ne peut alors plus discuter).
+app.post("/api/ai-consent", requireUser, async (req, res) => {
+  try {
+    await saveProfile(req.user.id, { ai_consent_at: req.body.accept === true ? new Date().toISOString() : null });
+    res.json({ ok: true, aiConsent: req.body.accept === true });
+  } catch (error) {
+    fail(res, error);
   }
 });
 
@@ -782,6 +795,7 @@ app.post("/api/braindump", requireUser, async (req, res) => {
   try {
     const profile = check(await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle());
     if (!hasPremium(profile)) return res.status(403).json({ error: tr(req, "err.dumpPremium"), premium: "braindump" });
+    if (!profile?.ai_consent_at) return res.status(403).json({ error: tr(req, "err.aiConsent"), aiConsent: true });
     // 10 par jour maximum (si les colonnes de supabase-outils.sql n'existent pas encore : pas de compteur)
     const used = profile?.dump_day === today ? profile.dump_count || 0 : 0;
     if (used >= DUMPS_PER_DAY) return res.status(429).json({ error: tr(req, "err.dumpLimit", { max: DUMPS_PER_DAY }) });
@@ -1167,6 +1181,8 @@ app.post("/api/chat", requireUser, async (req, res) => {
     }
 
     const data = await loadAll(userId, today);
+    // Pas d'accord pour l'IA : on n'envoie rien à Claude (la page demande l'accord à la personne)
+    if (!data.profile.aiConsent) return res.status(403).json({ error: tr(req, "err.aiConsent"), aiConsent: true });
     const badgeIds = check(await supabase.from("user_badges").select("badge_id").eq("user_id", userId)).map((b) => b.badge_id);
     if (review) await saveProfile(userId, { reviews_count: data.profile.reviewsCount + 1 });
 
@@ -1323,12 +1339,41 @@ const QUOTE_FORM = {
   additionalProperties: false,
 };
 
+// Les phrases du jour quand la personne n'a pas (encore) accepté l'IA : écrites à l'avance, aucune donnée envoyée
+const OFFLINE_QUOTES = {
+  fr: [
+    ["Un petit pas aujourd'hui compte.", "« La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus. »"],
+    ["Commence par la tâche la plus simple.", "« Ce que tu fais chaque jour compte plus que ce que tu fais de temps en temps. »"],
+    ["Fais-le, même à moitié.", "« Une tâche faite à moitié aujourd'hui vaut mieux qu'une tâche parfaite jamais commencée. »"],
+    ["Ta série se construit aujourd'hui.", "« La motivation te fait commencer. L'habitude te fait continuer. »"],
+    ["Dix minutes suffisent pour démarrer.", "« Tu n'as pas besoin d'être prêt. Tu as besoin de commencer. »"],
+    ["Avance, même lentement.", "« Avancer lentement, c'est toujours avancer. Ce qui compte, c'est de ne pas t'arrêter. »"],
+    ["Une chose à la fois.", "« Concentre-toi sur la prochaine tâche, pas sur toute la montagne de travail. »"],
+  ],
+  en: [
+    ["A small step today counts.", "“Discipline is choosing between what you want now and what you want most.”"],
+    ["Start with the easiest task.", "“What you do every day matters more than what you do once in a while.”"],
+    ["Do it, even halfway.", "“A task half done today beats a perfect task never started.”"],
+    ["Your streak is built today.", "“Motivation gets you started. Habit keeps you going.”"],
+    ["Ten minutes is enough to start.", "“You don't need to be ready. You need to start.”"],
+    ["Keep moving, even slowly.", "“Moving slowly is still moving. What matters is not stopping.”"],
+    ["One thing at a time.", "“Focus on the next task, not the whole mountain of work.”"],
+  ],
+};
+
 app.get("/api/quote", requireUser, async (req, res) => {
   const userId = req.user.id;
   const today = todayFrom(req);
   const en = req.lang === "en";
   try {
     const profile = check(await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle());
+
+    // Pas d'accord pour l'IA : des phrases toutes prêtes, choisies selon le jour (rien n'est envoyé à Claude)
+    if (!profile?.ai_consent_at) {
+      const list = OFFLINE_QUOTES[en ? "en" : "fr"];
+      const n = Number(today.replace(/-/g, "")) % list.length;
+      return res.json({ short: list[n][0], long: list[n][1] });
+    }
 
     // Déjà écrites aujourd'hui (et dans cette langue) ? On les renvoie telles quelles.
     if (profile?.quote_day === today && profile.quote_short && (profile.language || "fr") === req.lang) {

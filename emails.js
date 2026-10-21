@@ -64,7 +64,29 @@ const pickAngle = () => ANGLES[Math.floor(Math.random() * ANGLES.length)];
 // =============================================================
 // ÉCRIRE UN E-MAIL AVEC CLAUDE
 // =============================================================
+// Sans accord pour l'IA : un message écrit à l'avance (rien n'est envoyé à Claude)
+function offlineEmail(kind, { profile, task, stats, todays }) {
+  const en = langOf(profile) === "en";
+  const name = profile.first_name ? profile.first_name + ", " : "";
+  const done = todays.filter((t) => t.done).length;
+  const total = todays.length;
+  const T = en ? {
+    morning: [`Your day with Buddy`, `${name}you have ${total} task(s) planned today. Start with the first one: the rest will follow.`, `Your day`, `${name}${total} task(s) planned today.`],
+    evening: [`Your day: ${done}/${total}`, `${name}you did ${done} task(s) out of ${total} today. Tell Buddy how it went.`, `Your day: ${done}/${total}`, `${name}${done} out of ${total} done today.`],
+    task: [`In 5 minutes: ${task?.title || "your task"}`, `${name}${task?.title || "your task"} starts at ${task?.time || ""}.`, `${task?.time || ""}: ${task?.title || "your task"}`, `${name}it starts in 5 minutes.`],
+    weekly: [`Your week with Buddy`, `${name}this week: ${stats.week.done}/${stats.week.planned} tasks done, ${stats.week.activeDays} active day(s). Streak: ${stats.streak} day(s).`, `Your week`, `${name}${stats.week.done}/${stats.week.planned} tasks this week.`],
+  } : {
+    morning: [`Ta journée avec Buddy`, `${name}tu as ${total} tâche(s) prévue(s) aujourd'hui. Commence par la première : le reste suivra.`, `Ta journée`, `${name}${total} tâche(s) prévue(s) aujourd'hui.`],
+    evening: [`Ta journée : ${done}/${total}`, `${name}tu as fait ${done} tâche(s) sur ${total} aujourd'hui. Raconte à Buddy comment ça s'est passé.`, `Ta journée : ${done}/${total}`, `${name}${done} sur ${total} aujourd'hui.`],
+    task: [`Dans 5 minutes : ${task?.title || "ta tâche"}`, `${name}${task?.title || "ta tâche"} commence à ${task?.time || ""}.`, `${task?.time || ""} : ${task?.title || "ta tâche"}`, `${name}ça commence dans 5 minutes.`],
+    weekly: [`Ta semaine avec Buddy`, `${name}cette semaine : ${stats.week.done}/${stats.week.planned} tâches faites, ${stats.week.activeDays} jour(s) actif(s). Série : ${stats.streak} jour(s).`, `Ta semaine`, `${name}${stats.week.done}/${stats.week.planned} tâches cette semaine.`],
+  };
+  const [sujet, message, notif_titre, notif_texte] = T[kind] || T.morning;
+  return { sujet, message, notif_titre, notif_texte };
+}
+
 export async function writeEmail(claude, kind, info) {
+  if (!info.profile?.ai_consent_at) return offlineEmail(kind, info);
   const { profile, goals, todays, stats, task, today } = info;
   const name = profile.first_name || "la personne";
   const en = langOf(profile) === "en";

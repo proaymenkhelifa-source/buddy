@@ -1664,3 +1664,9 @@ html:has(dialog[open]) { overflow: hidden; }
   .showcase, .shots { overflow-x: clip; }
   .shot-phone.reveal { transform: translateY(70px) rotate(4deg); }
 }
+
+/* La fenêtre d'accord pour l'IA (Apple 5.1.1 / 5.1.2) */
+.ai-consent { max-width: 460px; }
+.ai-consent h3 { font-size: 0.95rem; font-weight: 800; margin: 14px 0 4px; }
+.ai-consent p { margin: 0 0 6px; line-height: 1.45; }
+.ai-consent .small { font-size: 0.85rem; }
