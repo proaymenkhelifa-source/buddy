@@ -2982,6 +2982,16 @@ function showLaunchNotice() {
   $("launch-text").textContent = t("launch.text", { date: niceDate(dayKey(new Date(until)), { day: "numeric", month: "long" }) });
   $("launch-dialog").showModal();
 }
+// L'annonce "Buddy est sur l'App Store et Google Play" : une seule fois par appareil, sur le site seulement
+// (pas dans les applis des stores, la personne l'a déjà), jusqu'à fin 2026, et pas le même jour que l'annonce du lancement
+function showStoresNotice() {
+  if (STORE_MODE || Date.now() > new Date("2027-01-01").getTime() || $("launch-dialog").open) return;
+  try {
+    if (localStorage.getItem("buddy-stores-seen") === "1") return;
+    localStorage.setItem("buddy-stores-seen", "1");
+  } catch (e) { return; }
+  $("stores-dialog").showModal();
+}
 $("launch-more").addEventListener("click", () => { $("launch-dialog").close(); showPremium(); });
 
 // Ouvre la page de paiement sécurisée de Stripe. Renvoie false si elle n'a pas pu s'ouvrir.
@@ -3078,6 +3088,7 @@ async function loadMyBuddy(newSession) {
   // Nouveau compte : l'écran Buddy Premium d'abord (la visite guidée suit, comme avant)
   await askPlanIfNeeded();
   showLaunchNotice(); // l'annonce "Buddy est lancé, Premium offert 2 semaines" (une seule fois, testeurs)
+  showStoresNotice(); // l'annonce "Buddy est sur l'App Store et Google Play" (une seule fois, site seulement)
 
   // LA LANGUE : un choix fait sur CET appareil (bouton FR/EN) passe en premier ;
   // sinon on reprend la langue enregistrée dans le compte (choisie sur un autre appareil).

@@ -1561,6 +1561,9 @@ html:has(dialog[open]) { overflow: hidden; }
 .get-app p { margin: 0; color: var(--muted); line-height: 1.5; }
 .platforms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .platforms > span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; background: var(--accent-soft); color: var(--text); font-weight: 700; font-size: 0.86rem; }
+.platforms > a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 99px; background: var(--text); color: var(--bg); font-weight: 800; font-size: 0.9rem; text-decoration: none; }
+.platforms > a:hover { opacity: 0.88; }
+.stores-links { justify-content: center; }
 .platforms .lucide { font-size: 16px; }
 .get-app-qr { display: grid; justify-items: center; gap: 6px; max-width: 140px; text-align: center; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
 .get-app-qr img, .phone-card img { border-radius: 12px; border: 1px solid var(--border); background: #fff; padding: 4px; }

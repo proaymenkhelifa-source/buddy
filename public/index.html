@@ -96,14 +96,14 @@
         <img class="shot-desktop reveal"data-src-lang="images/app-desktop-{lang}.jpg" src="images/app-desktop-fr.jpg" width="1280" height="800" loading="lazy" data-i18n-alt="shots.desktopAlt" alt="">
         <img class="shot-phone reveal" style="--d: 0.3s"data-src-lang="images/app-phone-{lang}.jpg" src="images/app-phone-fr.jpg" width="390" height="780" loading="lazy" data-i18n-alt="shots.phoneAlt" alt="">
       </div>
-      <!-- Buddy s'installe comme une appli, sans passer par un store (présenté comme un avantage) -->
+      <!-- Buddy sur l'App Store, Google Play, ou installé depuis le site (ordinateur) -->
       <div class="get-app reveal" style="--d: 0.15s">
         <div class="get-app-text">
           <h3 data-i18n="getapp.title">Sur ton téléphone et ton ordinateur</h3>
           <p data-i18n="getapp.sub">Installe Buddy en 10 secondes, sans passer par un store. Il a son icône, s'ouvre en plein écran et t'envoie tes rappels.</p>
           <div class="platforms">
-            <span><i data-lucide="apple-logo"></i> iPhone</span>
-            <span><i data-lucide="android-logo"></i> Android</span>
+            <a href="https://apps.apple.com/app/id6821380691" target="_blank" rel="noopener"><i data-lucide="apple-logo"></i> App Store</a>
+            <a href="https://play.google.com/store/apps/details?id=app.buddycoach.buddy" target="_blank" rel="noopener"><i data-lucide="android-logo"></i> Google Play</a>
             <span><i data-lucide="desktop"></i> <span data-i18n="getapp.desktop">Ordinateur</span></span>
           </div>
         </div>
@@ -868,6 +868,20 @@
   </dialog>
 
   <!-- Le lancement officiel : Premium offert 2 semaines aux testeurs (affiché une seule fois) -->
+  <!-- Annonce (une seule fois) : Buddy est sur l'App Store et Google Play -->
+  <dialog id="stores-dialog" class="dialog">
+    <form method="dialog" class="launch-box">
+      <img src="buddy/bravo.webp" alt="" class="launch-buddy">
+      <h2 data-i18n="stores.title">Buddy est sur l'App Store et Google Play 📱</h2>
+      <p data-i18n="stores.text">Télécharge l'appli Buddy sur ton téléphone : tes rappels, ta série et Buddy toujours dans ta poche. Connecte-toi avec ton compte habituel, tout est déjà là.</p>
+      <div class="platforms stores-links">
+        <a href="https://apps.apple.com/app/id6821380691" target="_blank" rel="noopener"><i data-lucide="apple-logo"></i> App Store</a>
+        <a href="https://play.google.com/store/apps/details?id=app.buddycoach.buddy" target="_blank" rel="noopener"><i data-lucide="android-logo"></i> Google Play</a>
+      </div>
+      <button class="btn btn-primary btn-full" value="ok" data-i18n="stores.ok">Super 🙌</button>
+    </form>
+  </dialog>
+
   <dialog id="launch-dialog" class="dialog">
     <form method="dialog" class="launch-box">
       <img src="buddy/bravo.webp" alt="" class="launch-buddy">
