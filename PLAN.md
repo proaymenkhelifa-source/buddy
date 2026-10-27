@@ -313,6 +313,7 @@ Known gotchas:
 - 2026-10-14: ✅ GOOGLE PLAY APPROVED & LIVE: https://play.google.com/store/apps/details?id=app.buddycoach.buddy
 - 2026-10-13: Apple replied "Guideline 2.1 – Information Needed" (new developer account): needs a screen recording on a real iPhone (launch, sign-up, main flow, login with demo account, account deletion) + written answers → ready in store/app-review-reply.md (also to paste in App Review Notes). Owner records the video when he has time.
 - 2026-10-21: Apple rejected for 5.1.1(i)/5.1.2(i) (data sent to the AI without permission). Fixed: AI consent screen before the first chat / brain dump (who = Claude by Anthropic, what, why), consent saved in `profiles.ai_consent_at`, checked by the server before every AI call (otherwise pre-written quotes and e-mails), can be withdrawn in Settings. Build 9 attached to version 1.0, reply sent (store/app-review-reply.md n°2), RESUBMITTED → "En attente de vérification". Streaming / keyboard / layout fixes will go in the next build after approval.
+- 2026-10-27: ✅ APP STORE APPROVED (version 1.0, build 9). Buddy is now on Google Play AND the App Store. Next: the combined announcement, build 1.0.1 with streaming / keyboard / layout fixes, English App Store listing.
 - iOS plan: Capacitor (wrap the site) + Codemagic (cloud Mac build) or a friend's Mac; Apple Developer as "individual" (99 €/year); add native push, widgets and Apple in-app purchase to pass review guideline 4.2.
 
 ## Buddy's replies appear live, word by word (2026-10-16)
