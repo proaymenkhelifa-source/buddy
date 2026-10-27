@@ -316,6 +316,7 @@ Known gotchas:
 - 2026-10-27: ✅ APP STORE APPROVED (version 1.0, build 9). Buddy is now on Google Play AND the App Store. Next: the combined announcement, build 1.0.1 with streaming / keyboard / layout fixes, English App Store listing.
 - 2026-10-27 (Claude, owner away): site → one-time announcement "Buddy est sur l'App Store et Google Play" (web only, until end 2026) + App Store / Google Play links on the landing page. SEO listings written in `store/fiches-seo.md` (FR+EN; name "Buddy : Coach IA & Habitudes" / "Buddy: AI Coach & Habits", no prices). Google Play: FR listing updated + English (US) added → sent for review. App Store: version 1.0.1 created (FR+EN texts, keywords, promo text, what's new, new name/subtitle + English localization); iOS MARKETING_VERSION 1.0.1, Codemagic build 10 started → attach it and submit 1.0.1.
 - 2026-10-27: build 10 (1.0.1) attached and 1.0.1 SENT FOR APP REVIEW (English privacy URL added). Google Play listing change in review.
+- 2026-10-27: ✅ Stripe confirmed working with a real payment (a friend subscribed, money received) → real payment test no longer needed.
 - iOS plan: Capacitor (wrap the site) + Codemagic (cloud Mac build) or a friend's Mac; Apple Developer as "individual" (99 €/year); add native push, widgets and Apple in-app purchase to pass review guideline 4.2.
 
 ## Buddy's replies appear live, word by word (2026-10-16)
