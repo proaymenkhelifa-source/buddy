@@ -317,6 +317,7 @@ Known gotchas:
 - 2026-10-27 (Claude, owner away): site → one-time announcement "Buddy est sur l'App Store et Google Play" (web only, until end 2026) + App Store / Google Play links on the landing page. SEO listings written in `store/fiches-seo.md` (FR+EN; name "Buddy : Coach IA & Habitudes" / "Buddy: AI Coach & Habits", no prices). Google Play: FR listing updated + English (US) added → sent for review. App Store: version 1.0.1 created (FR+EN texts, keywords, promo text, what's new, new name/subtitle + English localization); iOS MARKETING_VERSION 1.0.1, Codemagic build 10 started → attach it and submit 1.0.1.
 - 2026-10-27: build 10 (1.0.1) attached and 1.0.1 SENT FOR APP REVIEW (English privacy URL added). Google Play listing change in review.
 - 2026-10-27: ✅ Stripe confirmed working with a real payment (a friend subscribed, money received) → real payment test no longer needed.
+- 2026-10-27 decision: no link to the website from the apps (Apple/Google forbid it), no Premium e-mail. Next: owner signs Apple "Paid Apps" agreement (bank + tax) + Google payments profile + 15% small business programs → then Claude sets up in-app subscriptions (RevenueCat, Apple + Google) and Google/Apple sign-in.
 - iOS plan: Capacitor (wrap the site) + Codemagic (cloud Mac build) or a friend's Mac; Apple Developer as "individual" (99 €/year); add native push, widgets and Apple in-app purchase to pass review guideline 4.2.
 
 ## Buddy's replies appear live, word by word (2026-10-16)
