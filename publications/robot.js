@@ -5,7 +5,7 @@
 //   puis un e-mail de compte rendu est envoyé à Aymen.
 // Mode essai : PUBLICATION_DRY_RUN=true (c'est la valeur par défaut tant que rien d'autre n'est écrit) → RIEN n'est envoyé aux réseaux.
 import { Resend } from "resend";
-import { BUCKET, TERMINES, MAX_PAR_JOUR, maintenantParis, plusJours, lienSigne, adresseAymen, emailSimple, esc, NOMS_RESEAUX, DRAPEAUX, NOMS_CRENEAUX } from "./commun.js";
+import { BUCKET, TERMINES, MAX_PAR_JOUR, languesActives, maintenantParis, plusJours, lienSigne, adresseAymen, emailSimple, esc, NOMS_RESEAUX, DRAPEAUX, NOMS_CRENEAUX } from "./commun.js";
 
 // Le mode essai est ACTIF sauf si PUBLICATION_DRY_RUN vaut exactement "false"
 export const modeEssai = () => process.env.PUBLICATION_DRY_RUN !== "false";
@@ -81,6 +81,10 @@ export async function publierCreneau(supabase, creneau, { maintenant = new Date(
     const connectes = new Set((cx || []).filter((c) => c.access_token).map((c) => c.reseau + "|" + c.langue));
     lignes = brutes.filter((l) => l.statut === "valide" || essai || connectes.has(l.reseau + "|" + l.langue));
   }
+
+  // les langues en pause (LANGUES_ACTIVES, l'anglais depuis le 2026-11-03) ne partent jamais
+  const actives = languesActives();
+  lignes = lignes.filter((l) => actives.includes(l.langue));
 
   // règle : maximum 2 publications par compte et par jour (vérifiée avant de lancer les envois)
   const aPublier = [], resultats = [];

@@ -1,17 +1,23 @@
 // publications/commun.js – les règles communes du robot de publication (utilisées par le serveur ET par
 // le petit programme videos/preparer-publication.mjs).
 //   - les jours et les heures sont toujours ceux de PARIS (le robot tourne sur des serveurs en UTC) ;
-//   - 2 créneaux par jour : « midi » (vers 12 h) et « soir » (vers 19 h 30) ;
+//   - 2 créneaux par jour : « midi » (12 h, la vidéo courte) et « soir » (19 h, la longue) — décision d'Aymen, 2026-11-03 ;
 //   - maximum 2 publications par compte et par jour → un compte a au plus une publication par créneau.
 
 export const BUCKET = "publications"; // le dossier de stockage PRIVÉ des vidéos
 export const RESEAUX = ["tiktok", "instagram", "youtube"];
 export const LANGUES = ["fr", "en"];
+// Les langues qu'on publie : LANGUES_ACTIVES=fr (défaut) ou fr,en. L'anglais est EN PAUSE depuis le 2026-11-03 (décision d'Aymen) :
+// rien n'est supprimé (comptes, connexions, code) ; pour le rallumer, mettre LANGUES_ACTIVES=fr,en (Vercel + .env).
+export const languesActives = (env = process.env) => {
+  const l = String(env.LANGUES_ACTIVES || "fr").split(",").map((x) => x.trim().toLowerCase()).filter((x) => LANGUES.includes(x));
+  return l.length ? l : ["fr"];
+};
 export const CRENEAUX = ["midi", "soir"];
 export const MAX_PAR_JOUR = 2;
 // Heure (Paris) à partir de laquelle un créneau du jour est considéré comme passé pour une NOUVELLE vidéo
 // (on laisse au moins ~1 h à Aymen pour valider avant le passage du robot).
-const LIMITE_CRENEAU = { midi: 11 * 60, soir: 18 * 60 + 30 };
+const LIMITE_CRENEAU = { midi: 11 * 60, soir: 18 * 60 };
 // Une publication « terminée » ne bougera plus : son fichier peut être supprimé du stockage
 export const TERMINES = ["publie", "prive_attente", "annule"];
 
@@ -82,7 +88,7 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 
 // Les noms affichés
 export const NOMS_RESEAUX = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
-export const NOMS_CRENEAUX = { midi: "midi (entre 12 h et 13 h)", soir: "soir (entre 18 h et 19 h)" };
+export const NOMS_CRENEAUX = { midi: "midi (12 h)", soir: "soir (19 h)" };
 export const DRAPEAUX = { fr: "🇫🇷", en: "🇬🇧" };
 
 // Un petit e-mail simple aux couleurs de Buddy

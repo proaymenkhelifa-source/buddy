@@ -100,9 +100,10 @@ export function installerPublications(app, { supabase, requireUser, requireAdmin
     // pour ne jamais « publier pour de faux » une vidéo validée. Un essai se lance à la main (sans être un cron Vercel).
     if (modeEssai() && /vercel-cron/i.test(req.headers["user-agent"] || "")) return res.json({ ignore: "mode essai : passage automatique ignoré" });
     const creneau = req.query.creneau;
-    // Publication à partir de 18 h (heure de Paris), été comme hiver : Vercel passe 2 fois (16 h et 17 h UTC, à une heure près) ;
-    // un passage automatique qui tombe avant 18 h à Paris ne fait rien (le suivant publiera ; ce qui est publié ne repart pas).
-    const heureMin = { midi: 12 * 60, soir: 18 * 60 }[creneau];
+    // Publication à 12 h (midi) et à 19 h (soir), heure de Paris, été comme hiver : Vercel passe 2 fois par créneau
+    // (10 h et 11 h UTC, 17 h et 18 h UTC, à une heure près) ; un passage automatique qui tombe avant l'heure à Paris ne fait rien
+    // (le suivant publiera ; ce qui est publié ne repart pas).
+    const heureMin = { midi: 12 * 60, soir: 19 * 60 }[creneau];
     if (/vercel-cron/i.test(req.headers["user-agent"] || "") && heureMin && maintenantParis().minutes < heureMin) {
       return res.json({ ignore: "trop tôt (heure de Paris) : le passage suivant publiera" });
     }
